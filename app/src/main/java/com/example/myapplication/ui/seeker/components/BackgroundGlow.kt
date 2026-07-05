@@ -15,7 +15,7 @@ fun Modifier.drawBackgroundGlow(): Modifier = this.drawBehind {
             Color.Transparent
         ),
         center = Offset(size.width / 2f, size.height / 2f),
-        radius = size.width * 1.0f
+        radius = size.width * 2.0f
     )
 
     drawRect(brush = glow)
