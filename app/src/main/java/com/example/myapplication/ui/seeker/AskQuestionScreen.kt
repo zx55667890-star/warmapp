@@ -15,6 +15,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
+import com.example.myapplication.ui.seeker.components.drawBackgroundGlow
 import androidx.camera.lifecycle.ProcessCameraProvider
 import kotlinx.coroutines.delay
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -77,11 +78,13 @@ fun AskQuestionScreen(
 
     Scaffold(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
-        containerColor = Color(0xFF1A1A1A)
+        containerColor = Color.Transparent
     ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .background(Color(0xFF1A1A1A))
+                .drawBackgroundGlow()
                 .padding(innerPadding)
                 .imePadding()
         ) {
