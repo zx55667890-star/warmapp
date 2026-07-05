@@ -18,9 +18,9 @@ fun Modifier.drawBackgroundGlow(): Modifier = this
     drawRect(
         brush = Brush.verticalGradient(
             colors = listOf(
-                Color(0xFF05070F),
+                Color(0xFF133281),
                 Color(0xFF08162F),
-                Color(0xFF05070F)
+                Color(0xFF133281)
             )
         )
     )
