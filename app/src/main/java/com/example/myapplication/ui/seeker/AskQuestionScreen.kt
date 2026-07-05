@@ -88,9 +88,9 @@ fun AskQuestionScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black)
-                .windowInsetsPadding(WindowInsets.safeDrawing)
-                .drawBackgroundGlow()
+                // 1. 移除原本的 .background(Color.Black)
+                .drawBackgroundGlow() // 2. 先畫滿版的發光背景，這樣漸層就會延伸到畫面最頂和最底
+                .windowInsetsPadding(WindowInsets.safeDrawing) // 3. 再往內縮，確保 UI 元件(如輸入框和返回鍵)不會被系統列遮擋
         ) {
             AskQuestionHeader(
                 nickname = nickname,
