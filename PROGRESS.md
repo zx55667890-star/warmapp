@@ -983,6 +983,43 @@
 - **編譯通過**: `./gradlew assembleDebug` ✅
 - **測試通過**: `./gradlew testDebugUnitTest` — 18 全綠 ✅
 
+---
+
+### 98. 背景光暈完整迭代：琥珀 → 藍色 → 黑色疊層 → 用戶自訂多層漸層
+- **狀態**: ✅ 完成
+- **修改檔案**: `BackgroundGlow.kt`
+- **提交**: `35e5c9d`, `554af9c`, `05c5e49`, `6bec7b8`, `807e7e7`
+- **說明**:
+  - 初始為琥珀色 `radialGradient`（#D4A853 / #361C0A）
+  - 改為純藍色 radial（#133281 → #0055FF），含主光暈 + 副光暈
+  - 嘗試黑色疊層方案（黑色半透明圓形蓋在藍色底上）
+  - 用戶自行 push 版本（`6bec7b8`）：垂直漸層 `#133281→#08162F→#133281` + 主光暈 `#4DA3FF(alpha=0.28, 半徑=290.dp)` + 副光暈 `#00D4FF(alpha=0.10, 半徑=470.dp)`
+  - `807e7e7` 將垂直漸層頂端底端統一改為 `#133281`
+  - `drawBackgroundGlow()` 回傳 `this.fillMaxSize().drawBehind{...}` 單一 Modifier
+
+### 99. 系統列黑色條問題：多次嘗試未解
+- **狀態**: ❌ 封存（暫停開發）
+- **修改檔案**: `MainActivity.kt`, `themes.xml`
+- **提交**: `49e8b2a`, `02ce859`, `ec4d271`, `9f38a17`, `bd1f50f`, `45d08bf`
+- **說明**:
+  - 嘗試設定 `window.statusBarColor = Color.TRANSPARENT` 及各種深藍色值
+  - 啟用 `enableEdgeToEdge()` + `setDecorFitsSystemWindows(false)`
+  - 設定 `window.isStatusBarContrastEnforced = false`
+  - `themes.xml` 加入 `android:windowBackground="@android:color/transparent"`
+  - 最終在 `decorView.setBackgroundColor(Color.parseColor("#133281"))` 強制背景色
+  - 移除 `controller.hide()`（`systemUiVisibility` 隱藏系統列）
+  - **結果**：上下系統列區域仍顯示黑色，無法填入背景色
+
+### 100. AppNavigation 重構：Box 外層包裹全螢幕背景光暈
+- **狀態**: ✅ 完成
+- **修改檔案**: `AppNavigation.kt`, `ChatScreen.kt`
+- **提交**: `c79e082`, `80a5ffa`, `a133918`
+- **說明**:
+  - `a133918`：`Box(drawBackgroundGlow)` 移至 `Scaffold` 外層作為全螢幕背景
+  - `NavHost` 改為 `fillMaxSize()` + `padding(innerPadding)` 避免被 system bars 遮擋
+  - `c79e082`：嘗試 ChatScreen 內用 Box 包裹全螢幕背景（後續 revert）
+  - `ChatScreen` 最終移除 `drawBackgroundGlow()`、`statusBarsPadding()`、`imePadding()`，僅留 `fillMaxSize().clickable{focusManager.clearFocus()}`
+
 ### 83. 重構深化：UiText 密封類別 + AuthRepository 協程化 + 輸入層分離
 - **狀態**: ✅ 完成
 - **新增檔案**: `ui/common/UiText.kt` — 密封類別（Dynamic / Resource），ViewModel 不再硬編碼字串，i18n ready

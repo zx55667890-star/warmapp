@@ -9,7 +9,7 @@
 | `RoleSelectScreen.kt` | 角色選擇入口：Canvas 動畫圖示（提問者氣泡浮動 / 專家燈泡呼吸）+ 兩張卡片 + 底部登出按鈕 |
 | `MatchingDialog.kt` | 配對中 Dialog（載入動畫） |
 | `SeekerConfirmDialog.kt` | 專家接受後確認 Dialog |
-| `components/BackgroundGlow.kt` | 背景光暈 Modifier 擴充（`drawBackgroundGlow()`） |
+| `components/BackgroundGlow.kt` | 背景光暈 Modifier 擴充（`drawBackgroundGlow()`）：垂直漸層 `#133281→#08162F→#133281` + 主光暈 `#4DA3FF(0.28)` + 副光暈 `#00D4FF(0.10)` |
 | `components/AskQuestionHeader.kt` | 上方 ✨ 歡迎標題 |
 | `components/AskQuestionInputBar.kt` | 輸入膠囊 + LazyRow 預覽 + `MediaPreviewItem` |
 | `components/AttachmentBottomSheet.kt` | 底部附件彈窗 + 三卡片（相簿/相機/錄音） |
@@ -45,7 +45,7 @@
 
 | 檔案 | 負責 |
 |------|------|
-| `ChatScreen.kt` | 主畫面 Composable；接收 NavArgs（expertId/expertText/expertDate） |
+| `ChatScreen.kt` | 主畫面 Composable；接收 NavArgs（expertId/expertText/expertDate）；已移除 `drawBackgroundGlow()`、`statusBarsPadding()`、`imePadding()`，僅留 `fillMaxSize().clickable{focusManager.clearFocus()}` |
 | `ChatViewModel.kt` | ViewModel：StateFlow\<ChatUiState\> + SharedFlow\<ChatEvent\>、UseCase 協調；由 Koin viewModel() 注入 |
 | `ChatMediaSender.kt` | 多媒體發送/Job 管理器：獨立處理圖片/影片/語音上傳與 pending/cancel 邏輯（原 ChatMediaManager）；傳入 isCameraCapture |
 | `ChatUiState.kt` | data class：純畫面資料（無事件欄位） |
@@ -150,7 +150,7 @@
 
 | 檔案 | 負責 |
 |------|------|
-| `AppNavigation.kt` | NavHost（5 route：auth / role_select / ask / expert / chat）+ Scaffold（無 AppTabRow）；`isLoggedIn` 決定 startDestination；登出 AlertDialog（依序 reset ViewModels + signOut + navigate）；`LaunchedEffect` 自動導航至聊天室 |
+| `AppNavigation.kt` | NavHost（5 route：auth / role_select / ask / expert / chat）+ `Box(drawBackgroundGlow)` 外層全螢幕背景 + Scaffold（內層 SnackbarHost）；`isLoggedIn` 決定 startDestination；登出 AlertDialog（依序 reset ViewModels + signOut + navigate）；`LaunchedEffect` 自動導航至聊天室 |
 | `Route.kt` | 路由字串常數（AUTH / ROLE_SELECT / ASK / EXPERT / CHAT） |
 
 ## `di/` — 依賴注入（Koin）
