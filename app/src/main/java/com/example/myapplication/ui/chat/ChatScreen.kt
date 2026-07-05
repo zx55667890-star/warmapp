@@ -2,7 +2,6 @@ package com.example.myapplication.ui.chat
 
 import android.util.Log
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
@@ -10,7 +9,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
 import com.example.myapplication.ui.seeker.components.drawBackgroundGlow
 import androidx.compose.ui.unit.dp
@@ -118,23 +116,18 @@ fun ChatScreen(
         }
     })
 
-    Box(
+    Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF133281))
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .statusBarsPadding()
-                .imePadding()
-                .drawBackgroundGlow()
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null
-                ) { focusManager.clearFocus() }
+            .statusBarsPadding()
+            .imePadding()
+            .drawBackgroundGlow()
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null
+            ) { focusManager.clearFocus() }
 
-        ) {
+    ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -213,7 +206,6 @@ fun ChatScreen(
                 onDismissReply = { viewModel.updateUiState { it.copy(replyToMessage = null) } }
             )
         }
-    }
 
     ChatDialogHost(
         uiState = uiState,
