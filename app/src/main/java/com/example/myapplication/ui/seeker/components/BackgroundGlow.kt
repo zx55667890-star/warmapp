@@ -7,27 +7,16 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 
 fun Modifier.drawBackgroundGlow(): Modifier = this.drawBehind {
-    val glowColor = Color(0xFF101B3D)
+    drawRect(Color(0xFF000000))
 
-    val leftGlow = Brush.radialGradient(
-        colors = listOf(glowColor, Color.Transparent),
-        center = Offset(-size.width * 0.6f, size.height * 1.1f),
-        radius = size.width * 1.8f
+    val glow = Brush.radialGradient(
+        colors = listOf(
+            Color(0xFF132043),
+            Color.Transparent
+        ),
+        center = Offset(size.width / 2f, size.height + (size.height * 0.15f)),
+        radius = size.width * 1.2f
     )
 
-    val rightGlow = Brush.radialGradient(
-        colors = listOf(glowColor, Color.Transparent),
-        center = Offset(size.width * 1.6f, size.height * 1.1f),
-        radius = size.width * 1.8f
-    )
-
-    val baseGlow = Brush.verticalGradient(
-        colors = listOf(Color.Transparent, glowColor.copy(alpha = 0.5f), glowColor),
-        startY = size.height * 0.7f,
-        endY = size.height
-    )
-
-    drawRect(brush = leftGlow)
-    drawRect(brush = rightGlow)
-    drawRect(brush = baseGlow)
+    drawRect(brush = glow)
 }
