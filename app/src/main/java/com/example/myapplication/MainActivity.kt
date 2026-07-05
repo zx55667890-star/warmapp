@@ -24,17 +24,18 @@ class MainActivity : ComponentActivity() {
         // 🌌 2. Edge-to-edge
         enableEdgeToEdge()
 
-        // ⚡ 3. 移除 system bar 背景（避免黑條來源）
+        // ⚡ 3. 強制 window 背景為深藍色（避免任何黑色穿透）
         window.statusBarColor = Color.TRANSPARENT
         window.navigationBarColor = Color.TRANSPARENT
+        window.decorView.setBackgroundColor(android.graphics.Color.parseColor("#133281"))
 
         window.isStatusBarContrastEnforced = false
         window.isNavigationBarContrastEnforced = false
 
-        // ⚡ 4. 控制 icon 顏色（避免白黑錯亂）
+        // ⚡ 4. 控制 icon 顏色
         val controller = WindowInsetsControllerCompat(window, window.decorView)
-        controller.hide(android.view.WindowInsets.Type.statusBars())
-        controller.hide(android.view.WindowInsets.Type.navigationBars())
+        controller.isAppearanceLightStatusBars = false
+        controller.isAppearanceLightNavigationBars = false
         controller.systemBarsBehavior =
             WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
 
