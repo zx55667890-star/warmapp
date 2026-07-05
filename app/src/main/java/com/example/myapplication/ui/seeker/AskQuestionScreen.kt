@@ -82,15 +82,15 @@ fun AskQuestionScreen(
 
     Scaffold(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
-        containerColor = Color.Transparent
-    ) { innerPadding ->
+        containerColor = Color.Transparent,
+        contentWindowInsets = WindowInsets(0.dp)
+    ) { _ ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color.Black)
+                .windowInsetsPadding(WindowInsets.safeDrawing)
                 .drawBackgroundGlow()
-                .padding(innerPadding)
-                .imePadding()
         ) {
             AskQuestionHeader(
                 nickname = nickname,
