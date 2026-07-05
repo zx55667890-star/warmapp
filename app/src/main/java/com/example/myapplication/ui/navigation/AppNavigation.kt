@@ -132,22 +132,22 @@ fun AppNavigation() {
         else -> Color.Black
     }
 // 將原本的 containerColor = when(...) 判斷式移除，改為透明
-    Scaffold(
-        modifier = Modifier.fillMaxSize(),
-        containerColor = Color.Transparent, // ✅ 不再塗黑/塗灰
-        contentWindowInsets = WindowInsets(0, 0, 0, 0)
-    ) { innerPadding ->
-        // ✅ 把 BackgroundGlow 加在這裡，它會填滿整個螢幕（包含上下）
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .drawBackgroundGlow() // 只有這個頁面變藍色發光
-                .padding(innerPadding)
-        ) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .drawBackgroundGlow()
+    ) {
+        Scaffold(
+            modifier = Modifier.fillMaxSize(),
+            containerColor = Color.Transparent,
+            contentWindowInsets = WindowInsets(0, 0, 0, 0)
+        ) { innerPadding ->
             NavHost(
                 navController = navController,
                 startDestination = if (authRepository.isLoggedIn()) Routes.ROLE_SELECT else Routes.AUTH,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
             ) {
                 composable(Routes.AUTH) {
                     AuthScreen(
@@ -246,7 +246,6 @@ fun AppNavigation() {
                     ChatRouteContent(entry.arguments, userId, firebaseDb, navController, scope)
                 }
             }
-        }
 
         Box {
             if (expertUiState.showGlobalAssignDialog) {
@@ -263,6 +262,7 @@ fun AppNavigation() {
                 if (it) NicknameSettingsDialog(userId = userId, userRepository = userRepository, onDismiss = { showNicknameSettings = false })
             }
         }
+    }
     }
 }
 
