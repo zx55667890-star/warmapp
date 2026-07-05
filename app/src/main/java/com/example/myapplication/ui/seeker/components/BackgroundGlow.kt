@@ -7,7 +7,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 
 fun Modifier.drawBackgroundGlow(): Modifier = this.drawBehind {
-    val glowColor = Color(0xFF0F172A)
+    val glowColor = Color(0xFF050814)
 
     val baseGlow = Brush.verticalGradient(
         colors = listOf(Color.Transparent, glowColor),
