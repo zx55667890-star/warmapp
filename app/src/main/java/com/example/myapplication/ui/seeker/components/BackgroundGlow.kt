@@ -27,21 +27,20 @@ fun Modifier.drawBackgroundGlow(): Modifier {
     )
 
     return this.drawBehind {
-        drawRect(Color.Black)
+        drawRect(Color(0xFF1A3A6B))
 
-        val glow = Brush.radialGradient(
+        val blackGlow = Brush.radialGradient(
             colors = listOf(
-                Color(0xFF1A3A6B),
-                Color(0xFF0D1F3C),
+                Color.Black,
+                Color(0xFF050A15),
                 Color.Transparent
             ),
             center = Offset(
                 x = size.width / 2f,
-                y = size.height * 0.6f
+                y = -size.height * 0.3f
             ),
-            radius = (size.height * 0.7f) * animationProgress
+            radius = (size.height * 1.3f) * animationProgress
         )
-
-        drawRect(brush = glow)
+        drawRect(brush = blackGlow)
     }
 }
