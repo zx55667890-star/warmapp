@@ -119,9 +119,9 @@ fun ChatScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .drawBackgroundGlow()
             .statusBarsPadding()
             .imePadding()
+            .drawBackgroundGlow()
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null
