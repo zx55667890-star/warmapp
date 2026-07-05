@@ -1,15 +1,12 @@
 package com.example.myapplication
 
-import android.content.Context
+import android.graphics.Color
 import android.os.Bundle
-import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.runtime.SideEffect
-import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import com.example.myapplication.di.appModule
 import com.example.myapplication.ui.navigation.AppNavigation
 import com.example.myapplication.ui.theme.MyApplicationTheme
@@ -17,37 +14,42 @@ import org.koin.android.ext.koin.androidContext
 import org.koin.compose.KoinApplication
 
 class MainActivity : ComponentActivity() {
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // ✨ 加上這一行，讓 Compose 完全控制鍵盤與系統列的動畫
-        WindowCompat.setDecorFitsSystemWindows(window, false)
-        enableEdgeToEdge()
-        @Suppress("DEPRECATION")
-        window.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
 
-        @Suppress("DEPRECATION")
-        val deviceId = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID) ?: "DEVICE_UNKNOWN"
-        getSharedPreferences("app_prefs", Context.MODE_PRIVATE).edit().putString("saved_device_id", deviceId).apply()
+        // 🌊 1. 讓 Compose 可以畫到整個螢幕（關鍵）
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+
+        // 🌌 2. Edge-to-edge
+        enableEdgeToEdge()
+
+        // ⚡ 3. 移除 system bar 背景（避免黑條來源）
+        window.statusBarColor = Color.TRANSPARENT
+        window.navigationBarColor = Color.TRANSPARENT
+
+        window.isStatusBarContrastEnforced = false
+        window.isNavigationBarContrastEnforced = false
+
+        // ⚡ 4. 控制 icon 顏色（避免白黑錯亂）
+        val controller = WindowInsetsControllerCompat(window, window.decorView)
+        controller.hide(android.view.WindowInsets.Type.statusBars())
+        controller.hide(android.view.WindowInsets.Type.navigationBars())
+        controller.systemBarsBehavior =
+            WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
 
         setContent {
+
             MyApplicationTheme {
-                KoinApplication(application = {
-                    androidContext(this@MainActivity)
-                    modules(appModule)
-                }) {
-                    val isDarkTheme = isSystemInDarkTheme()
-                    val view = LocalView.current
-                    SideEffect {
-                        val window = (view.context as android.app.Activity).window
-                        val controller = WindowCompat.getInsetsController(window, view)
 
-                        controller.isAppearanceLightStatusBars = !isDarkTheme
-                        controller.isAppearanceLightNavigationBars = !isDarkTheme
-
-                        // 狀態列/導覽列設為 #133281 藍色（與背景一致）
-                        window.statusBarColor = android.graphics.Color.parseColor("#133281")
-                        window.navigationBarColor = android.graphics.Color.parseColor("#133281")
+                KoinApplication(
+                    application = {
+                        androidContext(this@MainActivity)
+                        modules(appModule)
                     }
+                ) {
+
+                    // 🚀 這裡才是整個 UI Root
                     AppNavigation()
                 }
             }

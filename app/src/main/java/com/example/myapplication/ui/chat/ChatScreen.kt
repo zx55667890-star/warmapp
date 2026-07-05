@@ -10,7 +10,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
-import com.example.myapplication.ui.seeker.components.drawBackgroundGlow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.myapplication.data.model.ChatMessage
@@ -45,89 +44,95 @@ fun ChatScreen(
     val focusManager = LocalFocusManager.current
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
 
-    var showCameraCapture by remember { mutableStateOf(false) }
-    var showVoiceRecording by remember { mutableStateOf(false) }
-    var highlightedMsgId by remember { mutableStateOf<String?>(null) }
-    var opponentNickname by remember { mutableStateOf("") }
-    var myNickname by remember { mutableStateOf("") }
-    val userRepository: UserRepository = koinInject()
-    LaunchedEffect(Unit) {
-        userRepository.getNickname(userId) { myNickname = it }
-        val opponentId = if (myRole == "user") expertId else ""
-        if (opponentId.isNotBlank()) {
-            userRepository.getNickname(opponentId) { opponentNickname = it }
-        }
-    }
-    LaunchedEffect(uiState.messages) {
-        if (myRole != "user" && opponentNickname.isBlank()) {
-            val opponentId = uiState.messages.firstOrNull { it.senderId != userId }?.senderId
-            if (opponentId != null) userRepository.getNickname(opponentId) { opponentNickname = it }
-        }
-    }
+        // 🌌 ① 背景一定最底（你 OS layer）
+        val snackbarHostState = remember { SnackbarHostState() }
+        val scope = rememberCoroutineScope()
 
-    ChatScrollManager(
-        listState = listState,
-        events = viewModel.events,
-        messages = uiState.messages,
-        pendingMessages = uiState.pendingMessages,
-        isInitialLoading = uiState.isInitialLoading,
-        isOtherTyping = uiState.isOtherTyping,
-        isChatActive = uiState.isChatActive,
-        markAllRead = { viewModel.markAllRead() }
-    )
-
-    LaunchedEffect(Unit) {
-        viewModel.events.collect { event ->
-            when (event) {
-                is ChatEvent.ShowSnackbar -> {
-                    scope.launch { snackbarHostState.showSnackbar(event.message) }
-                }
-                is ChatEvent.ChatEndedByOther -> {
-                    viewModel.onChatEndedByOther(myRole, expertId, onBack)
-                }
-                is ChatEvent.OpenCamera -> {
-                    focusManager.clearFocus()
-                    showCameraCapture = true
-                }
-                is ChatEvent.OpenVoiceRecorder -> {
-                    focusManager.clearFocus()
-                    showVoiceRecording = true
-                }
-                else -> {}
+        var showCameraCapture by remember { mutableStateOf(false) }
+        var showVoiceRecording by remember { mutableStateOf(false) }
+        var highlightedMsgId by remember { mutableStateOf<String?>(null) }
+        var opponentNickname by remember { mutableStateOf("") }
+        var myNickname by remember { mutableStateOf("") }
+        val userRepository: UserRepository = koinInject()
+        LaunchedEffect(Unit) {
+            userRepository.getNickname(userId) { myNickname = it }
+            val opponentId = if (myRole == "user") expertId else ""
+            if (opponentId.isNotBlank()) {
+                userRepository.getNickname(opponentId) { opponentNickname = it }
             }
         }
-    }
-
-    LaunchedEffect(highlightedMsgId) {
-        if (highlightedMsgId != null) {
-            delay(1500L)
-            highlightedMsgId = null
+        LaunchedEffect(uiState.messages) {
+            if (myRole != "user" && opponentNickname.isBlank()) {
+                val opponentId = uiState.messages.firstOrNull { it.senderId != userId }?.senderId
+                if (opponentId != null) userRepository.getNickname(opponentId) {
+                    opponentNickname = it
+                }
+            }
         }
-    }
 
-    BackHandler(onBack = {
-        if (uiState.isChatActive) {
-            viewModel.updateUiState { it.copy(showEndConfirmDialog = true) }
-        } else {
-            onBack()
+        ChatScrollManager(
+            listState = listState,
+            events = viewModel.events,
+            messages = uiState.messages,
+            pendingMessages = uiState.pendingMessages,
+            isInitialLoading = uiState.isInitialLoading,
+            isOtherTyping = uiState.isOtherTyping,
+            isChatActive = uiState.isChatActive,
+            markAllRead = { viewModel.markAllRead() }
+        )
+
+
+        LaunchedEffect(Unit) {
+            viewModel.events.collect { event ->
+                when (event) {
+                    is ChatEvent.ShowSnackbar -> {
+                        scope.launch { snackbarHostState.showSnackbar(event.message) }
+                    }
+
+                    is ChatEvent.ChatEndedByOther -> {
+                        viewModel.onChatEndedByOther(myRole, expertId, onBack)
+                    }
+
+                    is ChatEvent.OpenCamera -> {
+                        focusManager.clearFocus()
+                        showCameraCapture = true
+                    }
+
+                    is ChatEvent.OpenVoiceRecorder -> {
+                        focusManager.clearFocus()
+                        showVoiceRecording = true
+                    }
+
+                    else -> {}
+                }
+            }
         }
-    })
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .statusBarsPadding()
-            .imePadding()
-            .drawBackgroundGlow()
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null
-            ) { focusManager.clearFocus() }
+        LaunchedEffect(highlightedMsgId) {
+            if (highlightedMsgId != null) {
+                delay(1500L)
+                highlightedMsgId = null
+            }
+        }
 
-    ) {
+        BackHandler(onBack = {
+            if (uiState.isChatActive) {
+                viewModel.updateUiState { it.copy(showEndConfirmDialog = true) }
+            } else {
+                onBack()
+            }
+        })
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null
+                ) { focusManager.clearFocus() }
+
+        ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -173,7 +178,9 @@ fun ChatScreen(
                         val chosenUrls = if (globalIdx >= 0) globalImageUrls else urls
                         val cameraFlags = chosenUrls.map { u ->
                             allMessages.any { msg ->
-                                msg.isCameraCapture && (msg.imageUrls.contains(u) || msg.localImageUrls.contains(u) || msg.imageUrl == u)
+                                msg.isCameraCapture && (msg.imageUrls.contains(u) || msg.localImageUrls.contains(
+                                    u
+                                ) || msg.imageUrl == u)
                             }
                         }
                         viewModel.updateUiState {
@@ -199,7 +206,14 @@ fun ChatScreen(
                 uiState = uiState,
                 isDarkTheme = isDarkTheme,
                 onSendMessage = { text -> viewModel.sendMessage(text) },
-                onSendImage = { uris -> viewModel.mediaSender.sendImages(chatroomId, userId, myRole, uris) },
+                onSendImage = { uris ->
+                    viewModel.mediaSender.sendImages(
+                        chatroomId,
+                        userId,
+                        myRole,
+                        uris
+                    )
+                },
                 onTypingStatusChange = { viewModel.updateTypingStatus(it) },
                 onCameraClick = { viewModel.openCamera() },
                 onMicClick = { viewModel.openVoiceRecorder() },
@@ -207,19 +221,19 @@ fun ChatScreen(
             )
         }
 
-    ChatDialogHost(
-        uiState = uiState,
-        viewModel = viewModel,
-        myRole = myRole,
-        userId = userId,
-        chatroomId = chatroomId,
-        expertId = expertId,
-        expertText = expertText,
-        expertDate = expertDate,
-        showCameraCapture = showCameraCapture,
-        showVoiceRecording = showVoiceRecording,
-        onCameraDismiss = { showCameraCapture = false },
-        onVoiceDismiss = { showVoiceRecording = false },
-        onBack = onBack
-    )
-}
+        ChatDialogHost(
+            uiState = uiState,
+            viewModel = viewModel,
+            myRole = myRole,
+            userId = userId,
+            chatroomId = chatroomId,
+            expertId = expertId,
+            expertText = expertText,
+            expertDate = expertDate,
+            showCameraCapture = showCameraCapture,
+            showVoiceRecording = showVoiceRecording,
+            onCameraDismiss = { showCameraCapture = false },
+            onVoiceDismiss = { showVoiceRecording = false },
+            onBack = onBack
+        )
+    }
