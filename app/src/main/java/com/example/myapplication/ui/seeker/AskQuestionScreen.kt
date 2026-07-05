@@ -50,6 +50,10 @@ fun AskQuestionScreen(
 
     BackHandler(onBack = onBack)
 
+    LaunchedEffect(Unit) {
+        focusRequester.requestFocus()
+    }
+
     val onSendQuestion = {
         if (selectedMediaList.isNotEmpty() || question.isNotBlank()) {
             val media = selectedMediaList.map { SeekerViewModel.SendMedia(it.uri, it.isVideo, it.isVoice) }
@@ -83,7 +87,7 @@ fun AskQuestionScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color(0xFF1A1A1A))
+                .background(Color.Black)
                 .drawBackgroundGlow()
                 .padding(innerPadding)
                 .imePadding()
