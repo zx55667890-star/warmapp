@@ -50,7 +50,7 @@ fun AskQuestionInputBar(
     onRemoveMedia: (SelectedMedia) -> Unit
 ) {
     val isKeyboardVisible = WindowInsets.isImeVisible
-    val bottomPadding = if (isKeyboardVisible) 12.dp else 28.dp
+    val bottomPadding = if (isKeyboardVisible) 16.dp else 28.dp
 
     Surface(
         modifier = Modifier
