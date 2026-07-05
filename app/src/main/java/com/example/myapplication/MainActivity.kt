@@ -41,14 +41,12 @@ class MainActivity : ComponentActivity() {
                         val window = (view.context as android.app.Activity).window
                         val controller = WindowCompat.getInsetsController(window, view)
 
-                        // 確保狀態列與導覽列的圖標顏色能根據深淺色主題自動切換 (白字/黑字)
                         controller.isAppearanceLightStatusBars = !isDarkTheme
                         controller.isAppearanceLightNavigationBars = !isDarkTheme
 
-                        // 🌟 關鍵 1：明確將狀態列與導覽列設為 `#133281` 藍色
-                        window.statusBarColor = android.graphics.Color.parseColor("#133281")
-                        window.navigationBarColor = android.graphics.Color.parseColor("#133281")
-
+                        // ✅ 改為透明：讓內容可以延伸到系統列，顏色由頁面背景決定
+                        window.statusBarColor = android.graphics.Color.TRANSPARENT
+                        window.navigationBarColor = android.graphics.Color.TRANSPARENT
                     }
                     AppNavigation()
                 }

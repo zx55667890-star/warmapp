@@ -31,6 +31,7 @@ import com.example.myapplication.ui.theme.AppColors
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import com.example.myapplication.ui.seeker.components.drawBackgroundGlow
 
 /**
  * 提問者：極簡人物 + 浮動的對話氣泡 (代表提出疑問)
@@ -171,6 +172,7 @@ fun RoleSelectScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .drawBackgroundGlow() // 只有這個頁面變藍色發光
             .background(Color(0xFF171717))
     ) {
         // 側邊欄

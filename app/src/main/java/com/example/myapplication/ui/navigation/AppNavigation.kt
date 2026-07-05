@@ -13,17 +13,10 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBars
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -56,6 +49,7 @@ import com.example.myapplication.ui.expert.ExpertScreen
 import com.example.myapplication.ui.expert.ExpertWaitingDialog
 import com.example.myapplication.ui.seeker.AskQuestionScreen
 import com.example.myapplication.ui.seeker.RoleSelectScreen
+import com.example.myapplication.ui.seeker.components.drawBackgroundGlow
 import com.example.myapplication.util.uploadChatAndComplete
 import com.google.firebase.database.FirebaseDatabase
 import kotlinx.coroutines.launch
@@ -137,16 +131,17 @@ fun AppNavigation() {
         Routes.ROLE_SELECT -> Color(0xFF171717)
         else -> Color.Black
     }
+// 將原本的 containerColor = when(...) 判斷式移除，改為透明
     Scaffold(
         modifier = Modifier.fillMaxSize(),
-        containerColor = containerColor,
-        // 🌟 關鍵 3：將 contentWindowInsets 歸零，不讓 Scaffold 阻擋狀態列
+        containerColor = Color.Transparent, // ✅ 不再塗黑/塗灰
         contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { innerPadding ->
-        // 🌟 修正點：把 padding(innerPadding) 加回來，安撫嚴格的編譯器
+        // ✅ 把 BackgroundGlow 加在這裡，它會填滿整個螢幕（包含上下）
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                .drawBackgroundGlow() // 只有這個頁面變藍色發光
                 .padding(innerPadding)
         ) {
             NavHost(
