@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "1081825713247",
+    "firebase_url": "https://warmhelpapp-default-rtdb.firebaseio.com",
+    "project_id": "warmhelpapp",
+    "storage_bucket": "warmhelpapp.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1081825713247:android:1b6a09899526f409250fea",
+        "android_client_info": {
+          "package_name": "com.example.myapplication"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1081825713247-mntmjmcb33ngdgo4i71q69m5rvuurp8e.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.myapplication",
+            "certificate_hash": "1625265c71ba675d21e05ccd66d914d35be0b643"
+          }
+        },
+        {
+          "client_id": "1081825713247-r0vnp017u5a6rj1o5s52f4qv38pmfqo3.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBYElXluXOqwkOnNYsYMAeeukrCbCFbMlI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1081825713247-r0vnp017u5a6rj1o5s52f4qv38pmfqo3.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

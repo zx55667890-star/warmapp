@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">My Application</string>
+    <!-- TODO: Replace with your web client ID from Firebase Console (Project Settings > General > Web apps > Web client ID) -->
+    <string name="default_web_client_id">1081825713247-r0vnp017u5a6rj1o5s52f4qv38pmfqo3.apps.googleusercontent.com</string>
+    <string name="terms_url">https://your-terms-url.com</string>
+    <string name="privacy_url">https://your-privacy-url.com</string>
+</resources>
