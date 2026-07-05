@@ -45,9 +45,9 @@ class MainActivity : ComponentActivity() {
                         controller.isAppearanceLightStatusBars = !isDarkTheme
                         controller.isAppearanceLightNavigationBars = !isDarkTheme
 
-                        // 🌟 關鍵 1：明確將狀態列與導覽列設為「完全透明」
-                        window.statusBarColor = android.graphics.Color.TRANSPARENT
-                        window.navigationBarColor = android.graphics.Color.TRANSPARENT
+                        // 🌟 關鍵 1：明確將狀態列與導覽列設為深藍色
+                        window.statusBarColor = android.graphics.Color.parseColor("#133281")
+                        window.navigationBarColor = android.graphics.Color.parseColor("#133281")
 
                     }
                     AppNavigation()
