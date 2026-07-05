@@ -7,15 +7,15 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 
 fun Modifier.drawBackgroundGlow(): Modifier = this.drawBehind {
-    drawRect(Color(0xFF0A1D52))
+    drawRect(Color(0xFF0A1E52))
 
     val glow = Brush.radialGradient(
         colors = listOf(
-            Color(0xFF132043),
+            Color.Black,
             Color.Transparent
         ),
-        center = Offset(size.width / 2f, -(size.height * -0.20f)),
-        radius = size.width * 2.20f
+        center = Offset(size.width / 2f, 0f),
+        radius = size.height * 1.20f
     )
 
     drawRect(brush = glow)
