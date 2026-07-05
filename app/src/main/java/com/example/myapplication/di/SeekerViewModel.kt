@@ -54,9 +54,7 @@ class SeekerViewModel(
     }
 
     val showSeekerConfirmDialog: Boolean
-        get() {
-            TODO()
-        }
+        get() = _uiState.value.showSeekerConfirmDialog
     private val _uiState = MutableStateFlow(SeekerUiState())
     val uiState: StateFlow<SeekerUiState> = _uiState.asStateFlow()
 

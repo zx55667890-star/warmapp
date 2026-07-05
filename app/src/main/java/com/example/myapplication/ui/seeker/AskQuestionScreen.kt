@@ -4,6 +4,7 @@ import android.net.Uri
 import java.io.File
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -46,6 +47,8 @@ fun AskQuestionScreen(
     val cameraProviderFuture = remember { ProcessCameraProvider.getInstance(context) }
     val snackbarHostState = remember { SnackbarHostState() }
 
+    BackHandler(onBack = onBack)
+
     val onSendQuestion = {
         if (selectedMediaList.isNotEmpty() || question.isNotBlank()) {
             val media = selectedMediaList.map { SeekerViewModel.SendMedia(it.uri, it.isVideo, it.isVoice) }
@@ -84,7 +87,8 @@ fun AskQuestionScreen(
         ) {
             AskQuestionHeader(
                 nickname = nickname,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
+                onMenuClick = onBack
             )
 
             AskQuestionInputBar(

@@ -1129,5 +1129,24 @@
 - **說明**:
   - **背景光暈加強**：三個 `radialGradient` — 左下 `#D4A853` 18%、右下 `#D4A853` 18%、底部中央 `#361C0A` 60%，半徑放大至 0.8w~1.0w，金色層次更深
   - **輸入框居中**：`Column` 改為 `Arrangement.Center`，Header + InputBar 整體垂直居中，不再被 `weight(1f)` 推到最底
-  - **InputBar padding**：移除 `bottom` padding，改為對稱 `horizontal = 30.dp`
+   - **InputBar padding**：移除 `bottom` padding，改為對稱 `horizontal = 30.dp`
+
+---
+
+### 95. Bug 修復：SeekerViewModel 殘留 TODO() 導致 Runtime 崩潰
+- **狀態**: ✅ 完成
+- **修改檔案**: `di/SeekerViewModel.kt`
+- **說明**: `showSeekerConfirmDialog` 屬性的 getter 遺留 `TODO()` 未實作，外部呼叫將直接拋出 `NotImplementedError`。改為回傳 `_uiState.value.showSeekerConfirmDialog`，正確委託至 UiState
+
+### 96. AskQuestionScreen 加入 BackHandler 返回支援
+- **狀態**: ✅ 完成
+- **修改檔案**: `ui/seeker/AskQuestionScreen.kt`
+- **說明**: `AskQuestionScreen` 雖接收 `onBack` 回呼參數但從未呼叫，導致系統返回鍵無反應。加入 `BackHandler(onBack = onBack)` 處理返回手勢，並將 `onBack` 傳遞給 `AskQuestionHeader.onMenuClick`，使左上角漢堡選單圖示可觸發返回
+
+### 97. 修復 SDK 路徑設定（local.properties）
+- **狀態**: ✅ 完成
+- **修改檔案**: `local.properties`
+- **說明**: `sdk.dir` 原本指向 `C:\Program Files`（無 platforms/build-tools），改為正確的 SDK 路徑 `C:\Users\user\AppData\Local\Android\Sdk`（含 android-37.0 platforms 與 36.0.0 build-tools）。修正後編譯與測試皆可正常執行
+- **編譯通過**: `./gradlew assembleDebug` ✅
+- **測試通過**: `./gradlew testDebugUnitTest` — 18 全綠 ✅
 
