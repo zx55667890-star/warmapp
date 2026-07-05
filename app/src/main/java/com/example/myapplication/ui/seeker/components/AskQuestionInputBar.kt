@@ -37,6 +37,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import com.example.myapplication.ui.seeker.SelectedMedia
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun AskQuestionInputBar(
     question: String,
@@ -48,10 +49,13 @@ fun AskQuestionInputBar(
     onSendClick: () -> Unit,
     onRemoveMedia: (SelectedMedia) -> Unit
 ) {
+    val isKeyboardVisible = WindowInsets.isImeVisible
+    val bottomPadding = if (isKeyboardVisible) 12.dp else 28.dp
+
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 30.dp, end = 30.dp, bottom = 40.dp)
+            .padding(start = 30.dp, end = 30.dp, bottom = bottomPadding)
             .border(0.5.dp, Color(0xFF333333), RoundedCornerShape(32.dp)),
         color = Color(0xFF1A1A1E),
         shape = RoundedCornerShape(32.dp),
