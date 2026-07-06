@@ -1119,6 +1119,9 @@
 
 ---
 
+## Known Issues
+- **鍵盤無法收回**：`RoleSelectScreen` 側邊欄搜尋欄焦點後，點主畫面空白處無法收起鍵盤。已嘗試 `focusManager.clearFocus()` 與 `InputMethodManager.hideSoftInputFromWindow()` 皆無效。推測與 DrawerContent 的 z-order 或 Compose focus 系統有關。
+
 ## 待注意事項（更新）
 - `AuthScreen.kt` 使用 `DisposableEffect` 設定 `SOFT_INPUT_ADJUST_NOTHING`，離開時還原
 - `AuthViewModel.setError()` 接受 `String`，包裝為 `UiText.Dynamic` 寫入 state + 發送 toast
