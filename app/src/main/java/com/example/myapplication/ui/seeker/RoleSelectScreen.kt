@@ -185,13 +185,14 @@ fun RoleSelectScreen(
             onSettingsClick = { showSettingsScreen = true } // 點擊開啟圖四全螢幕設定
         )
 
+        val focusManager = LocalFocusManager.current
+
         // 右移的主畫面
         Box(
             modifier = Modifier
                 .offset(x = offsetX)
                 .scale(scale)
                 .clip(RoundedCornerShape(cornerRadius))
-                // 💡 關鍵：加上微亮邊框，能讓上下圓角的孤度在暗色主題下清晰可見，質感倍增
                 .border(
                     width = if (isDrawerOpen) 1.dp else 0.dp,
                     color = Color(0xFF2E2E2E),
@@ -199,14 +200,12 @@ fun RoleSelectScreen(
                 )
                 .fillMaxSize()
                 .background(Color.Black)
-        ) {
-            val focusManager = LocalFocusManager.current
-            Box(
-                modifier = Modifier.fillMaxSize().clickable(
+                .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null
                 ) { focusManager.clearFocus() }
-            ) {
+        ) {
+            Box(modifier = Modifier.fillMaxSize()) {
                 Row(
                     modifier = Modifier
                         .fillMaxSize()
