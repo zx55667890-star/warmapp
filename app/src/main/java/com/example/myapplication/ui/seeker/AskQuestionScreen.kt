@@ -16,6 +16,8 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
 import com.example.myapplication.ui.seeker.components.drawBackgroundGlow
 import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
 import kotlinx.coroutines.delay
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.myapplication.di.SeekerViewModel
@@ -84,18 +86,31 @@ fun AskQuestionScreen(
         containerColor = Color.Transparent,
         contentWindowInsets = WindowInsets(0.dp)
     ) { _ ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .imePadding() // 鍵盤彈起時，背景一起往上推
-                .drawBackgroundGlow()
-                .windowInsetsPadding(WindowInsets.safeDrawing)
-        ) {
-            AskQuestionHeader(
-                nickname = nickname,
-                modifier = Modifier.weight(1f)
+        Box(modifier = Modifier.fillMaxSize()) {
+
+            // 🌌 1. 獨立的背景層：永遠保持滿版高度，只做「整體的上下平移」
+            val imeInsets = WindowInsets.ime
+            val density = LocalDensity.current
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        // 讀取鍵盤高度，並將整個畫布往上推 (負值)
+                        translationY = -imeInsets.getBottom(density).toFloat()
+                    }
+                    .drawBackgroundGlow()
             )
 
+            // 📝 2. 內容層：原本的對話佈局，由 safeDrawing 幫你完美處理鍵盤推擠
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .windowInsetsPadding(WindowInsets.safeDrawing)
+            ) {
+                AskQuestionHeader(
+                    nickname = nickname,
+                    modifier = Modifier.weight(1f) // 只要 Column 有 fillMaxSize()，這裡就會乖乖把輸入框往下推
+                )
             AskQuestionInputBar(
                 question = question,
                 onQuestionChange = { question = it },
@@ -151,4 +166,5 @@ fun AskQuestionScreen(
             onDismiss = { viewModel.rejectExpertMatch() }
         )
     }
+}
 }
