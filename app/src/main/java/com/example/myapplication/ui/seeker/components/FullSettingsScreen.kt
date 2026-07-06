@@ -78,19 +78,23 @@ fun FullSettingsScreen(
                 ) {
                     SettingsGroupHeader("帳戶設定")
                     SettingsItem(title = "個人資料與帳號") {}
+                    Spacer(modifier = Modifier.height(4.dp))
                     SettingsItem(title = "訂閱與支付方案") {}
 
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
 
                     SettingsGroupHeader("App 設定")
                     SettingsItem(title = "自訂主題外觀", subtitle = "深色模式") {}
+                    Spacer(modifier = Modifier.height(4.dp))
                     SettingsItem(title = "通用智慧對話設定") {}
+                    Spacer(modifier = Modifier.height(4.dp))
                     SettingsItem(title = "資料與隱私權保護") {}
 
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
 
                     SettingsGroupHeader("關於")
                     SettingsItem(title = "檢查版本更新", subtitle = "v1.0.0 (Build 24)") {}
+                    Spacer(modifier = Modifier.height(4.dp))
                     SettingsItem(title = "服務條款與隱私聲明") {}
 
                     Spacer(modifier = Modifier.height(20.dp))
@@ -142,7 +146,7 @@ private fun SettingsItem(
                 .clip(RoundedCornerShape(12.dp))
                 .background(Color(0xFF1A1A1A))
                 .clickable { onClick() }
-                .padding(horizontal = 16.dp, vertical = 13.dp),
+                .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.weight(1f)) {
