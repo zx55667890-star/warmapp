@@ -997,18 +997,21 @@
   - `807e7e7` 將垂直漸層頂端底端統一改為 `#133281`
   - `drawBackgroundGlow()` 回傳 `this.fillMaxSize().drawBehind{...}` 單一 Modifier
 
-### 99. 系統列黑色條問題：多次嘗試未解
-- **狀態**: ❌ 封存（暫停開發）
-- **修改檔案**: `MainActivity.kt`, `themes.xml`
-- **提交**: `49e8b2a`, `02ce859`, `ec4d271`, `9f38a17`, `bd1f50f`, `45d08bf`
+### 99. 系統列黑色條問題：多次嘗試未解 → 最終修復
+- **狀態**: ✅ 完成
+- **修改檔案**: `MainActivity.kt`, `themes.xml`, `AskQuestionScreen.kt`, `RoleSelectScreen.kt`
+- **提交**: `49e8b2a`, `02ce859`, `ec4d271`, `9f38a17`, `bd1f50f`, `45d08bf`, `9f36615`
 - **說明**:
-  - 嘗試設定 `window.statusBarColor = Color.TRANSPARENT` 及各種深藍色值
-  - 啟用 `enableEdgeToEdge()` + `setDecorFitsSystemWindows(false)`
-  - 設定 `window.isStatusBarContrastEnforced = false`
-  - `themes.xml` 加入 `android:windowBackground="@android:color/transparent"`
-  - 最終在 `decorView.setBackgroundColor(Color.parseColor("#133281"))` 強制背景色
-  - 移除 `controller.hide()`（`systemUiVisibility` 隱藏系統列）
-  - **結果**：上下系統列區域仍顯示黑色，無法填入背景色
+  - 先前嘗試（失敗）：
+    - 設定 `window.statusBarColor = Color.TRANSPARENT` 及各種深藍色值
+    - 啟用 `enableEdgeToEdge()` + `setDecorFitsSystemWindows(false)`
+    - 設定 `window.isStatusBarContrastEnforced = false`
+    - `themes.xml` 加入 `android:windowBackground="@android:color/transparent"`
+    - 最終在 `decorView.setBackgroundColor(Color.parseColor("#133281"))` 強制背景色
+    - 移除 `controller.hide()`（`systemUiVisibility` 隱藏系統列）
+  - **真正原因**（commit `9f36615`）：`AskQuestionScreen.kt` 的 modifier 順序錯誤。前一 session 在 `fillMaxSize()` 後插了 `.background(Color.Black)`，導致系統列區域被填黑
+  - **修復**：移除 `.background(Color.Black)`，恢復 `drawBackgroundGlow()` → `windowInsetsPadding(safeDrawing)` 順序。讓 glow 在 `safeDrawing` 之前繪製，自然延伸到系統列區域
+  - `.background(Color(0xFF171717))` 也從 `RoleSelectScreen.kt` 暫時移除（後續 commit `edfb8c1` 加回）
 
 ### 100. AppNavigation 重構：Box 外層包裹全螢幕背景光暈
 - **狀態**: ✅ 完成
@@ -1019,6 +1022,17 @@
   - `NavHost` 改為 `fillMaxSize()` + `padding(innerPadding)` 避免被 system bars 遮擋
   - `c79e082`：嘗試 ChatScreen 內用 Box 包裹全螢幕背景（後續 revert）
   - `ChatScreen` 最終移除 `drawBackgroundGlow()`、`statusBarsPadding()`、`imePadding()`，僅留 `fillMaxSize().clickable{focusManager.clearFocus()}`
+
+### 101. BackgroundGlow 簡化：多層漸層 → 單色 + 黑色 radial 暗角
+- **狀態**: ✅ 完成
+- **修改檔案**: `BackgroundGlow.kt`, `MainActivity.kt`, `RoleSelectScreen.kt`
+- **提交**: `edfb8c1`
+- **說明**:
+  - `BackgroundGlow.kt` 從 52 行砍到 23 行：移除垂直漸層 base、移除雙 radial glow（主光暈 #4DA3FF + 副光暈 #00D4FF）
+  - 新方案：純色 `#2631C9` ＋ 單一黑色 radial 暗角（`Brush.radialGradient(Black → Transparent)`，中心置中、半徑 `width * 4.0f`）
+  - 移除了 `fillMaxSize()` 呼叫（改由呼叫端自行決定尺寸）
+  - `RoleSelectScreen.kt` 加回 `.background(Color(0xff171717))` 保留 Drawer 灰色背景
+  - `MainActivity.kt` 移除過時註解
 
 ### 83. 重構深化：UiText 密封類別 + AuthRepository 協程化 + 輸入層分離
 - **狀態**: ✅ 完成

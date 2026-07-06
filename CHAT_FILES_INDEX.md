@@ -9,7 +9,7 @@
 | `RoleSelectScreen.kt` | 角色選擇入口：Canvas 動畫圖示（提問者氣泡浮動 / 專家燈泡呼吸）+ 兩張卡片 + 底部登出按鈕 |
 | `MatchingDialog.kt` | 配對中 Dialog（載入動畫） |
 | `SeekerConfirmDialog.kt` | 專家接受後確認 Dialog |
-| `components/BackgroundGlow.kt` | 背景光暈 Modifier 擴充（`drawBackgroundGlow()`）：垂直漸層 `#133281→#08162F→#133281` + 主光暈 `#4DA3FF(0.28)` + 副光暈 `#00D4FF(0.10)` |
+| `components/BackgroundGlow.kt` | 背景光暈 Modifier 擴充（`drawBackgroundGlow()`）：單色 `#2631C9` + 黑色 radial 暗角（`Black→Transparent`，半徑 `width*4`） |
 | `components/AskQuestionHeader.kt` | 上方 ✨ 歡迎標題 |
 | `components/AskQuestionInputBar.kt` | 輸入膠囊 + LazyRow 預覽 + `MediaPreviewItem` |
 | `components/AttachmentBottomSheet.kt` | 底部附件彈窗 + 三卡片（相簿/相機/錄音） |
