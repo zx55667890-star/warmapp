@@ -173,6 +173,7 @@ fun RoleSelectScreen(
         modifier = Modifier
             .fillMaxSize()
             .drawBackgroundGlow() // 只有這個頁面變藍色發光
+            .background(Color(0xff171717))
     ) {
         // 側邊欄
         DrawerContent(

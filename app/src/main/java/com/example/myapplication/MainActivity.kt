@@ -24,7 +24,6 @@ class MainActivity : ComponentActivity() {
         // 🌌 2. Edge-to-edge
         enableEdgeToEdge()
 
-        // ⚡ 3. 強制 window 背景為深藍色（避免任何黑色穿透）
         window.statusBarColor = Color.TRANSPARENT
         window.navigationBarColor = Color.TRANSPARENT
         window.decorView.setBackgroundColor(android.graphics.Color.parseColor("#133281"))
