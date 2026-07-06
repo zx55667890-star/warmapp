@@ -25,6 +25,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
+import android.view.inputmethod.InputMethodManager
+import android.content.Context
 import androidx.compose.ui.unit.sp
 import com.example.myapplication.ui.seeker.components.DrawerContent
 import com.example.myapplication.ui.seeker.components.FullSettingsScreen
@@ -186,6 +188,7 @@ fun RoleSelectScreen(
         )
 
         val focusManager = LocalFocusManager.current
+        val context = LocalContext.current
 
         // 右移的主畫面
         Box(
@@ -203,7 +206,11 @@ fun RoleSelectScreen(
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null
-                ) { focusManager.clearFocus() }
+                ) {
+                    focusManager.clearFocus()
+                    context.getSystemService(Context.INPUT_METHOD_SERVICE)
+                        ?.let { (it as InputMethodManager).hideSoftInputFromWindow((context as? android.app.Activity)?.window?.decorView?.windowToken, 0) }
+                }
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
                 Row(
