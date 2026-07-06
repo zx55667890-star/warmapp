@@ -58,11 +58,23 @@ class AuthRepository(
     }
 
     suspend fun signInWithGoogle(idToken: String) {
+        Log.d("AuthRepo", "signInWithGoogle: creating credential from idToken=${idToken.take(20)}...")
         val credential = GoogleAuthProvider.getCredential(idToken, null)
+        Log.d("AuthRepo", "signInWithGoogle: credential created, calling signInWithCredential...")
         suspendCancellableCoroutine { cont ->
-            firebaseAuth.signInWithCredential(credential)
-                .addOnSuccessListener { cont.resume(Unit) }
-                .addOnFailureListener { cont.resumeWithException(Exception(translateError(it))) }
+            val task = firebaseAuth.signInWithCredential(credential)
+            Log.d("AuthRepo", "signInWithGoogle: task=${task}")
+            task.addOnSuccessListener { result ->
+                Log.d("AuthRepo", "signInWithGoogle: SUCCESS user=${result.user?.uid}")
+                cont.resume(Unit)
+            }
+            task.addOnFailureListener { e ->
+                Log.w("AuthRepo", "signInWithGoogle: FAILED ${e.message}")
+                cont.resumeWithException(Exception(translateError(e)))
+            }
+            cont.invokeOnCancellation {
+                Log.d("AuthRepo", "signInWithGoogle: coroutine cancelled")
+            }
         }
     }
 
