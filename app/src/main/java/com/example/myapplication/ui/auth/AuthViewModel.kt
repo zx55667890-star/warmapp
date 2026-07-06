@@ -7,6 +7,7 @@ import com.example.myapplication.data.repository.AuthRepository
 import com.example.myapplication.data.repository.UserRepository
 import com.example.myapplication.ui.common.AuthUtils
 import com.example.myapplication.ui.common.UiText
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -14,6 +15,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeout
 
 data class AuthUiState(
     val isLoading: Boolean = false,
@@ -251,7 +253,9 @@ class AuthViewModel(
         _uiState.update { it.copy(isLoading = true, error = null) }
         viewModelScope.launch {
             try {
-                authRepository.signInWithGoogle(idToken)
+                withTimeout(20_000L) {
+                    authRepository.signInWithGoogle(idToken)
+                }
                 Log.d("AuthViewModel", "signInWithGoogle: success")
                 val uid = authRepository.currentUserId
                 val googleName = authRepository.currentUser?.displayName ?: ""
@@ -264,6 +268,9 @@ class AuthViewModel(
                 }
                 authRepository.saveFcmToken()
                 _uiState.update { it.copy(isLoading = false, isLoggedIn = true) }
+            } catch (e: TimeoutCancellationException) {
+                Log.w("AuthViewModel", "signInWithGoogle timeout")
+                _uiState.update { it.copy(isLoading = false, error = UiText.Dynamic("登入逾時，請檢查網路連線或 Firebase Google 登入是否開啟")) }
             } catch (e: Exception) {
                 Log.w("AuthViewModel", "signInWithGoogle failed: ${e.message}")
                 _uiState.update { it.copy(isLoading = false, error = UiText.Dynamic(e.message ?: "登入失敗")) }

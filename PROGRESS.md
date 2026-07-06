@@ -1042,6 +1042,14 @@
   - `AskQuestionScreen.kt`：移除傳入的 `onMenuClick = onBack`、移除未使用的 `background` import
   - 返回功能仍由 `BackHandler(onBack = onBack)` 保留（系統返回手勢/按鍵）
 
+### 103. Google 登入卡住修復：加上 20 秒逾時保護
+- **狀態**: ✅ 完成
+- **修改檔案**: `AuthViewModel.kt`
+- **說明**:
+  - `signInWithGoogle()` 中 `authRepository.signInWithGoogle(idToken)` 使用 `suspendCancellableCoroutine`，若 Firebase Auth 無回應（網路問題、憑證不匹配）會永久掛起
+  - 加上 `withTimeout(20_000L)` 包裹，逾時時拋出 `TimeoutCancellationException`
+  - 使用者不再看到無限 loading，20 秒後顯示「登入逾時」提示
+
 ### 83. 重構深化：UiText 密封類別 + AuthRepository 協程化 + 輸入層分離
 - **狀態**: ✅ 完成
 - **新增檔案**: `ui/common/UiText.kt` — 密封類別（Dynamic / Resource），ViewModel 不再硬編碼字串，i18n ready
