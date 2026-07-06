@@ -1034,6 +1034,14 @@
   - `RoleSelectScreen.kt` 加回 `.background(Color(0xff171717))` 保留 Drawer 灰色背景
   - `MainActivity.kt` 移除過時註解
 
+### 102. 移除提問頁面左上角漢堡選單按鈕
+- **狀態**: ✅ 完成
+- **修改檔案**: `AskQuestionHeader.kt`, `AskQuestionScreen.kt`
+- **說明**:
+  - `AskQuestionHeader.kt`：移除 hamburger menu Box（含 `onMenuClick` 參數、import `clickable`/`background`/`clip`/`RoundedCornerShape`）
+  - `AskQuestionScreen.kt`：移除傳入的 `onMenuClick = onBack`、移除未使用的 `background` import
+  - 返回功能仍由 `BackHandler(onBack = onBack)` 保留（系統返回手勢/按鍵）
+
 ### 83. 重構深化：UiText 密封類別 + AuthRepository 協程化 + 輸入層分離
 - **狀態**: ✅ 完成
 - **新增檔案**: `ui/common/UiText.kt` — 密封類別（Dynamic / Resource），ViewModel 不再硬編碼字串，i18n ready

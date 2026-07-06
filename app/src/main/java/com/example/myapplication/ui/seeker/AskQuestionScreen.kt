@@ -5,7 +5,6 @@ import java.io.File
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -94,8 +93,7 @@ fun AskQuestionScreen(
         ) {
             AskQuestionHeader(
                 nickname = nickname,
-                modifier = Modifier.weight(1f),
-                onMenuClick = onBack
+                modifier = Modifier.weight(1f)
             )
 
             AskQuestionInputBar(
