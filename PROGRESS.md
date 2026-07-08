@@ -1207,6 +1207,69 @@
 ## Known Issues
 - ~~**鍵盤無法收回**：`RoleSelectScreen` 側邊欄搜尋欄焦點後，點主畫面空白處無法收起鍵盤。已嘗試 `focusManager.clearFocus()` 與 `InputMethodManager.hideSoftInputFromWindow()` 皆無效。~~ ✅ **已修復**（#7）：覆蓋層點擊時一併呼叫 `clearFocus` + `hideSoftInputFromWindow`。
 
+---
+
+### 105. 背景光暈最終方案確定 + 黑色條真正原因修復
+- **狀態**: ✅ 完成
+- **修改檔案**: `BackgroundGlow.kt`, `AskQuestionScreen.kt`, `MainActivity.kt`, `RoleSelectScreen.kt`, `themes.xml`
+- **說明**:
+  - **黑色條真正原因**：`AskQuestionScreen.kt` 的 modifier 順序錯誤——`.background(Color.Black)` 在 `safeDrawing` 前，導致系統列區域被填黑。修復：移除 `.background(Color.Black)`，恢復 `drawBackgroundGlow()` → `windowInsetsPadding(safeDrawing)` 順序
+  - **`BackgroundGlow.kt` 簡化**：從 52 行砍到 23 行，移除垂直漸層 base 與雙 radial glow，改為純色 `#2631C9` ＋ 黑色 radial 暗角（`radialGradient(Black → Transparent)`，半徑 `width*4`），移除 `fillMaxSize()` 改由呼叫端決定尺寸
+  - **`MainActivity.kt`**：`enableEdgeToEdge()` + `decorView.setBackgroundColor("#133281")` + `createNotificationChannel()`
+  - **`themes.xml`**：`windowBackground transparent`
+  - **最終用戶選擇**：`BackgroundGlow.kt` 最終方案為單色 `#2631C9` + 黑色 radial 暗角
+
+### 106. FullSettingsScreen + DrawerContent 搜尋欄
+- **狀態**: ✅ 完成
+- **修改檔案**: `FullSettingsScreen.kt`, `DrawerContent.kt`, `RoleSelectScreen.kt`
+- **說明**:
+  - `FullSettingsScreen.kt`：`SettingsItem` 之間加入 4dp 間隔，避免外框黏在一起
+  - `DrawerContent.kt`：側邊欄加入搜尋 TextField（已知問題：focus 後點空白處無法收回鍵盤）
+
+### 107. AiRepository.generateExpertTags() + 本地降級斷詞
+- **狀態**: ✅ 完成
+- **修改檔案**: `AiRepository.kt`
+- **說明**:
+  - `generateExpertTags(domain, subDomain, problem)` 呼叫 Gemini API 產生專家配對標籤
+  - 支援全形逗號 `，` 分隔
+  - 空 API Key 時回傳 `emptyList()` 並 log 警告
+  - **本地降級機制**：API 配額用盡或斷線時，不再回傳 `emptyList()`，改由 `generateLocalFallbackTags()` 斷詞 domain/subDomain 直接作為標籤 + problem 依分隔符號/介系詞拆分取前 5 個
+
+### 108. ExpertScreen 結構化輸入 + AI 關聯標籤
+- **狀態**: ✅ 完成
+- **修改檔案**: `ExpertScreen.kt`, `ExpertViewModel.kt`, `AppModule.kt`
+- **說明**:
+  - `QuickLogCard` 加入結構化輸入欄位（核心領域/技術子項目/具體問題）
+  - 點選「自動產生配對標籤」按鈕 → 呼叫 `AiRepository.generateExpertTags()` → 產生關聯標籤 Chip
+  - `ExpertViewModel` 新增 `fetchTagsFromAi()` 橋接方法，`viewModelScope.launch` + 錯誤 toast
+  - `AppModule.kt` DI 更新：`ExpertViewModel(get(), get())`（加入 `AiRepository` 依賴）
+
+### 109. MatchingRepository Jaccard 相似度升級
+- **狀態**: ✅ 完成
+- **修改檔案**: `MatchingRepository.kt`
+- **說明**:
+  - 分數計算從單純的 `overlap > 0` 改為 **Jaccard 相似度**（`intersectSize / unionSize`）
+  - 聯集越大分數越低，單一泛用詞（如「大陸」）會被長句子稀釋，杜絕泛用詞誤報
+  - 信心閥值 `0.08`：低於此分的直接濾掉
+  - 分數型別從 `Int` 改為 `Double`
+
+### 110. 每日提問配額防禦（max 3/day + 防多開）
+- **狀態**: ✅ 完成
+- **修改檔案**: `QuestionRepository.kt`, `SeekerViewModel.kt`, `AskQuestionScreen.kt`
+- **說明**:
+  - `QuestionRepository` 新增 `getTodayQuestionCount()`（今日有效提問數）、`hasActiveQuestion()`（是否已有進行中提問）
+  - `SeekerViewModel`：`SeekerUiState` 加入 `dailyRemainingQuota` / `quotaError`；`sendQuestion()` 進入協程優先檢查多開 + 配額，超過則設 `quotaError` 不發送
+  - `AskQuestionScreen`：進入畫面自動重整額度、`LaunchedEffect` 攔截 `quotaError` 彈 Snackbar、輸入框上方顯示「今日剩餘提問次數：X 次」（歸零變紅）
+
+### 111. AGENTS.md 規則強化
+- **狀態**: ✅ 完成
+- **修改檔案**: `AGENTS.md`
+- **說明**:
+  - 每 5 次修改程式碼後更新 `PROGRESS.md`（同問題 debugging 只算 1 次）
+  - 編輯完後需 `git push`，再到另一台 `git pull`，每次修改完都必須 PUSH
+
+---
+
 ## 待注意事項（更新）
 - `AuthScreen.kt` 使用 `DisposableEffect` 設定 `SOFT_INPUT_ADJUST_NOTHING`，離開時還原
 - `AuthViewModel.setError()` 接受 `String`，包裝為 `UiText.Dynamic` 寫入 state + 發送 toast

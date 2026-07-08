@@ -4,15 +4,17 @@
 
 | 檔案 | 負責 |
 |------|------|
-| `AskQuestionScreen.kt` | 主畫面（瘦身版 ~110 行）：僅留狀態管理與流程控制 |
+| `AskQuestionScreen.kt` | 主畫面：問題輸入 + 媒體選取預覽 + 每日配額顯示 + `LaunchedEffect` 攔截 `quotaError` 彈 Snackbar |
 | `SelectedMedia.kt` | 媒體資料模型（`data class SelectedMedia(uri, isVideo, isVoice)`） |
-| `RoleSelectScreen.kt` | 角色選擇入口：Canvas 動畫圖示（提問者氣泡浮動 / 專家燈泡呼吸）+ 兩張卡片 + 底部登出按鈕 |
+| `RoleSelectScreen.kt` | 角色選擇入口：Canvas 動畫圖示（提問者氣泡浮動 / 專家燈泡呼吸）+ 側邊欄 DrawerContent（搜尋 + 頭像）+ 底部登出按鈕 |
 | `MatchingDialog.kt` | 配對中 Dialog（載入動畫） |
 | `SeekerConfirmDialog.kt` | 專家接受後確認 Dialog |
 | `components/BackgroundGlow.kt` | 背景光暈 Modifier 擴充（`drawBackgroundGlow()`）：單色 `#2631C9` + 黑色 radial 暗角（`Black→Transparent`，半徑 `width*4`） |
 | `components/AskQuestionHeader.kt` | 上方 ✨ 歡迎標題 |
 | `components/AskQuestionInputBar.kt` | 輸入膠囊 + LazyRow 預覽 + `MediaPreviewItem` |
 | `components/AttachmentBottomSheet.kt` | 底部附件彈窗 + 三卡片（相簿/相機/錄音） |
+| `components/DrawerContent.kt` | 側邊欄選單：頭像 + 暱稱 + 分組列表 + 搜尋 TextField |
+| `components/FullSettingsScreen.kt` | 全螢幕設定頁面（SettingsItem 區塊） |
 
 ## `ui.expert` — 專家端
 
@@ -137,11 +139,11 @@
 | `MessageRepositoryInterface.kt` | Repository 介面（14 methods，利於測試注入 Fake） |
 | `MessageRepositoryFactory.kt` | MessageRepository 工廠（依 chatroomId 建立不同 Firebase ref） |
 | `ExpertRepository.kt` | 專家狀態/經驗/線上/全局接單 |
-| `MatchingRepository.kt` | Bigram 配對邏輯與專家指派（實作 `MatchingRepositoryInterface`） |
+| `MatchingRepository.kt` | Bigram 配對 + Jaccard 相似度 + 信心閥值 `0.08` 防禦泛用詞誤報（實作 `MatchingRepositoryInterface`） |
 | `MatchingRepositoryInterface.kt` | 配對介面（`matchAndAssignExpert`） |
-| `QuestionRepository.kt` | 問題提問/狀態監聽/接受/拒絕/評分/重連檢查 |
+| `QuestionRepository.kt` | 問題提問/狀態監聽/接受/拒絕/評分/重連檢查；新增 `getTodayQuestionCount()` / `hasActiveQuestion()` 防禦方法 |
 | `MediaUploader.kt` | Firebase Storage 圖片/影片/語音上傳 + 刪除 |
-| `AiRepository.kt` | AI 即時回覆整合（Gemini API） |
+| `AiRepository.kt` | AI 即時回覆 + 專家標籤生成（Gemini API）；`generateExpertTags()` 含本地降級斷詞機制 |
 | `AuthRepository.kt` | FirebaseAuth 封裝、全部異步方法使用 `suspendCancellableCoroutine` 改為 `suspend fun`：`login(email, password)`、`register(email, password)`、`signInWithGoogle(idToken)`、`sendPasswordReset(email)`、`resetPasswordCloudFunction(email, verificationCode, newPassword)`、`generateVerificationCode(email, prefix)`（每日 3 次限制 + prefix 區分註冊/重設）、`verifyVerificationCode(email, code, prefix): Boolean`（比對後自動刪除）；`translateError()` 將 Firebase 異常轉為中文提示；Logcat 分 `RegCode` / `ResetCode` |
 | `DataMigrator.kt` | ANDROID_ID → Firebase uid 資料遷移 |
 | `UserRepository.kt` | 使用者暱稱存取 |
@@ -159,7 +161,7 @@
 |------|------|
 | `AppModule.kt` | Koin 模組定義（`single`：FirebaseDatabase/FirebaseStorage/FirebaseAuth/SharedPreferences/9 Repository；`viewModel`：4 ViewModel） |
 | `ExpertViewModel.kt` | 專家端 ViewModel：線上狀態 / 經驗管理 / 全局接單 / 聊天導航 |
-| `SeekerViewModel.kt` | 提問端 ViewModel：發問 / 配對 / 確認專家 / 評分 / 重連 |
+| `SeekerViewModel.kt` | 提問端 ViewModel：發問（含每日配額 max 3/day + 防多開）/ 配對 / 確認專家 / AI 預覽 / 評分 / 重連；`dailyRemainingQuota` / `quotaError` 狀態 |
 
 ## `ui.voice` — 錄音功能
 
@@ -167,6 +169,13 @@
 |------|------|
 | `VoiceRecordingScreen.kt` | 錄音 Dialog（波形 + 秒數動畫 + 送出/取消） |
 | `VoiceRecordingViewModel.kt` | MediaRecorder 管理 + 音頻位準 + 計時器 |
+
+## Root — 專案規則
+
+| 檔案 | 負責 |
+|------|------|
+| `AGENTS.md` | AI Agent 規則：每 5 次修改更新 PROGRESS.md、background 最終方案 `#2631C9` + 黑色 radial 暗角、ChatEvent sealed class + LaunchedEffect、每次修改需 git push |
+| `PROGRESS.md` | 完整專案進度紀錄（111 個 entry + known issues） |
 
 ## `app/src/test/` — 單元測試
 
