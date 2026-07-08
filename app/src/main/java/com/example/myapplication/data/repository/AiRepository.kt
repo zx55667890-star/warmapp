@@ -3,7 +3,6 @@ package com.example.myapplication.data.repository
 import android.util.Log
 import com.example.myapplication.BuildConfig
 import com.google.ai.client.generativeai.GenerativeModel
-import com.google.ai.client.generativeai.type.content
 import com.google.firebase.database.FirebaseDatabase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.tasks.await
@@ -13,16 +12,12 @@ class AiRepository(
     private val firebaseDb: FirebaseDatabase
 ) {
     suspend fun generateExpertTags(domain: String, subDomain: String, problem: String): List<String> = withContext(Dispatchers.IO) {
-        if (BuildConfig.GEMINI_API_KEY.isBlank()) {
-            Log.w("AiRepo", "generateExpertTags: GEMINI_API_KEY is empty")
-            return@withContext emptyList()
-        }
         val prompt = """
             你是一個專業的搜尋系統標籤生成器。請根據以下真人專家輸入的專業領域，提煉出 3 到 5 個精準的「關鍵字特徵標籤」(Tags)，用來幫助配對系統搜尋。
             
-            大領域：$domain
-            子領域：$subDomain
-            具體能解決的問題：$problem
+            大領域：${domain}
+            子領域：${subDomain}
+            具體能解決的問題：${problem}
 
             規則：
             1. 直接回覆標籤名稱，使用半形逗號 (,) 分隔。
@@ -31,23 +26,38 @@ class AiRepository(
             
             輸出範例：淘寶,跨境退貨,海運物流,兩岸電商
         """.trimIndent()
-        try {
+        return@withContext try {
             Log.d("AiRepo", "generateExpertTags: sending prompt length=${prompt.length}")
             val response = model.generateContent(prompt)
-            val text = response.text?.trim()
-            Log.d("AiRepo", "generateExpertTags: raw response=$text")
-            if (text.isNullOrBlank()) {
-                Log.w("AiRepo", "generateExpertTags: empty response")
-                emptyList()
-            } else {
-                val tags = text.split(",", "，").map { it.trim() }.filter { it.isNotEmpty() }
+            val responseText = response.text
+            if (!responseText.isNullOrBlank()) {
+                val tags = responseText.split(",", "，").map { it.trim() }.filter { it.isNotEmpty() }
                 Log.d("AiRepo", "generateExpertTags: parsed tags=$tags")
                 tags
+            } else {
+                Log.w("AiRepo", "generateExpertTags: empty response, using fallback")
+                generateLocalFallbackTags(domain, subDomain, problem)
             }
         } catch (e: Exception) {
-            Log.e("AiRepo", "generateExpertTags: ${e.message}", e)
-            emptyList()
+            Log.e("AiRepo", "Gemini API 限流或異常，啟動本地降級斷詞機制: ${e.message}")
+            generateLocalFallbackTags(domain, subDomain, problem)
         }
+    }
+
+    private fun generateLocalFallbackTags(domain: String, subDomain: String, problem: String): List<String> {
+        val fallbackTags = mutableListOf<String>()
+        if (domain.isNotBlank()) fallbackTags.add(domain.trim())
+        if (subDomain.isNotBlank()) fallbackTags.add(subDomain.trim())
+        if (problem.isNotBlank()) {
+            val tokens = problem.split(Regex("[\\s,，、\\.。到從的與和去在]"))
+            tokens.forEach { token ->
+                val cleaned = token.trim()
+                if (cleaned.length >= 2 && !cleaned.all { it.isDigit() }) {
+                    if (!fallbackTags.contains(cleaned)) fallbackTags.add(cleaned)
+                }
+            }
+        }
+        return fallbackTags.take(5)
     }
     private val model = GenerativeModel(
         modelName = "gemini-2.0-flash",
