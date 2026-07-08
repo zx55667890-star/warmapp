@@ -3,6 +3,7 @@ package com.example.myapplication.di
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.myapplication.data.repository.AiRepository
 import com.example.myapplication.data.repository.ExpertRepository
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
@@ -44,7 +45,8 @@ sealed class ExpertUiEvent {
 }
 
 class ExpertViewModel(
-    private val firebaseDb: FirebaseDatabase
+    private val firebaseDb: FirebaseDatabase,
+    private val aiRepository: AiRepository
 ) : ViewModel() {
     private val repository = ExpertRepository(firebaseDb)
 
@@ -77,6 +79,13 @@ class ExpertViewModel(
                 sendEvent(ExpertUiEvent.ShowToast("記錄失敗：$msg"))
             }
         )
+    }
+
+    fun fetchTagsFromAi(domain: String, subDomain: String, problem: String, onResult: (List<String>) -> Unit) {
+        viewModelScope.launch {
+            val tags = aiRepository.generateExpertTags(domain, subDomain, problem)
+            onResult(tags)
+        }
     }
 
     fun initializeExpertStatus(userId: String) {

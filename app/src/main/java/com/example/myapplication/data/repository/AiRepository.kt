@@ -11,6 +11,31 @@ import kotlinx.coroutines.withContext
 class AiRepository(
     private val firebaseDb: FirebaseDatabase
 ) {
+    suspend fun generateExpertTags(domain: String, subDomain: String, problem: String): List<String> = withContext(Dispatchers.IO) {
+        val prompt = """
+            你是一個專業的搜尋系統標籤生成器。請根據以下真人專家輸入的專業領域，提煉出 3 到 5 個精準的「關鍵字特徵標籤」(Tags)，用來幫助配對系統搜尋。
+            
+            大領域：$domain
+            子領域：$subDomain
+            具體能解決的問題：$problem
+
+            規則：
+            1. 直接回覆標籤名稱，使用半形逗號 (,) 分隔。
+            2. 絕對不要加上 # 字號。
+            3. 絕對不要包含任何其他解釋或問候文字。
+            
+            輸出範例：淘寶,跨境退貨,海運物流,兩岸電商
+        """.trimIndent()
+        try {
+            val response = model.generateContent(prompt)
+            val text = response.text?.trim()
+            if (text.isNullOrBlank()) emptyList()
+            else text.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            emptyList()
+        }
+    }
     private val model = GenerativeModel(
         modelName = "gemini-2.0-flash",
         apiKey = BuildConfig.GEMINI_API_KEY

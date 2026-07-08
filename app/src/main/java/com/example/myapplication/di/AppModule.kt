@@ -73,7 +73,7 @@ val appModule = module {
     single { LogoutUseCase(get()) }
 
     viewModel { AuthViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get()) }
-    viewModel { ExpertViewModel(get()) }
+    viewModel { ExpertViewModel(get(), get()) }
     viewModel { SeekerViewModel(get(), get(), get(), get(), get()) }
     viewModel { ChatViewModel(get(), get(), get(), get(), get()) }
 }

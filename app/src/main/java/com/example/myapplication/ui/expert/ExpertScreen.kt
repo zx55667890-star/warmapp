@@ -16,7 +16,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.myapplication.di.ExpertViewModel
 import com.example.myapplication.ui.theme.AppColors
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 
 @Composable
@@ -64,7 +63,7 @@ fun ExpertScreen(viewModel: ExpertViewModel, userId: String, onNavigateToInput: 
 
             // 升級：將 QuickLogCard 修改為結構化輸入，並將組合後的結構資料丟給 ViewModel
             item {
-                QuickLogCard(onLog = { domain, subDomain, problem, tags ->
+                QuickLogCard(viewModel = viewModel, onLog = { domain, subDomain, problem, tags ->
                     // 為了配合你目前後端 submitSolution 的單一字串設計，暫時將結構化資料轉為格式化文字儲存
                     // 未來你的後端資料庫升級後，可以直接將這四個欄位分開寫入 Firebase 欄位
                     val formattedSolution = "[$domain][$subDomain] $problem | 標籤: ${tags.joinToString(", ")}"
@@ -105,27 +104,21 @@ fun ExpertScreen(viewModel: ExpertViewModel, userId: String, onNavigateToInput: 
 }
 
 @Composable
-fun QuickLogCard(onLog: (domain: String, subDomain: String, problem: String, tags: List<String>) -> Unit) {
-    var domain by remember { mutableStateOf("Android") }
+fun QuickLogCard(viewModel: ExpertViewModel, onLog: (domain: String, subDomain: String, problem: String, tags: List<String>) -> Unit) {
+    var domain by remember { mutableStateOf("") }
     var subDomain by remember { mutableStateOf("") }
     var concreteProblem by remember { mutableStateOf("") }
     var aiTags by remember { mutableStateOf(listOf<String>()) }
     var isAiGenerating by remember { mutableStateOf(false) }
 
-    // 核心配對邏輯 UI 實驗：當使用者輸入具體問題時，模擬 AI 在背景分析並觸發延伸標籤生成
     LaunchedEffect(concreteProblem) {
-        val trimmed = concreteProblem.trim()
-        if (trimmed.length > 5) {
+        val trimmedProblem = concreteProblem.trim()
+        if (trimmedProblem.length > 5 && domain.isNotBlank()) {
             isAiGenerating = true
-            delay(1000) // 模擬呼叫 Gemini API 的非同步網路延遲
-            aiTags = when {
-                trimmed.contains("Camera", ignoreCase = true) || trimmed.contains("錄影") ->
-                    listOf("錄影", "閃退", "多媒體", "Lifecycle", "權限")
-                trimmed.contains("Koin", ignoreCase = true) || trimmed.contains("注入") ->
-                    listOf("Koin", "DI", "依賴注入", "報錯", "Scope")
-                else -> listOf("Android", "除錯", "底層調優")
+            viewModel.fetchTagsFromAi(domain, subDomain, trimmedProblem) { generatedTags ->
+                aiTags = generatedTags
+                isAiGenerating = false
             }
-            isAiGenerating = false
         } else {
             aiTags = emptyList()
         }
