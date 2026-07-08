@@ -12,7 +12,7 @@
     android:icon="@mipmap/ic_launcher"
     android:label="MyApplication"
     android:theme="@style/Theme.MyApplication"
-    android:name=".App">
+    >
 
     <activity
         android:name=".MainActivity"

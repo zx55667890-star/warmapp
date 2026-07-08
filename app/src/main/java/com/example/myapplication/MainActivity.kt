@@ -1,6 +1,10 @@
 package com.example.myapplication
 
+import android.annotation.SuppressLint
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.graphics.Color
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -31,6 +35,8 @@ class MainActivity : ComponentActivity() {
         window.isStatusBarContrastEnforced = false
         window.isNavigationBarContrastEnforced = false
 
+        createNotificationChannel()
+
         // ⚡ 4. 控制 icon 顏色
         val controller = WindowInsetsControllerCompat(window, window.decorView)
         controller.isAppearanceLightStatusBars = false
@@ -53,6 +59,17 @@ class MainActivity : ComponentActivity() {
                     AppNavigation()
                 }
             }
+        }
+    }
+
+    @SuppressLint("NewApi")
+    private fun createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                "chat_messages", "聊天訊息",
+                NotificationManager.IMPORTANCE_HIGH
+            )
+            getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
         }
     }
 }
