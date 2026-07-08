@@ -8,7 +8,7 @@ import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
 
 /**
- * 負責 bigram 配對邏輯與專家指派，從 QuestionViewModel 抽出以降低複雜度。
+ * 負責 bigram 配對邏輯與專家指派，升級優化版（加入 Jaccard 相似度與信心閥值防禦）
  */
 class MatchingRepository(
     private val firebaseDb: FirebaseDatabase
@@ -32,24 +32,34 @@ class MatchingRepository(
                     .addListenerForSingleValueEvent(object : ValueEventListener {
                         override fun onDataChange(expSnapshot: DataSnapshot) {
                             val questionBigrams = getBigrams(text)
-                            val matches = mutableListOf<Pair<Experience, Int>>()
+                            
+                            val matches = mutableListOf<Pair<Experience, Double>>()
 
                             for (child in expSnapshot.children) {
                                 val exp = child.getValue(Experience::class.java) ?: continue
                                 if (rejectedExperts.contains(exp.authorId)) continue
-
-                                // ✅ Bug 4：過濾掉已離線的專家（切換到提問 Tab 或關閉 App）
                                 if (!exp.isOnline) continue
 
                                 val expBigrams = getBigrams(exp.text)
-                                val overlap = expBigrams.intersect(questionBigrams).size
-                                if (overlap > 0 || (questionBigrams.isNotEmpty() && expBigrams == questionBigrams)) {
-                                    matches.add(exp to overlap)
+                                
+                                val intersectSize = expBigrams.intersect(questionBigrams).size
+                                val unionSize = expBigrams.union(questionBigrams).size
+
+                                val jaccardScore = if (unionSize > 0) {
+                                    intersectSize.toDouble() / unionSize
+                                } else {
+                                    0.0
+                                }
+
+                                val MIN_MATCH_THRESHOLD = 0.08
+                                
+                                if (jaccardScore >= MIN_MATCH_THRESHOLD) {
+                                    matches.add(exp to jaccardScore)
                                 }
                             }
 
                             val sorted = matches.sortedWith(
-                                compareByDescending<Pair<Experience, Int>> { it.second }
+                                compareByDescending<Pair<Experience, Double>> { it.second }
                                     .thenByDescending { it.first.timestamp }
                             )
 
@@ -62,7 +72,6 @@ class MatchingRepository(
                                     "matchedExpText" to best.text
                                 ))
                             } else {
-                                // Keep "matching" status so question stays open for future experts
                                 qRef.child("expertId").setValue("")
                             }
                         }
@@ -79,7 +88,6 @@ class MatchingRepository(
         })
     }
 
-    // ✅ Bug 3：getBigrams 統一定義在此，QuestionViewModel 裡的重複版本已刪除
     private fun getBigrams(str: String): Set<String> {
         val clean = str.replace("\\s+".toRegex(), "")
         if (clean.length < 2) return setOf(clean)

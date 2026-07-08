@@ -13,4 +13,4 @@
 
 ## Development Environment
 - 編輯：`Documents\warmapp`
-- 模擬器編譯：`AndroidStudioProjects\warmapp`（編輯完後需 git push，再到另一台 pull）
+- 模擬器編譯：`AndroidStudioProjects\warmapp`（編輯完後需 **git push**，再到另一台 **git pull** — 每次修改完都必須 PUSH，不可遺漏）
