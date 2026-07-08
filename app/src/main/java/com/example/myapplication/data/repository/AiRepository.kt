@@ -1,5 +1,6 @@
 package com.example.myapplication.data.repository
 
+import android.util.Log
 import com.example.myapplication.BuildConfig
 import com.google.ai.client.generativeai.GenerativeModel
 import com.google.ai.client.generativeai.type.content
@@ -12,6 +13,10 @@ class AiRepository(
     private val firebaseDb: FirebaseDatabase
 ) {
     suspend fun generateExpertTags(domain: String, subDomain: String, problem: String): List<String> = withContext(Dispatchers.IO) {
+        if (BuildConfig.GEMINI_API_KEY.isBlank()) {
+            Log.w("AiRepo", "generateExpertTags: GEMINI_API_KEY is empty")
+            return@withContext emptyList()
+        }
         val prompt = """
             你是一個專業的搜尋系統標籤生成器。請根據以下真人專家輸入的專業領域，提煉出 3 到 5 個精準的「關鍵字特徵標籤」(Tags)，用來幫助配對系統搜尋。
             
@@ -27,12 +32,20 @@ class AiRepository(
             輸出範例：淘寶,跨境退貨,海運物流,兩岸電商
         """.trimIndent()
         try {
+            Log.d("AiRepo", "generateExpertTags: sending prompt length=${prompt.length}")
             val response = model.generateContent(prompt)
             val text = response.text?.trim()
-            if (text.isNullOrBlank()) emptyList()
-            else text.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+            Log.d("AiRepo", "generateExpertTags: raw response=$text")
+            if (text.isNullOrBlank()) {
+                Log.w("AiRepo", "generateExpertTags: empty response")
+                emptyList()
+            } else {
+                val tags = text.split(",", "，").map { it.trim() }.filter { it.isNotEmpty() }
+                Log.d("AiRepo", "generateExpertTags: parsed tags=$tags")
+                tags
+            }
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e("AiRepo", "generateExpertTags: ${e.message}", e)
             emptyList()
         }
     }

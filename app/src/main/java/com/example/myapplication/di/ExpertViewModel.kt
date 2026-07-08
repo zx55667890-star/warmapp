@@ -83,7 +83,11 @@ class ExpertViewModel(
 
     fun fetchTagsFromAi(domain: String, subDomain: String, problem: String, onResult: (List<String>) -> Unit) {
         viewModelScope.launch {
+            Log.d("ExpertVM", "fetchTagsFromAi: domain=$domain subDomain=$subDomain problem=$problem")
             val tags = aiRepository.generateExpertTags(domain, subDomain, problem)
+            if (tags.isEmpty()) {
+                sendEvent(ExpertUiEvent.ShowToast("AI 標籤生成失敗，請檢查 API Key 或 Logcat"))
+            }
             onResult(tags)
         }
     }
