@@ -10,6 +10,7 @@ import com.google.firebase.database.ValueEventListener
 import com.google.firebase.database.Transaction
 import com.google.firebase.database.MutableData
 import kotlinx.coroutines.tasks.await
+import java.util.Calendar
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
@@ -18,6 +19,71 @@ import kotlin.coroutines.suspendCoroutine
  * QuestionRepository - 負責問題（提問）相關的 Firebase 操作
  */
 class QuestionRepository(private val firebaseDb: FirebaseDatabase) {
+
+    // =============================================================
+    // 🛡️ 新增：提問次數與狀態防禦性檢查
+    // =============================================================
+    
+    /**
+     * 獲取使用者今日（自 00:00 起）已發送的有效提問總數（不包含已取消的）
+     */
+    suspend fun getTodayQuestionCount(userId: String): Int = suspendCoroutine { continuation ->
+        val cal = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        val startOfDay = cal.timeInMillis
+
+        firebaseDb.getReference("questions")
+            .orderByChild("authorId")
+            .equalTo(userId)
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    var count = 0
+                    for (child in snapshot.children) {
+                        val timestamp = child.child("timestamp").value as? Long ?: 0L
+                        val status = child.child("status").value?.toString()
+                        
+                        // 只計算今天之內、且沒有被取消的提問
+                        if (timestamp >= startOfDay && status != "cancelled") {
+                            count++
+                        }
+                    }
+                    continuation.resume(count)
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    Log.w("QuestionRepository", "getTodayQuestionCount cancelled", error.toException())
+                    continuation.resume(0) // 發生錯誤時保險回傳 0，不卡死正常使用者
+                }
+            })
+    }
+
+    /**
+     * 檢查使用者當前是否有任何「進行中/媒合中」的提問（防止重複多開對話）
+     */
+    suspend fun hasActiveQuestion(userId: String): Boolean = suspendCoroutine { continuation ->
+        firebaseDb.getReference("questions")
+            .orderByChild("authorId")
+            .equalTo(userId)
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    val hasActive = snapshot.children.any { child ->
+                        val status = child.child("status").value?.toString()
+                        // 正在媒合、專家已接受、或是已進入聊天室(taken)都算進行中
+                        status == "matching" || status == "expert_accepted" || status == "taken"
+                    }
+                    continuation.resume(hasActive)
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    Log.w("QuestionRepository", "hasActiveQuestion cancelled", error.toException())
+                    continuation.resume(false)
+                }
+            })
+    }
 
     // =============================================================
     // Send Question
@@ -60,7 +126,6 @@ class QuestionRepository(private val firebaseDb: FirebaseDatabase) {
     private var statusRef: DatabaseReference? = null
 
     fun startListening(questionId: String, listener: QuestionStatusListener) {
-        // Ensure any previous listener is removed
         stopListening()
         statusRef = firebaseDb.getReference("questions").child(questionId)
         statusListener = object : ValueEventListener {
@@ -68,7 +133,6 @@ class QuestionRepository(private val firebaseDb: FirebaseDatabase) {
                 if (!snapshot.exists()) return
                 when (snapshot.child("status").value?.toString()) {
                     "expert_accepted" -> {
-                        val expertId = snapshot.child("expertId").value?.toString().orEmpty()
                         listener.onExpertAccepted()
                     }
                     "taken" -> {
@@ -130,7 +194,7 @@ class QuestionRepository(private val firebaseDb: FirebaseDatabase) {
     }
 
     // =============================================================
-    // Rating Transaction (formerly in ViewModel)
+    // Rating Transaction
     // =============================================================
     interface RatingCallback {
         fun onSuccess()
@@ -175,7 +239,7 @@ class QuestionRepository(private val firebaseDb: FirebaseDatabase) {
     }
 
     // =============================================================
-    // Reconnection check (used on app start)
+    // Reconnection check
     // =============================================================
     interface ReconnectionListener {
         fun onExpertChatActive(chatId: String, questionText: String)
@@ -183,7 +247,6 @@ class QuestionRepository(private val firebaseDb: FirebaseDatabase) {
     }
 
     fun checkReconnection(userId: String, listener: ReconnectionListener) {
-        // Check if there is a chat where the expert is already matched (status "taken")
         firebaseDb.getReference("questions")
             .orderByChild("expertId")
             .equalTo(userId)
@@ -199,8 +262,7 @@ class QuestionRepository(private val firebaseDb: FirebaseDatabase) {
                         )
                         return
                     }
-                    // not expert, check user side
-                        listener.onUserReconnected("", "", "") // placeholder, actual handling done by another method
+                    listener.onUserReconnected("", "", "")
                 }
                 override fun onCancelled(error: DatabaseError) {
                     Log.w("QuestionRepository", "Reconnection query cancelled", error.toException())

@@ -8,12 +8,14 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.myapplication.ui.seeker.components.drawBackgroundGlow
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.compose.ui.graphics.graphicsLayer
@@ -51,6 +53,19 @@ fun AskQuestionScreen(
 
     BackHandler(onBack = onBack)
 
+    // 🛡️ 新增：進入畫面時，自動獲取並重整最新提問額度
+    LaunchedEffect(userId) {
+        viewModel.refreshQuota(userId)
+    }
+
+    // 🛡️ 新增：攔截並監聽 ViewModel 拋出的額度超標/多開限制警告
+    LaunchedEffect(seekerUiState.quotaError) {
+        seekerUiState.quotaError?.let { errorMsg ->
+            snackbarHostState.showSnackbar(errorMsg)
+            viewModel.clearQuotaError() // 顯示完畢後立刻洗掉狀態
+        }
+    }
+
     LaunchedEffect(Unit) {
         focusRequester.requestFocus()
     }
@@ -67,7 +82,10 @@ fun AskQuestionScreen(
 
     LaunchedEffect(showSentFeedback) {
         if (showSentFeedback) {
-            snackbarHostState.showSnackbar("問題已送出，正在為您配對專家")
+            // 只有當沒有觸發 Quota 錯誤阻擋時，才發送這個一般媒合通知
+            if (seekerUiState.quotaError == null) {
+                snackbarHostState.showSnackbar("問題已送出，正在為您配對專家")
+            }
             delay(1500)
             showSentFeedback = false
         }
@@ -88,20 +106,17 @@ fun AskQuestionScreen(
     ) { _ ->
         Box(modifier = Modifier.fillMaxSize()) {
 
-            // 🌌 1. 獨立的背景層：永遠保持滿版高度，只做「整體的上下平移」
             val imeInsets = WindowInsets.ime
             val density = LocalDensity.current
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .graphicsLayer {
-                        // 讀取鍵盤高度，並將整個畫布往上推 (負值)
                         translationY = -imeInsets.getBottom(density).toFloat()
                     }
                     .drawBackgroundGlow()
             )
 
-            // 📝 2. 內容層：原本的對話佈局，由 safeDrawing 幫你完美處理鍵盤推擠
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -109,62 +124,77 @@ fun AskQuestionScreen(
             ) {
                 AskQuestionHeader(
                     nickname = nickname,
-                    modifier = Modifier.weight(1f) // 只要 Column 有 fillMaxSize()，這裡就會乖乖把輸入框往下推
+                    modifier = Modifier.weight(1f)
                 )
-            AskQuestionInputBar(
-                question = question,
-                onQuestionChange = { question = it },
-                selectedMediaList = selectedMediaList,
-                focusRequester = focusRequester,
-                showSentFeedback = showSentFeedback,
-                onAttachClick = {
-                    focusManager.clearFocus()
-                    showAttachSheet = true
+
+                // 🛡️ 新增：在輸入框膠囊上方，展示優雅的剩餘額度小提示
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp, vertical = 4.dp),
+                    contentAlignment = Alignment.CenterEnd
+                ) {
+                    Text(
+                        text = "今日剩餘提問次數：${seekerUiState.dailyRemainingQuota} 次",
+                        color = if (seekerUiState.dailyRemainingQuota == 0) Color(0xFFEF5350) else Color.Gray.copy(alpha = 0.7f),
+                        fontSize = 12.sp
+                    )
+                }
+
+                AskQuestionInputBar(
+                    question = question,
+                    onQuestionChange = { question = it },
+                    selectedMediaList = selectedMediaList,
+                    focusRequester = focusRequester,
+                    showSentFeedback = showSentFeedback,
+                    onAttachClick = {
+                        focusManager.clearFocus()
+                        showAttachSheet = true
+                    },
+                    onSendClick = onSendQuestion,
+                    onRemoveMedia = { media -> selectedMediaList = selectedMediaList - media }
+                )
+            }
+        }
+
+        if (showCameraCapture) {
+            CameraCaptureScreen(
+                onImageCaptured = { uri, isVideo ->
+                    showCameraCapture = false
+                    selectedMediaList = selectedMediaList + SelectedMedia(uri, isVideo, isVoice = false)
                 },
-                onSendClick = onSendQuestion,
-                onRemoveMedia = { media -> selectedMediaList = selectedMediaList - media }
+                onDismiss = { showCameraCapture = false },
+                preWarmFuture = cameraProviderFuture
+            )
+        }
+
+        if (showVoiceRecording) {
+            VoiceRecordingScreen(
+                onDismiss = { showVoiceRecording = false },
+                onVoiceRecorded = { filePath ->
+                    showVoiceRecording = false
+                    selectedMediaList = selectedMediaList + SelectedMedia(Uri.fromFile(File(filePath)), isVideo = false, isVoice = true)
+                }
+            )
+        }
+
+        if (showAttachSheet) {
+            AttachmentBottomSheet(
+                onDismiss = { showAttachSheet = false },
+                onGalleryClick = { showAttachSheet = false; imagePickerLauncher.launch("image/*") },
+                onCameraClick = { showAttachSheet = false; showCameraCapture = true },
+                onVoiceClick = { showAttachSheet = false; showVoiceRecording = true }
+            )
+        }
+
+        if (seekerUiState.showSeekerConfirmDialog) {
+            SeekerConfirmDialog(
+                expertName = seekerUiState.matchedExpertId,
+                expertText = seekerUiState.matchedExpertText,
+                expertDate = seekerUiState.matchedExpertDate,
+                onConfirm = { viewModel.acceptExpertMatch() },
+                onDismiss = { viewModel.rejectExpertMatch() }
             )
         }
     }
-
-    if (showCameraCapture) {
-        CameraCaptureScreen(
-            onImageCaptured = { uri, isVideo ->
-                showCameraCapture = false
-                selectedMediaList = selectedMediaList + SelectedMedia(uri, isVideo, isVoice = false)
-            },
-            onDismiss = { showCameraCapture = false },
-            preWarmFuture = cameraProviderFuture
-        )
-    }
-
-    if (showVoiceRecording) {
-        VoiceRecordingScreen(
-            onDismiss = { showVoiceRecording = false },
-            onVoiceRecorded = { filePath ->
-                showVoiceRecording = false
-                selectedMediaList = selectedMediaList + SelectedMedia(Uri.fromFile(File(filePath)), isVideo = false, isVoice = true)
-            }
-        )
-    }
-
-    if (showAttachSheet) {
-        AttachmentBottomSheet(
-            onDismiss = { showAttachSheet = false },
-            onGalleryClick = { showAttachSheet = false; imagePickerLauncher.launch("image/*") },
-            onCameraClick = { showAttachSheet = false; showCameraCapture = true },
-            onVoiceClick = { showAttachSheet = false; showVoiceRecording = true }
-        )
-    }
-
-    if (seekerUiState.showSeekerConfirmDialog) {
-        SeekerConfirmDialog(
-            expertName = seekerUiState.matchedExpertId,
-            expertText = seekerUiState.matchedExpertText,
-            expertDate = seekerUiState.matchedExpertDate,
-            onConfirm = { viewModel.acceptExpertMatch() },
-            onDismiss = { viewModel.rejectExpertMatch() }
-        )
-    }
-}
 }

@@ -36,6 +36,9 @@ data class SeekerUiState(
     val activeChatRoomId: String = "",
     val myRole: String = "",
     val activeChatQuestionText: String = "",
+    // 🛡️ 新增：額度防禦狀態
+    val dailyRemainingQuota: Int = 3,
+    val quotaError: String? = null
 )
 
 class SeekerViewModel(
@@ -72,63 +75,103 @@ class SeekerViewModel(
     private var userQuestionRef: DatabaseReference? = null
     private var userQuestionListener: ValueEventListener? = null
 
+    /**
+     * 🛡️ 新增：即時刷新該使用者的每日剩餘額度
+     */
+    fun refreshQuota(userId: String) {
+        if (userId.isBlank()) return
+        viewModelScope.launch {
+            val count = questionRepository.getTodayQuestionCount(userId)
+            val remaining = (3 - count).coerceAtLeast(0)
+            _uiState.update { it.copy(dailyRemainingQuota = remaining) }
+        }
+    }
+
+    /**
+     * 🛡️ 新增：清除錯誤提示狀態，避免 Snackbar 重複彈出
+     */
+    fun clearQuotaError() {
+        _uiState.update { it.copy(quotaError = null) }
+    }
+
     fun sendQuestion(text: String, userId: String, selectedMedia: List<SendMedia> = emptyList()) {
-        questionRepository.sendQuestion(text, userId, object : QuestionRepository.SendQuestionCallback {
-            override fun onSent(questionId: String) {
-                currentUserQuestionId = questionId
-                val chatroomId = "ai_$questionId"
-                val chatroomRef = firebaseDb.getReference("chatrooms").child(chatroomId)
-                val messagesRef = chatroomRef.child("messages")
-                val timestamp = System.currentTimeMillis()
-                val userMsgId = messagesRef.push().key ?: return
+        viewModelScope.launch {
+            // 防禦一：檢查是否有多開進行中的對話
+            val hasActive = questionRepository.hasActiveQuestion(userId)
+            if (hasActive) {
+                _uiState.update { it.copy(quotaError = "您當前已有進行中或媒合中的提問，請先完成或取消該對話！") }
+                return@launch
+            }
 
-                val userMessage = mapOf(
-                    "senderId" to "",
-                    "sender" to "user",
-                    "text" to text,
-                    "timestamp" to timestamp,
-                    "readBy" to mapOf("system" to true)
-                )
-                chatroomRef.child("status").setValue("active")
-                messagesRef.child(userMsgId).setValue(userMessage)
+            // 防禦二：檢查今日發問總量是否超標
+            val todayCount = questionRepository.getTodayQuestionCount(userId)
+            if (todayCount >= 3) {
+                _uiState.update { it.copy(quotaError = "已達今日提問上限（每日最多 3 次）！") }
+                return@launch
+            }
 
-                _uiState.update { it.copy(
-                    activeChatRoomId = chatroomId,
-                    myRole = "user",
-                    activeChatQuestionText = text,
-                    isUserMatching = true
-                ) }
-                matchCoordinator.matchAndAssignExpert(questionId, text, userId)
-                matchCoordinator.startAiPreview(questionId, text, viewModelScope)
-                matchCoordinator.startMatchTimeout(questionId, viewModelScope)
-                listenToMyQuestionStatus(questionId)
+            // 通過防禦，執行發送流程
+            questionRepository.sendQuestion(text, userId, object : QuestionRepository.SendQuestionCallback {
+                override fun onSent(questionId: String) {
+                    currentUserQuestionId = questionId
+                    val chatroomId = "ai_$questionId"
+                    val chatroomRef = firebaseDb.getReference("chatrooms").child(chatroomId)
+                    val messagesRef = chatroomRef.child("messages")
+                    val timestamp = System.currentTimeMillis()
+                    val userMsgId = messagesRef.push().key ?: return
 
-                viewModelScope.launch {
-                    try {
-                        val answer = aiRepository.generateResponse(text)
-                        val aiMsgId = messagesRef.push().key ?: return@launch
-                        val aiMessage = mapOf(
-                            "senderId" to "ai_assistant",
-                            "sender" to "ai",
-                            "text" to answer,
-                            "timestamp" to timestamp + 1,
-                            "readBy" to mapOf("system" to true)
-                        )
-                        messagesRef.child(aiMsgId).setValue(aiMessage)
+                    val userMessage = mapOf(
+                        "senderId" to "",
+                        "sender" to "user",
+                        "text" to text,
+                        "timestamp" to timestamp,
+                        "readBy" to mapOf("system" to true)
+                    )
+                    chatroomRef.child("status").setValue("active")
+                    messagesRef.child(userMsgId).setValue(userMessage)
 
-                        if (selectedMedia.isNotEmpty()) {
-                            uploadSelectedMedia(chatroomId, messagesRef, selectedMedia, timestamp + 2)
+                    _uiState.update { it.copy(
+                        activeChatRoomId = chatroomId,
+                        myRole = "user",
+                        activeChatQuestionText = text,
+                        isUserMatching = true
+                    ) }
+                    
+                    // 成功發送後立即同步更新 UI 剩餘額度數字
+                    refreshQuota(userId)
+
+                    matchCoordinator.matchAndAssignExpert(questionId, text, userId)
+                    matchCoordinator.startAiPreview(questionId, text, viewModelScope)
+                    matchCoordinator.startMatchTimeout(questionId, viewModelScope)
+                    listenToMyQuestionStatus(questionId)
+
+                    viewModelScope.launch {
+                        try {
+                            val answer = aiRepository.generateResponse(text)
+                            val aiMsgId = messagesRef.push().key ?: return@launch
+                            val aiMessage = mapOf(
+                                "senderId" to "ai_assistant",
+                                "sender" to "ai",
+                                "text" to answer,
+                                "timestamp" to timestamp + 1,
+                                "readBy" to mapOf("system" to true)
+                            )
+                            messagesRef.child(aiMsgId).setValue(aiMessage)
+
+                            if (selectedMedia.isNotEmpty()) {
+                                uploadSelectedMedia(chatroomId, messagesRef, selectedMedia, timestamp + 2)
+                            }
+                        } catch (e: Exception) {
+                            Log.w("SeekerViewModel", "AI response failed", e)
                         }
-                    } catch (e: Exception) {
-                        Log.w("SeekerViewModel", "AI response failed", e)
                     }
                 }
-            }
 
-            override fun onError(message: String) {
-                Log.w("SeekerViewModel", "sendQuestion error: $message")
-            }
-        })
+                override fun onError(message: String) {
+                    Log.w("SeekerViewModel", "sendQuestion error: $message")
+                }
+            })
+        }
     }
 
     data class SendMedia(val uri: Uri, val isVideo: Boolean, val isVoice: Boolean)
@@ -254,6 +297,10 @@ class SeekerViewModel(
                     "cancelled" -> {
                         _uiState.update { it.copy(isUserMatching = false, showSeekerConfirmDialog = false) }
                         cleanupListeners()
+                        
+                        // 使用者取消提問時，即時把額度還給使用者
+                        val currentUserId = snapshot.child("authorId").value?.toString().orEmpty()
+                        refreshQuota(currentUserId)
                     }
                 }
             }
@@ -347,8 +394,6 @@ class SeekerViewModel(
             }
         )
     }
-
-    // -- private helpers --
 
     private fun resetMatchingState() {
         _uiState.update { it.copy(isUserMatching = false, noExpertsMessage = "") }
