@@ -87,16 +87,16 @@ fun AppNavigation() {
     LaunchedEffect(Unit) {
         val activity = context as? Activity
         val intent = activity?.intent
-        val chatroomId = intent?.getStringExtra("navigate_chatroom_id") ?: ""
+        val chatroomId = intent?.getStringExtra(Routes.EXTRA_CHATROOM_ID) ?: ""
         if (chatroomId.isNotBlank()) {
-            val myRole = intent?.getStringExtra("navigate_my_role") ?: "user"
-            val expertId = intent?.getStringExtra("navigate_expert_id") ?: ""
-            val expertText = intent?.getStringExtra("navigate_expert_text") ?: ""
-            val expertDate = intent?.getStringExtra("navigate_expert_date") ?: ""
+            val myRole = intent?.getStringExtra(Routes.EXTRA_MY_ROLE) ?: "user"
+            val expertId = intent?.getStringExtra(Routes.EXTRA_EXPERT_ID) ?: ""
+            val expertText = intent?.getStringExtra(Routes.EXTRA_EXPERT_TEXT) ?: ""
+            val expertDate = intent?.getStringExtra(Routes.EXTRA_EXPERT_DATE) ?: ""
             navController.navigate(
                 Routes.chat(chatroomId, myRole, expertId, expertText, expertDate)
             ) { popUpTo(Routes.ROLE_SELECT) { inclusive = false }; launchSingleTop = true }
-            intent?.removeExtra("navigate_chatroom_id")
+            intent?.removeExtra(Routes.EXTRA_CHATROOM_ID)
         }
     }
 
@@ -230,11 +230,11 @@ fun AppNavigation() {
                 composable(
                     Routes.CHAT,
                     arguments = listOf(
-                        navArgument("chatroomId") { type = NavType.StringType },
-                        navArgument("myRole") { type = NavType.StringType },
-                        navArgument("expertId") { type = NavType.StringType },
-                        navArgument("expertText") { type = NavType.StringType },
-                        navArgument("expertDate") { type = NavType.StringType }
+                        navArgument(Routes.CHAT_CHATROOM_ID) { type = NavType.StringType },
+                        navArgument(Routes.CHAT_MY_ROLE) { type = NavType.StringType },
+                        navArgument(Routes.CHAT_EXPERT_ID) { type = NavType.StringType },
+                        navArgument(Routes.CHAT_EXPERT_TEXT) { type = NavType.StringType },
+                        navArgument(Routes.CHAT_EXPERT_DATE) { type = NavType.StringType }
                     ),
                     enterTransition = { slideInHorizontally(animationSpec = tween(350)) { it } + fadeIn(animationSpec = tween(350)) },
                     exitTransition = { slideOutHorizontally(animationSpec = tween(350)) { it / 3 } + fadeOut(animationSpec = tween(350)) },
@@ -272,11 +272,11 @@ private fun ChatRouteContent(
     navController: NavController,
     scope: kotlinx.coroutines.CoroutineScope
 ) {
-    val chatroomId = arguments?.getString("chatroomId") ?: ""
-    val myRole = arguments?.getString("myRole") ?: ""
-    val expertId = arguments?.getString("expertId") ?: ""
-    val expertText = arguments?.getString("expertText") ?: ""
-    val expertDate = arguments?.getString("expertDate") ?: ""
+    val chatroomId = arguments?.getString(Routes.CHAT_CHATROOM_ID) ?: ""
+    val myRole = arguments?.getString(Routes.CHAT_MY_ROLE) ?: ""
+    val expertId = arguments?.getString(Routes.CHAT_EXPERT_ID) ?: ""
+    val expertText = arguments?.getString(Routes.CHAT_EXPERT_TEXT) ?: ""
+    val expertDate = arguments?.getString(Routes.CHAT_EXPERT_DATE) ?: ""
 
     ChatScreen(
         chatroomId = chatroomId, userId = userId, myRole = myRole,

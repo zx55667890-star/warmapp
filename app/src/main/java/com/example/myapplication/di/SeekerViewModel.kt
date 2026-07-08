@@ -9,14 +9,13 @@ import com.example.myapplication.data.repository.AiRepository
 import com.example.myapplication.data.repository.MatchingRepositoryInterface
 import com.example.myapplication.data.repository.MediaUploader
 import com.example.myapplication.data.repository.QuestionRepository
+import com.example.myapplication.domain.seeker.MatchCoordinator
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -48,9 +47,15 @@ class SeekerViewModel(
     private val questionRepository: QuestionRepository = QuestionRepository(firebaseDb)
 ) : ViewModel() {
 
-    companion object {
-        private val ACTIVE_USER_STATUSES = setOf("matching", "pending_acceptance", "expert_accepted")
-        private const val MATCH_TIMEOUT_MS = 60_000L
+    private val matchCoordinator = MatchCoordinator(firebaseDb, matchingRepository, aiRepository).apply {
+        onAiChatroomReady = { chatroomId, questionText ->
+            _uiState.update { it.copy(
+                activeChatRoomId = chatroomId,
+                myRole = "user",
+                activeChatQuestionText = questionText
+            ) }
+        }
+        onCancelUserMatching = { cancelUserMatching() }
     }
 
     val showSeekerConfirmDialog: Boolean
@@ -66,7 +71,6 @@ class SeekerViewModel(
     private var currentUserQuestionId = ""
     private var userQuestionRef: DatabaseReference? = null
     private var userQuestionListener: ValueEventListener? = null
-    private var matchTimeoutJob: Job? = null
 
     fun sendQuestion(text: String, userId: String, selectedMedia: List<SendMedia> = emptyList()) {
         questionRepository.sendQuestion(text, userId, object : QuestionRepository.SendQuestionCallback {
@@ -94,9 +98,9 @@ class SeekerViewModel(
                     activeChatQuestionText = text,
                     isUserMatching = true
                 ) }
-                matchAndAssignExpert(questionId, text, userId)
-                startAiPreview(questionId, text)
-                startMatchTimeout(questionId)
+                matchCoordinator.matchAndAssignExpert(questionId, text, userId)
+                matchCoordinator.startAiPreview(questionId, text, viewModelScope)
+                matchCoordinator.startMatchTimeout(questionId, viewModelScope)
                 listenToMyQuestionStatus(questionId)
 
                 viewModelScope.launch {
@@ -160,23 +164,20 @@ class SeekerViewModel(
                             messagesRef.child(msgId).setValue(msg)
                         }
                     } else if (media.isVideo) {
-                        val urls = mediaUploader.sendImages(
+                        val videoUrl = mediaUploader.sendVideo(
                             chatroomId = chatroomId,
-                            userId = "",
-                            myRole = "user",
-                            uris = listOf(media.uri),
+                            uri = media.uri,
                             onProgress = {},
                             onError = { Log.w("SeekerViewModel", "Video upload failed: $it") }
                         )
-                        if (urls.isNotEmpty()) {
+                        if (videoUrl != null) {
                             val msgId = messagesRef.push().key ?: return@forEachIndexed
                             val msg = mapOf(
                                 "senderId" to "",
                                 "sender" to "user",
                                 "text" to "",
                                 "timestamp" to timestamp,
-                                "imageUrls" to urls,
-                                "videoUrl" to urls.first(),
+                                "videoUrl" to videoUrl,
                                 "readBy" to mapOf("system" to true)
                             )
                             messagesRef.child(msgId).setValue(msg)
@@ -349,54 +350,6 @@ class SeekerViewModel(
 
     // -- private helpers --
 
-    private fun matchAndAssignExpert(questionId: String, text: String, userId: String) {
-        matchingRepository.matchAndAssignExpert(questionId, text, userId)
-    }
-
-    private fun startMatchTimeout(questionId: String) {
-        cancelMatchTimeout()
-        matchTimeoutJob = viewModelScope.launch {
-            delay(MATCH_TIMEOUT_MS)
-            val ref = firebaseDb.getReference("questions").child(questionId)
-            ref.child("status").get().addOnSuccessListener { status ->
-                val s = status.value?.toString()
-                if (s in ACTIVE_USER_STATUSES) {
-                    ref.child("status").setValue("cancelled")
-                    cancelUserMatching()
-                }
-            }
-        }
-    }
-
-    private fun startAiPreview(questionId: String, questionText: String) {
-        viewModelScope.launch {
-            delay(3_000L)
-            val ref = firebaseDb.getReference("questions").child(questionId)
-            ref.get().addOnSuccessListener { snapshot ->
-                if (!snapshot.exists()) return@addOnSuccessListener
-                val status = snapshot.child("status").value?.toString()
-                val expertId = snapshot.child("expertId").value?.toString().orEmpty()
-                if (status == "matching" && expertId.isBlank()) {
-                    viewModelScope.launch {
-                        val answer = aiRepository.generateResponse(questionText)
-                        aiRepository.createAiChatroom(questionId, questionText, answer) { chatroomId ->
-                            _uiState.update { it.copy(
-                                activeChatRoomId = chatroomId,
-                                myRole = "user",
-                                activeChatQuestionText = questionText
-                            ) }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    private fun cancelMatchTimeout() {
-        matchTimeoutJob?.cancel()
-        matchTimeoutJob = null
-    }
-
     private fun resetMatchingState() {
         _uiState.update { it.copy(isUserMatching = false, noExpertsMessage = "") }
         currentUserQuestionId = ""
@@ -411,7 +364,7 @@ class SeekerViewModel(
     }
 
     private fun cleanupListeners() {
-        cancelMatchTimeout()
+        matchCoordinator.cancelMatchTimeout()
         removeUserQuestionListener()
     }
 
@@ -440,6 +393,7 @@ class SeekerViewModel(
 
     override fun onCleared() {
         cleanupListeners()
+        matchCoordinator.cleanup()
         super.onCleared()
     }
 }

@@ -11,6 +11,13 @@ import com.example.myapplication.data.repository.MediaUploader
 import com.example.myapplication.data.repository.MessageRepositoryFactory
 import com.example.myapplication.data.repository.QuestionRepository
 import com.example.myapplication.data.repository.UserRepository
+import com.example.myapplication.domain.auth.GenerateVerificationCodeUseCase
+import com.example.myapplication.domain.auth.LoginUseCase
+import com.example.myapplication.domain.auth.LogoutUseCase
+import com.example.myapplication.domain.auth.RegisterUseCase
+import com.example.myapplication.domain.auth.ResetPasswordUseCase
+import com.example.myapplication.domain.auth.SignInWithGoogleUseCase
+import com.example.myapplication.domain.auth.VerifyVerificationCodeUseCase
 import com.example.myapplication.domain.chat.ObserveMessagesUseCase
 import com.example.myapplication.domain.chat.RecallMessageUseCase
 import com.example.myapplication.domain.chat.SendMediaUseCase
@@ -57,7 +64,15 @@ val appModule = module {
     single { ObserveMessagesUseCase(get()) }
     single { FetchOpponentUseCase(get(), get()) }
 
-    viewModel { AuthViewModel(get(), get()) }
+    single { LoginUseCase(get()) }
+    single { RegisterUseCase(get()) }
+    single { SignInWithGoogleUseCase(get()) }
+    single { GenerateVerificationCodeUseCase(get()) }
+    single { VerifyVerificationCodeUseCase(get()) }
+    single { ResetPasswordUseCase(get()) }
+    single { LogoutUseCase(get()) }
+
+    viewModel { AuthViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     viewModel { ExpertViewModel(get()) }
     viewModel { SeekerViewModel(get(), get(), get(), get(), get()) }
     viewModel { ChatViewModel(get(), get(), get(), get(), get()) }

@@ -2,6 +2,13 @@ package com.example.myapplication.ui.auth
 
 import com.example.myapplication.data.repository.AuthRepository
 import com.example.myapplication.data.repository.UserRepository
+import com.example.myapplication.domain.auth.GenerateVerificationCodeUseCase
+import com.example.myapplication.domain.auth.LoginUseCase
+import com.example.myapplication.domain.auth.LogoutUseCase
+import com.example.myapplication.domain.auth.RegisterUseCase
+import com.example.myapplication.domain.auth.ResetPasswordUseCase
+import com.example.myapplication.domain.auth.SignInWithGoogleUseCase
+import com.example.myapplication.domain.auth.VerifyVerificationCodeUseCase
 import com.example.myapplication.ui.common.UiText
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
@@ -35,6 +42,13 @@ class AuthViewModelTest {
 
     private lateinit var authRepository: AuthRepository
     private lateinit var userRepository: UserRepository
+    private lateinit var loginUseCase: LoginUseCase
+    private lateinit var registerUseCase: RegisterUseCase
+    private lateinit var signInWithGoogleUseCase: SignInWithGoogleUseCase
+    private lateinit var generateVerificationCodeUseCase: GenerateVerificationCodeUseCase
+    private lateinit var verifyVerificationCodeUseCase: VerifyVerificationCodeUseCase
+    private lateinit var resetPasswordUseCase: ResetPasswordUseCase
+    private lateinit var logoutUseCase: LogoutUseCase
     private lateinit var viewModel: AuthViewModel
     private val testDispatcher = StandardTestDispatcher()
 
@@ -50,8 +64,22 @@ class AuthViewModelTest {
         every { authRepository.currentUserId } returns ""
         mockkStatic(Log::class)
         every { Log.d(any(), any()) } returns 0
+
+        loginUseCase = mockk(relaxed = true)
+        registerUseCase = mockk(relaxed = true)
+        signInWithGoogleUseCase = mockk(relaxed = true)
+        generateVerificationCodeUseCase = mockk(relaxed = true)
+        verifyVerificationCodeUseCase = mockk(relaxed = true)
+        resetPasswordUseCase = mockk(relaxed = true)
+        logoutUseCase = mockk(relaxed = true)
+
         userRepository = UserRepository(firebaseDb)
-        viewModel = AuthViewModel(authRepository, userRepository)
+        viewModel = AuthViewModel(
+            authRepository, userRepository,
+            loginUseCase, registerUseCase, signInWithGoogleUseCase,
+            generateVerificationCodeUseCase, verifyVerificationCodeUseCase,
+            resetPasswordUseCase, logoutUseCase
+        )
     }
 
     @After
@@ -63,17 +91,27 @@ class AuthViewModelTest {
     @Test
     fun `init checks login state`() = runTest {
         every { authRepository.isLoggedIn() } returns true
-        val vm = AuthViewModel(authRepository, userRepository)
+        val vm = AuthViewModel(
+            authRepository, userRepository,
+            loginUseCase, registerUseCase, signInWithGoogleUseCase,
+            generateVerificationCodeUseCase, verifyVerificationCodeUseCase,
+            resetPasswordUseCase, logoutUseCase
+        )
         assertTrue(vm.uiState.value.isLoggedIn)
 
         every { authRepository.isLoggedIn() } returns false
-        val vm2 = AuthViewModel(authRepository, userRepository)
+        val vm2 = AuthViewModel(
+            authRepository, userRepository,
+            loginUseCase, registerUseCase, signInWithGoogleUseCase,
+            generateVerificationCodeUseCase, verifyVerificationCodeUseCase,
+            resetPasswordUseCase, logoutUseCase
+        )
         assertFalse(vm2.uiState.value.isLoggedIn)
     }
 
     @Test
     fun `login sets isLoggedIn on success`() = runTest {
-        coEvery { authRepository.login(any(), any()) } just runs
+        coEvery { loginUseCase(any(), any()) } just runs
 
         viewModel.submit("test@gmail.com", "Test1234", "", "", "")
         testDispatcher.scheduler.advanceUntilIdle()
@@ -84,7 +122,7 @@ class AuthViewModelTest {
 
     @Test
     fun `login sets error on failure`() = runTest {
-        coEvery { authRepository.login(any(), any()) } throws Exception("登入失敗")
+        coEvery { loginUseCase(any(), any()) } throws Exception("登入失敗")
 
         viewModel.submit("test@gmail.com", "Test1234", "", "", "")
         testDispatcher.scheduler.advanceUntilIdle()
@@ -98,8 +136,8 @@ class AuthViewModelTest {
     fun `register saves nickname and sets isLoggedIn on success`() = runTest {
         every { authRepository.isLoggedIn() } returns false
         every { authRepository.currentUserId } returns "newUid"
-        coEvery { authRepository.verifyVerificationCode(any(), any()) } returns true
-        coEvery { authRepository.register(any(), any()) } just runs
+        coEvery { verifyVerificationCodeUseCase(any(), any()) } returns true
+        coEvery { registerUseCase(any(), any()) } just runs
 
         val usersRef = mockk<DatabaseReference>(relaxed = true)
         every { firebaseDb.getReference("users") } returns usersRef
@@ -133,7 +171,7 @@ class AuthViewModelTest {
 
     @Test
     fun `sendPasswordReset sets showNewPasswordForm on verify success`() = runTest {
-        coEvery { authRepository.verifyVerificationCode(any(), any(), any()) } returns true
+        coEvery { resetPasswordUseCase.verifyResetCode(any(), any()) } returns true
 
         viewModel.sendPasswordReset("reset@gmail.com", "123456")
         testDispatcher.scheduler.advanceUntilIdle()
@@ -151,6 +189,8 @@ class AuthViewModelTest {
 
     @Test
     fun `logout resets state to defaults`() = runTest {
+        coEvery { logoutUseCase.invoke() } just runs
+
         viewModel.logout()
 
         val state = viewModel.uiState.value

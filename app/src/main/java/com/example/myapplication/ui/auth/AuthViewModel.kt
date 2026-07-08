@@ -5,6 +5,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.myapplication.data.repository.AuthRepository
 import com.example.myapplication.data.repository.UserRepository
+import com.example.myapplication.domain.auth.GenerateVerificationCodeUseCase
+import com.example.myapplication.domain.auth.LoginUseCase
+import com.example.myapplication.domain.auth.LogoutUseCase
+import com.example.myapplication.domain.auth.RegisterUseCase
+import com.example.myapplication.domain.auth.ResetPasswordUseCase
+import com.example.myapplication.domain.auth.SignInWithGoogleUseCase
+import com.example.myapplication.domain.auth.VerifyVerificationCodeUseCase
 import com.example.myapplication.ui.common.AuthUtils
 import com.example.myapplication.ui.common.UiText
 import kotlinx.coroutines.TimeoutCancellationException
@@ -34,6 +41,13 @@ data class AuthUiState(
 class AuthViewModel(
     private val authRepository: AuthRepository,
     private val userRepository: UserRepository,
+    private val loginUseCase: LoginUseCase,
+    private val registerUseCase: RegisterUseCase,
+    private val signInWithGoogleUseCase: SignInWithGoogleUseCase,
+    private val generateVerificationCodeUseCase: GenerateVerificationCodeUseCase,
+    private val verifyVerificationCodeUseCase: VerifyVerificationCodeUseCase,
+    private val resetPasswordUseCase: ResetPasswordUseCase,
+    private val logoutUseCase: LogoutUseCase,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AuthUiState())
@@ -79,7 +93,7 @@ class AuthViewModel(
         }
         viewModelScope.launch {
             try {
-                authRepository.generateVerificationCode(email, prefix = prefix)
+                generateVerificationCodeUseCase(email, prefix = prefix)
                 _uiState.update {
                     it.copy(
                         error = null, verificationSent = true,
@@ -103,7 +117,7 @@ class AuthViewModel(
         _uiState.update { it.copy(isLoading = true, error = null) }
         viewModelScope.launch {
             try {
-                authRepository.sendPasswordReset(email)
+                resetPasswordUseCase.sendResetEmail(email)
                 _uiState.update { it.copy(isLoading = false, resetSent = true) }
             } catch (e: Exception) {
                 _uiState.update { it.copy(isLoading = false, error = UiText.Dynamic(e.message ?: "發送失敗")) }
@@ -163,12 +177,12 @@ class AuthViewModel(
                         return@launch
                     }
                     val targetEmail = _uiState.value.verificationSentTo.ifBlank { email }
-                    val valid = authRepository.verifyVerificationCode(targetEmail, verificationCode)
+                    val valid = verifyVerificationCodeUseCase(targetEmail, verificationCode)
                     if (!valid) {
                         _uiState.update { it.copy(isLoading = false, error = UiText.Dynamic("驗證碼錯誤")) }
                         return@launch
                     }
-                    authRepository.register(email, password)
+                    registerUseCase(email, password)
                     val uid = authRepository.currentUserId
                     if (uid.isNotBlank()) {
                         userRepository.setNickname(uid, nickname)
@@ -176,7 +190,7 @@ class AuthViewModel(
                     }
                     _uiState.update { it.copy(isLoading = false, isLoggedIn = true) }
                 } else {
-                    authRepository.login(email, password)
+                    loginUseCase(email, password)
                     authRepository.saveFcmToken()
                     _uiState.update { it.copy(isLoading = false, isLoggedIn = true) }
                 }
@@ -204,7 +218,7 @@ class AuthViewModel(
             try {
                 val targetEmail = _uiState.value.verificationSentTo.ifBlank { email }
                 Log.d("AuthViewModel", "sendPasswordReset: targetEmail=$targetEmail code=$verificationCode emailField=$email")
-                val valid = authRepository.verifyVerificationCode(targetEmail, verificationCode, prefix = "reset_")
+                val valid = resetPasswordUseCase.verifyResetCode(targetEmail, verificationCode)
                 if (!valid) {
                     _uiState.update { it.copy(isLoading = false, error = UiText.Dynamic("驗證碼錯誤")) }
                     return@launch
@@ -238,7 +252,7 @@ class AuthViewModel(
         viewModelScope.launch {
             try {
                 Log.d("AuthViewModel", "準備重設密碼: email=$email, code=$verificationCode, newPassword=$newPassword")
-                authRepository.resetPasswordCloudFunction(email, newPassword, verificationCode)
+                resetPasswordUseCase.resetViaCloudFunction(email, newPassword, verificationCode)
                 _uiState.update { it.copy(isLoading = false, showNewPasswordForm = false) }
                 _toastEvent.send(UiText.Dynamic("密碼重設成功，請用新密碼登入"))
                 _navigateEvent.send(NavigationEvent.ShowLoginForm)
@@ -254,7 +268,7 @@ class AuthViewModel(
         viewModelScope.launch {
             try {
                 withTimeout(20_000L) {
-                    authRepository.signInWithGoogle(idToken)
+                    signInWithGoogleUseCase(idToken)
                 }
                 Log.d("AuthViewModel", "signInWithGoogle: success")
                 val uid = authRepository.currentUserId
@@ -302,7 +316,7 @@ class AuthViewModel(
     }
 
     fun logout() {
-        authRepository.logout()
+        logoutUseCase()
         _uiState.value = AuthUiState()
     }
 

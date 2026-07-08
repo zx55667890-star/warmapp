@@ -283,7 +283,12 @@ fun RoleSelectScreen(
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
-                            onClick = { isDrawerOpen = false }
+                            onClick = {
+                                focusManager.clearFocus()
+                                context.getSystemService(Context.INPUT_METHOD_SERVICE)
+                                    ?.let { (it as InputMethodManager).hideSoftInputFromWindow((context as? android.app.Activity)?.window?.decorView?.windowToken, 0) }
+                                isDrawerOpen = false
+                            }
                         )
                 )
             }

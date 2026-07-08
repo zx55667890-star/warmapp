@@ -985,71 +985,6 @@
 
 ---
 
-### 98. 背景光暈完整迭代：琥珀 → 藍色 → 黑色疊層 → 用戶自訂多層漸層
-- **狀態**: ✅ 完成
-- **修改檔案**: `BackgroundGlow.kt`
-- **提交**: `35e5c9d`, `554af9c`, `05c5e49`, `6bec7b8`, `807e7e7`
-- **說明**:
-  - 初始為琥珀色 `radialGradient`（#D4A853 / #361C0A）
-  - 改為純藍色 radial（#133281 → #0055FF），含主光暈 + 副光暈
-  - 嘗試黑色疊層方案（黑色半透明圓形蓋在藍色底上）
-  - 用戶自行 push 版本（`6bec7b8`）：垂直漸層 `#133281→#08162F→#133281` + 主光暈 `#4DA3FF(alpha=0.28, 半徑=290.dp)` + 副光暈 `#00D4FF(alpha=0.10, 半徑=470.dp)`
-  - `807e7e7` 將垂直漸層頂端底端統一改為 `#133281`
-  - `drawBackgroundGlow()` 回傳 `this.fillMaxSize().drawBehind{...}` 單一 Modifier
-
-### 99. 系統列黑色條問題：多次嘗試未解 → 最終修復
-- **狀態**: ✅ 完成
-- **修改檔案**: `MainActivity.kt`, `themes.xml`, `AskQuestionScreen.kt`, `RoleSelectScreen.kt`
-- **提交**: `49e8b2a`, `02ce859`, `ec4d271`, `9f38a17`, `bd1f50f`, `45d08bf`, `9f36615`
-- **說明**:
-  - 先前嘗試（失敗）：
-    - 設定 `window.statusBarColor = Color.TRANSPARENT` 及各種深藍色值
-    - 啟用 `enableEdgeToEdge()` + `setDecorFitsSystemWindows(false)`
-    - 設定 `window.isStatusBarContrastEnforced = false`
-    - `themes.xml` 加入 `android:windowBackground="@android:color/transparent"`
-    - 最終在 `decorView.setBackgroundColor(Color.parseColor("#133281"))` 強制背景色
-    - 移除 `controller.hide()`（`systemUiVisibility` 隱藏系統列）
-  - **真正原因**（commit `9f36615`）：`AskQuestionScreen.kt` 的 modifier 順序錯誤。前一 session 在 `fillMaxSize()` 後插了 `.background(Color.Black)`，導致系統列區域被填黑
-  - **修復**：移除 `.background(Color.Black)`，恢復 `drawBackgroundGlow()` → `windowInsetsPadding(safeDrawing)` 順序。讓 glow 在 `safeDrawing` 之前繪製，自然延伸到系統列區域
-  - `.background(Color(0xFF171717))` 也從 `RoleSelectScreen.kt` 暫時移除（後續 commit `edfb8c1` 加回）
-
-### 100. AppNavigation 重構：Box 外層包裹全螢幕背景光暈
-- **狀態**: ✅ 完成
-- **修改檔案**: `AppNavigation.kt`, `ChatScreen.kt`
-- **提交**: `c79e082`, `80a5ffa`, `a133918`
-- **說明**:
-  - `a133918`：`Box(drawBackgroundGlow)` 移至 `Scaffold` 外層作為全螢幕背景
-  - `NavHost` 改為 `fillMaxSize()` + `padding(innerPadding)` 避免被 system bars 遮擋
-  - `c79e082`：嘗試 ChatScreen 內用 Box 包裹全螢幕背景（後續 revert）
-  - `ChatScreen` 最終移除 `drawBackgroundGlow()`、`statusBarsPadding()`、`imePadding()`，僅留 `fillMaxSize().clickable{focusManager.clearFocus()}`
-
-### 101. BackgroundGlow 簡化：多層漸層 → 單色 + 黑色 radial 暗角
-- **狀態**: ✅ 完成
-- **修改檔案**: `BackgroundGlow.kt`, `MainActivity.kt`, `RoleSelectScreen.kt`
-- **提交**: `edfb8c1`
-- **說明**:
-  - `BackgroundGlow.kt` 從 52 行砍到 23 行：移除垂直漸層 base、移除雙 radial glow（主光暈 #4DA3FF + 副光暈 #00D4FF）
-  - 新方案：純色 `#2631C9` ＋ 單一黑色 radial 暗角（`Brush.radialGradient(Black → Transparent)`，中心置中、半徑 `width * 4.0f`）
-  - 移除了 `fillMaxSize()` 呼叫（改由呼叫端自行決定尺寸）
-  - `RoleSelectScreen.kt` 加回 `.background(Color(0xff171717))` 保留 Drawer 灰色背景
-  - `MainActivity.kt` 移除過時註解
-
-### 102. 移除提問頁面左上角漢堡選單按鈕
-- **狀態**: ✅ 完成
-- **修改檔案**: `AskQuestionHeader.kt`, `AskQuestionScreen.kt`
-- **說明**:
-  - `AskQuestionHeader.kt`：移除 hamburger menu Box（含 `onMenuClick` 參數、import `clickable`/`background`/`clip`/`RoundedCornerShape`）
-  - `AskQuestionScreen.kt`：移除傳入的 `onMenuClick = onBack`、移除未使用的 `background` import
-  - 返回功能仍由 `BackHandler(onBack = onBack)` 保留（系統返回手勢/按鍵）
-
-### 103. Google 登入卡住修復：加上 20 秒逾時保護
-- **狀態**: ✅ 完成
-- **修改檔案**: `AuthViewModel.kt`
-- **說明**:
-  - `signInWithGoogle()` 中 `authRepository.signInWithGoogle(idToken)` 使用 `suspendCancellableCoroutine`，若 Firebase Auth 無回應（網路問題、憑證不匹配）會永久掛起
-  - 加上 `withTimeout(20_000L)` 包裹，逾時時拋出 `TimeoutCancellationException`
-  - 使用者不再看到無限 loading，20 秒後顯示「登入逾時」提示
-
 ### 83. 重構深化：UiText 密封類別 + AuthRepository 協程化 + 輸入層分離
 - **狀態**: ✅ 完成
 - **新增檔案**: `ui/common/UiText.kt` — 密封類別（Dynamic / Resource），ViewModel 不再硬編碼字串，i18n ready
@@ -1116,26 +1051,6 @@
   - 外層改為 `Scaffold` + `SnackbarHost`，送出問題後顯示「問題已送出，正在為您配對專家」
   - 移除未使用的 `drawBackgroundGlow` import
   - 容器顏色統一由 Scaffold containerColor 管理
-
----
-
-## Known Issues
-- **鍵盤無法收回**：`RoleSelectScreen` 側邊欄搜尋欄焦點後，點主畫面空白處無法收起鍵盤。已嘗試 `focusManager.clearFocus()` 與 `InputMethodManager.hideSoftInputFromWindow()` 皆無效。推測與 DrawerContent 的 z-order 或 Compose focus 系統有關。
-
-## 待注意事項（更新）
-- `AuthScreen.kt` 使用 `DisposableEffect` 設定 `SOFT_INPUT_ADJUST_NOTHING`，離開時還原
-- `AuthViewModel.setError()` 接受 `String`，包裝為 `UiText.Dynamic` 寫入 state + 發送 toast
-- `error` 型態為 `UiText?`，UI 透過 `.asString()` @Composable 顯示
-- `AuthRepository` 全部 7 個異步方法已改為 `suspend fun`（使用 `suspendCancellableCoroutine`）
-- 輸入狀態（email/password/驗證碼等）由 UI 層 `rememberSaveable` 持有，ViewModel 方法以參數接收
-- `AuthUiState` 僅保留：isLoading / error / isRegisterMode / isLoggedIn / verificationSent / verificationSentTo / verificationLastSentAt / resetSent / resetLastSentAt / resetVerificationLastSentAt / showNewPasswordForm
-- 註冊驗證碼路徑：`email_verification/{emailKey}/code`
-- 重設驗證碼路徑：`email_verification/reset_{emailKey}/code`
-- 重設驗證碼冷卻：`resetVerificationLastSentAt`（獨立於註冊的 `verificationLastSentAt`）
-- Cloud Function `resetPassword` 存放於 `functions/index.js`（v2 API），需手動 `firebase deploy --only functions:resetPassword`
-- Cloud Function 直接讀取 RTDB `code` 欄位驗證，不依賴 `verified` 旗標
-- Cloud Function `sendVerificationEmail` 使用 nodemailer + Gmail App Password
-- `app/build.gradle.kts` 新增 `firebase-functions:21.1.0` 依賴
 
 ---
 
@@ -1219,4 +1134,114 @@
 - **說明**: `sdk.dir` 原本指向 `C:\Program Files`（無 platforms/build-tools），改為正確的 SDK 路徑 `C:\Users\user\AppData\Local\Android\Sdk`（含 android-37.0 platforms 與 36.0.0 build-tools）。修正後編譯與測試皆可正常執行
 - **編譯通過**: `./gradlew assembleDebug` ✅
 - **測試通過**: `./gradlew testDebugUnitTest` — 18 全綠 ✅
+
+---
+
+### 98. 背景光暈完整迭代：琥珀 → 藍色 → 黑色疊層 → 用戶自訂多層漸層
+- **狀態**: ✅ 完成
+- **修改檔案**: `BackgroundGlow.kt`
+- **提交**: `35e5c9d`, `554af9c`, `05c5e49`, `6bec7b8`, `807e7e7`
+- **說明**:
+  - 初始為琥珀色 `radialGradient`（#D4A853 / #361C0A）
+  - 改為純藍色 radial（#133281 → #0055FF），含主光暈 + 副光暈
+  - 嘗試黑色疊層方案（黑色半透明圓形蓋在藍色底上）
+  - 用戶自行 push 版本（`6bec7b8`）：垂直漸層 `#133281→#08162F→#133281` + 主光暈 `#4DA3FF(alpha=0.28, 半徑=290.dp)` + 副光暈 `#00D4FF(alpha=0.10, 半徑=470.dp)`
+  - `807e7e7` 將垂直漸層頂端底端統一改為 `#133281`
+  - `drawBackgroundGlow()` 回傳 `this.fillMaxSize().drawBehind{...}` 單一 Modifier
+
+### 99. 系統列黑色條問題：多次嘗試未解 → 最終修復
+- **狀態**: ✅ 完成
+- **修改檔案**: `MainActivity.kt`, `themes.xml`, `AskQuestionScreen.kt`, `RoleSelectScreen.kt`
+- **提交**: `49e8b2a`, `02ce859`, `ec4d271`, `9f38a17`, `bd1f50f`, `45d08bf`, `9f36615`
+- **說明**:
+  - 先前嘗試（失敗）：
+    - 設定 `window.statusBarColor = Color.TRANSPARENT` 及各種深藍色值
+    - 啟用 `enableEdgeToEdge()` + `setDecorFitsSystemWindows(false)`
+    - 設定 `window.isStatusBarContrastEnforced = false`
+    - `themes.xml` 加入 `android:windowBackground="@android:color/transparent"`
+    - 最終在 `decorView.setBackgroundColor(Color.parseColor("#133281"))` 強制背景色
+    - 移除 `controller.hide()`（`systemUiVisibility` 隱藏系統列）
+  - **真正原因**（commit `9f36615`）：`AskQuestionScreen.kt` 的 modifier 順序錯誤。前一 session 在 `fillMaxSize()` 後插了 `.background(Color.Black)`，導致系統列區域被填黑
+  - **修復**：移除 `.background(Color.Black)`，恢復 `drawBackgroundGlow()` → `windowInsetsPadding(safeDrawing)` 順序。讓 glow 在 `safeDrawing` 之前繪製，自然延伸到系統列區域
+  - `.background(Color(0xFF171717))` 也從 `RoleSelectScreen.kt` 暫時移除（後續 commit `edfb8c1` 加回）
+
+### 100. AppNavigation 重構：Box 外層包裹全螢幕背景光暈
+- **狀態**: ✅ 完成
+- **修改檔案**: `AppNavigation.kt`, `ChatScreen.kt`
+- **提交**: `c79e082`, `80a5ffa`, `a133918`
+- **說明**:
+  - `a133918`：`Box(drawBackgroundGlow)` 移至 `Scaffold` 外層作為全螢幕背景
+  - `NavHost` 改為 `fillMaxSize()` + `padding(innerPadding)` 避免被 system bars 遮擋
+  - `c79e082`：嘗試 ChatScreen 內用 Box 包裹全螢幕背景（後續 revert）
+  - `ChatScreen` 最終移除 `drawBackgroundGlow()`、`statusBarsPadding()`、`imePadding()`，僅留 `fillMaxSize().clickable{focusManager.clearFocus()}`
+
+### 101. BackgroundGlow 簡化：多層漸層 → 單色 + 黑色 radial 暗角
+- **狀態**: ✅ 完成
+- **修改檔案**: `BackgroundGlow.kt`, `MainActivity.kt`, `RoleSelectScreen.kt`
+- **提交**: `edfb8c1`
+- **說明**:
+  - `BackgroundGlow.kt` 從 52 行砍到 23 行：移除垂直漸層 base、移除雙 radial glow（主光暈 #4DA3FF + 副光暈 #00D4FF）
+  - 新方案：純色 `#2631C9` ＋ 單一黑色 radial 暗角（`Brush.radialGradient(Black → Transparent)`，中心置中、半徑 `width * 4.0f`）
+  - 移除了 `fillMaxSize()` 呼叫（改由呼叫端自行決定尺寸）
+  - `RoleSelectScreen.kt` 加回 `.background(Color(0xff171717))` 保留 Drawer 灰色背景
+  - `MainActivity.kt` 移除過時註解
+
+### 102. 移除提問頁面左上角漢堡選單按鈕
+- **狀態**: ✅ 完成
+- **修改檔案**: `AskQuestionHeader.kt`, `AskQuestionScreen.kt`
+- **說明**:
+  - `AskQuestionHeader.kt`：移除 hamburger menu Box（含 `onMenuClick` 參數、import `clickable`/`background`/`clip`/`RoundedCornerShape`）
+  - `AskQuestionScreen.kt`：移除傳入的 `onMenuClick = onBack`、移除未使用的 `background` import
+  - 返回功能仍由 `BackHandler(onBack = onBack)` 保留（系統返回手勢/按鍵）
+
+### 103. Google 登入卡住修復：加上 20 秒逾時保護
+- **狀態**: ✅ 完成
+- **修改檔案**: `AuthViewModel.kt`
+- **說明**:
+  - `signInWithGoogle()` 中 `authRepository.signInWithGoogle(idToken)` 使用 `suspendCancellableCoroutine`，若 Firebase Auth 無回應（網路問題、憑證不匹配）會永久掛起
+  - 加上 `withTimeout(20_000L)` 包裹，逾時時拋出 `TimeoutCancellationException`
+  - 使用者不再看到無限 loading，20 秒後顯示「登入逾時」提示
+
+---
+
+## Known Issues
+- ~~**鍵盤無法收回**：`RoleSelectScreen` 側邊欄搜尋欄焦點後，點主畫面空白處無法收起鍵盤。已嘗試 `focusManager.clearFocus()` 與 `InputMethodManager.hideSoftInputFromWindow()` 皆無效。~~ ✅ **已修復**（#7）：覆蓋層點擊時一併呼叫 `clearFocus` + `hideSoftInputFromWindow`。
+
+## 待注意事項（更新）
+- `AuthScreen.kt` 使用 `DisposableEffect` 設定 `SOFT_INPUT_ADJUST_NOTHING`，離開時還原
+- `AuthViewModel.setError()` 接受 `String`，包裝為 `UiText.Dynamic` 寫入 state + 發送 toast
+- `error` 型態為 `UiText?`，UI 透過 `.asString()` @Composable 顯示
+- `AuthRepository` 全部 7 個異步方法已改為 `suspend fun`（使用 `suspendCancellableCoroutine`）
+- 輸入狀態（email/password/驗證碼等）由 UI 層 `rememberSaveable` 持有，ViewModel 方法以參數接收
+- `AuthUiState` 僅保留：isLoading / error / isRegisterMode / isLoggedIn / verificationSent / verificationSentTo / verificationLastSentAt / resetSent / resetLastSentAt / resetVerificationLastSentAt / showNewPasswordForm
+- 註冊驗證碼路徑：`email_verification/{emailKey}/code`
+- 重設驗證碼路徑：`email_verification/reset_{emailKey}/code`
+- 重設驗證碼冷卻：`resetVerificationLastSentAt`（獨立於註冊的 `verificationLastSentAt`）
+- Cloud Function `resetPassword` 存放於 `functions/index.js`（v2 API），需手動 `firebase deploy --only functions:resetPassword`
+- Cloud Function 直接讀取 RTDB `code` 欄位驗證，不依賴 `verified` 旗標
+- Cloud Function `sendVerificationEmail` 使用 nodemailer + Gmail App Password
+- `app/build.gradle.kts` 新增 `firebase-functions:21.1.0` 依賴
+
+---
+
+### 104. 架構修正批次：#5 路徑常數、#6 MediaUploader、#7 鍵盤修復、#3 Domain UseCase、#4 MatchCoordinator
+- **狀態**: ✅ 完成
+- **修改/新增檔案**:
+  - `ui/navigation/Route.kt` — 新增 `EXTRA_*` 路徑常數，`FcmService.kt` / `AppNavigation.kt` 改用 `Routes` 常數
+  - `data/repository/MediaUploader.kt` — 新增 `StoragePath` 物件管理上傳路徑；影片獨立走 `chat_video/` 路徑
+  - `ui/seeker/RoleSelectScreen.kt` — Drawer 覆蓋層 .clickable 加入 `clearFocus` + `hideSoftInputFromWindow`，修復鍵盤無法收回
+  - `domain/auth/` — 新增 7 個 UseCase（LoginUseCase / RegisterUseCase / SignInWithGoogleUseCase / GenerateVerificationCodeUseCase / VerifyVerificationCodeUseCase / ResetPasswordUseCase / LogoutUseCase）
+  - `ui/auth/AuthViewModel.kt` — 改用 UseCase 取代直接注入 AuthRepository
+  - `di/AppModule.kt` — DI 註冊新 UseCase
+  - `domain/seeker/MatchCoordinator.kt` — 新增（timer/matching 邏輯從 SeekerViewModel 抽出）
+  - `di/SeekerViewModel.kt` — 改用 MatchCoordinator，移除內聯 `matchAndAssignExpert` / `startMatchTimeout` / `startAiPreview` / `cancelMatchTimeout` 及 companion object
+  - `app/src/test/.../AuthViewModelTest.kt` — 改用 UseCase mock
+- **說明**:
+  - #5：路徑常數集中管理，消除散落各處的路徑字串
+  - #6：StoragePath 物件統一 Storage 上傳路徑；影片不再共用圖片上傳函式
+  - #7：Drawer 點擊覆蓋區域時一併關閉鍵盤（原僅 focusManager.clearFocus 無效）
+  - #3：Domain layer 建立 `auth/` UseCase，ViewModel 依賴抽象而非 Repository 實作
+  - #4：配對/逾時邏輯抽出至 MatchCoordinator，ViewModel 專注 state 管理
+- **編譯通過**: `./gradlew assembleDebug` ✅
+- **測試通過**: `./gradlew testDebugUnitTest` — 全數通過 ✅
 

@@ -53,20 +53,18 @@ class SendMediaUseCase(
         onError: (String) -> Unit
     ): Boolean {
         val messageRepo = repoFactory.create(chatroomId)
-        val downloadUrls = mediaUploader.sendImages(
+        val downloadUrl = mediaUploader.sendVideo(
             chatroomId = chatroomId,
-            userId = userId,
-            myRole = myRole,
-            uris = listOf(uri),
+            uri = uri,
             onProgress = onProgress,
             onError = onError
         )
-        if (downloadUrls.isNotEmpty()) {
+        if (downloadUrl != null) {
             messageRepo.sendMessageWithFields(
                 userId, myRole,
                 mapOf(
                     "text" to "",
-                    "videoUrl" to downloadUrls.first(),
+                    "videoUrl" to downloadUrl,
                     "timestamp" to System.currentTimeMillis()
                 )
             )

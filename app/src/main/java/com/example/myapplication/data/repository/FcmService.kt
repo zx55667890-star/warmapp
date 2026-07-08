@@ -9,6 +9,7 @@ import android.os.Build
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.example.myapplication.MainActivity
+import com.example.myapplication.ui.navigation.Routes
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.messaging.FirebaseMessagingService
@@ -51,11 +52,11 @@ class FcmService : FirebaseMessagingService() {
 
         val intent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            putExtra("navigate_chatroom_id", chatroomId)
-            putExtra("navigate_my_role", myRole)
-            putExtra("navigate_expert_id", expertId)
-            putExtra("navigate_expert_text", expertText)
-            putExtra("navigate_expert_date", expertDate)
+            putExtra(Routes.EXTRA_CHATROOM_ID, chatroomId)
+            putExtra(Routes.EXTRA_MY_ROLE, myRole)
+            putExtra(Routes.EXTRA_EXPERT_ID, expertId)
+            putExtra(Routes.EXTRA_EXPERT_TEXT, expertText)
+            putExtra(Routes.EXTRA_EXPERT_DATE, expertDate)
         }
         val pendingIntent = PendingIntent.getActivity(
             this, System.currentTimeMillis().toInt(), intent,
