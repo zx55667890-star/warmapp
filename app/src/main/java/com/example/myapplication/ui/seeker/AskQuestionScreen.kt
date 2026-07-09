@@ -70,6 +70,7 @@ fun AskQuestionScreen(
 
     val onSendQuestion = {
         if (selectedMediaList.isNotEmpty() || question.isNotBlank()) {
+            focusManager.clearFocus()
             val media = selectedMediaList.map { SendMedia(it.uri, it.isVideo, it.isVoice) }
             viewModel.sendQuestion(question, userId, media)
             question = ""
