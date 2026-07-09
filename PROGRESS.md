@@ -1341,3 +1341,17 @@
   - overlay 會在「專家接受配對」（expert_accepted）或「逾期」（expired）時被 `isUserMatching = false` 自動隱藏
 - **commit**: `f20269d`
 
+---
+
+### 114. 配對流程修正：不跳轉 + 收起鍵盤 + 預防閃退
+- **狀態**: ✅ 完成
+- **修改檔案**:
+  - `di/SeekerViewModel.kt` — AI 回應不再觸發 `activeChatRoomId`，停留在 AskQuestionScreen 等待真人配對成功才跳轉
+  - `di/SeekerViewModel.kt` — `onAiChatroomReady` 改為空 lambda，不再被 startAiPreview 導航
+  - `ui/seeker/AskQuestionScreen.kt` — 送出問題時 `focusManager.clearFocus()` 自動收起鍵盤
+  - `domain/seeker/MatchCoordinator.kt` — `startAiPreview` 的 `generateResponse()` 補上 try-catch，防止 Gemini API 異常導致 App 崩潰
+- **說明**:
+  - 3 秒閃退原因：`startAiPreview` 的 `generateResponse()` 無 try-catch，Gemini API 掛掉時未捕捉例外直接炸協程
+  - 現在送出問題後停留在原畫面顯示 overlay，直到專家配對成功或取消
+- **commits**: `b8d5908`, `5167b38`, `ca41141`
+
