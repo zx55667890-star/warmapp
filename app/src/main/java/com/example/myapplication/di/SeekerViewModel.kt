@@ -52,13 +52,7 @@ class SeekerViewModel(
 ) : ViewModel() {
 
     private val matchCoordinator = MatchCoordinator(firebaseDb, matchingRepository, aiRepository).apply {
-        onAiChatroomReady = { chatroomId, questionText ->
-            _uiState.update { it.copy(
-                activeChatRoomId = chatroomId,
-                myRole = "user",
-                activeChatQuestionText = questionText
-            ) }
-        }
+        onAiChatroomReady = { _, _ -> }
         onCancelUserMatching = { cancelUserMatching() }
     }
 
@@ -146,11 +140,8 @@ class SeekerViewModel(
                             if (selectedMedia.isNotEmpty()) {
                                 sendQuestionMediaUseCase(chatroomId, messagesRef, selectedMedia, timestamp + 2)
                             }
-
-                            _uiState.update { it.copy(activeChatRoomId = chatroomId) }
                         } catch (e: Exception) {
                             Log.w("SeekerViewModel", "AI response failed", e)
-                            _uiState.update { it.copy(activeChatRoomId = chatroomId) }
                         }
                     }
                 }
