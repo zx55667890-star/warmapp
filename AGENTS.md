@@ -20,7 +20,7 @@
 1. 修改程式碼
 2. 我先用 `./gradlew assembleDebug --daemon --parallel --offline` 編譯確認沒問題
 3. 沒問題就 git push
-4. 執行 `.\install.bat` 安裝到手機
+4. 使用者自行 pull + 安裝到手機
 
 ## Prerequisites
 - Android SDK：`C:\Users\user\AppData\Local\Android\Sdk`
