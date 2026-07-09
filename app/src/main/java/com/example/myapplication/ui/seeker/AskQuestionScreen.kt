@@ -20,7 +20,6 @@ import com.example.myapplication.ui.seeker.components.drawBackgroundGlow
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
-import kotlinx.coroutines.delay
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.myapplication.di.SeekerViewModel
 import com.example.myapplication.domain.seeker.SendMedia
@@ -43,8 +42,6 @@ fun AskQuestionScreen(
     var showAttachSheet by remember { mutableStateOf(false) }
     var showCameraCapture by remember { mutableStateOf(false) }
     var showVoiceRecording by remember { mutableStateOf(false) }
-    var showSentFeedback by remember { mutableStateOf(false) }
-
     val seekerUiState by viewModel.uiState.collectAsStateWithLifecycle()
     val focusRequester = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
@@ -77,18 +74,6 @@ fun AskQuestionScreen(
             viewModel.sendQuestion(question, userId, media)
             question = ""
             selectedMediaList = emptyList()
-            showSentFeedback = true
-        }
-    }
-
-    LaunchedEffect(showSentFeedback) {
-        if (showSentFeedback) {
-            // 只有當沒有觸發 Quota 錯誤阻擋時，才發送這個一般媒合通知
-            if (seekerUiState.quotaError == null) {
-                snackbarHostState.showSnackbar("問題已送出，正在為您配對專家")
-            }
-            delay(1500)
-            showSentFeedback = false
         }
     }
 
@@ -128,7 +113,6 @@ fun AskQuestionScreen(
                     modifier = Modifier.weight(1f)
                 )
 
-                // 🛡️ 新增：在輸入框膠囊上方，展示優雅的剩餘額度小提示
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -147,13 +131,20 @@ fun AskQuestionScreen(
                     onQuestionChange = { question = it },
                     selectedMediaList = selectedMediaList,
                     focusRequester = focusRequester,
-                    showSentFeedback = showSentFeedback,
+                    showSentFeedback = seekerUiState.isUserMatching,
                     onAttachClick = {
                         focusManager.clearFocus()
                         showAttachSheet = true
                     },
                     onSendClick = onSendQuestion,
                     onRemoveMedia = { media -> selectedMediaList = selectedMediaList - media }
+                )
+            }
+
+            // 全螢幕配對中覆蓋層
+            if (seekerUiState.isUserMatching && seekerUiState.activeChatRoomId.isBlank() && seekerUiState.quotaError == null) {
+                MatchingOverlay(
+                    onCancel = { viewModel.cancelUserMatching() }
                 )
             }
         }

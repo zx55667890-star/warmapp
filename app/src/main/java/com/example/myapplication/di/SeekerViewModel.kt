@@ -118,7 +118,6 @@ class SeekerViewModel(
                     messagesRef.child(userMsgId).setValue(userMessage)
 
                     _uiState.update { it.copy(
-                        activeChatRoomId = chatroomId,
                         myRole = "user",
                         activeChatQuestionText = text,
                         isUserMatching = true
@@ -147,8 +146,11 @@ class SeekerViewModel(
                             if (selectedMedia.isNotEmpty()) {
                                 sendQuestionMediaUseCase(chatroomId, messagesRef, selectedMedia, timestamp + 2)
                             }
+
+                            _uiState.update { it.copy(activeChatRoomId = chatroomId) }
                         } catch (e: Exception) {
                             Log.w("SeekerViewModel", "AI response failed", e)
+                            _uiState.update { it.copy(activeChatRoomId = chatroomId) }
                         }
                     }
                 }
