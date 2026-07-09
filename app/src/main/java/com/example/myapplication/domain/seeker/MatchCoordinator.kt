@@ -54,9 +54,13 @@ class MatchCoordinator(
                 val expertId = snapshot.child("expertId").value?.toString().orEmpty()
                 if (status == "matching" && expertId.isBlank()) {
                     scope.launch {
-                        val answer = aiRepository.generateResponse(questionText)
-                        aiRepository.createAiChatroom(questionId, questionText, answer) { chatroomId ->
-                            onAiChatroomReady?.invoke(chatroomId, questionText)
+                        try {
+                            val answer = aiRepository.generateResponse(questionText)
+                            aiRepository.createAiChatroom(questionId, questionText, answer) { chatroomId ->
+                                onAiChatroomReady?.invoke(chatroomId, questionText)
+                            }
+                        } catch (e: Exception) {
+                            Log.w("MatchCoordinator", "AI preview failed", e)
                         }
                     }
                 }
