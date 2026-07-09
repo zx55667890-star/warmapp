@@ -1,7 +1,6 @@
 package com.example.myapplication.di
 
 import android.content.SharedPreferences
-import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -10,18 +9,18 @@ import com.example.myapplication.data.repository.MatchingRepositoryInterface
 import com.example.myapplication.data.repository.MediaUploader
 import com.example.myapplication.data.repository.QuestionRepository
 import com.example.myapplication.domain.seeker.MatchCoordinator
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
-import com.google.firebase.database.DatabaseReference
+import com.example.myapplication.domain.seeker.ObserveQuestionStatusUseCase
+import com.example.myapplication.domain.seeker.QuestionStatus
+import com.example.myapplication.domain.seeker.QuotaResult
+import com.example.myapplication.domain.seeker.SendQuestionMediaUseCase
+import com.example.myapplication.domain.seeker.ValidateQuestionQuotaUseCase
 import com.google.firebase.database.FirebaseDatabase
-import com.google.firebase.database.ValueEventListener
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -36,7 +35,6 @@ data class SeekerUiState(
     val activeChatRoomId: String = "",
     val myRole: String = "",
     val activeChatQuestionText: String = "",
-    // 🛡️ 新增：額度防禦狀態
     val dailyRemainingQuota: Int = 3,
     val quotaError: String? = null
 )
@@ -47,7 +45,10 @@ class SeekerViewModel(
     private val matchingRepository: MatchingRepositoryInterface,
     private val aiRepository: AiRepository,
     private val mediaUploader: MediaUploader,
-    private val questionRepository: QuestionRepository = QuestionRepository(firebaseDb)
+    private val questionRepository: QuestionRepository = QuestionRepository(firebaseDb),
+    private val validateQuestionQuotaUseCase: ValidateQuestionQuotaUseCase = ValidateQuestionQuotaUseCase(questionRepository),
+    private val observeQuestionStatusUseCase: ObserveQuestionStatusUseCase = ObserveQuestionStatusUseCase(firebaseDb),
+    private val sendQuestionMediaUseCase: SendQuestionMediaUseCase = SendQuestionMediaUseCase(mediaUploader)
 ) : ViewModel() {
 
     private val matchCoordinator = MatchCoordinator(firebaseDb, matchingRepository, aiRepository).apply {
@@ -72,12 +73,8 @@ class SeekerViewModel(
     val matchedExpertDate: String get() = _uiState.value.matchedExpertDate
 
     private var currentUserQuestionId = ""
-    private var userQuestionRef: DatabaseReference? = null
-    private var userQuestionListener: ValueEventListener? = null
+    private var statusCollectionJob: kotlinx.coroutines.Job? = null
 
-    /**
-     * 🛡️ 新增：即時刷新該使用者的每日剩餘額度
-     */
     fun refreshQuota(userId: String) {
         if (userId.isBlank()) return
         viewModelScope.launch {
@@ -87,30 +84,20 @@ class SeekerViewModel(
         }
     }
 
-    /**
-     * 🛡️ 新增：清除錯誤提示狀態，避免 Snackbar 重複彈出
-     */
     fun clearQuotaError() {
         _uiState.update { it.copy(quotaError = null) }
     }
 
-    fun sendQuestion(text: String, userId: String, selectedMedia: List<SendMedia> = emptyList()) {
+    fun sendQuestion(text: String, userId: String, selectedMedia: List<com.example.myapplication.domain.seeker.SendMedia> = emptyList()) {
         viewModelScope.launch {
-            // 防禦一：檢查是否有多開進行中的對話
-            val hasActive = questionRepository.hasActiveQuestion(userId)
-            if (hasActive) {
-                _uiState.update { it.copy(quotaError = "您當前已有進行中或媒合中的提問，請先完成或取消該對話！") }
-                return@launch
+            when (val result = validateQuestionQuotaUseCase(userId)) {
+                is QuotaResult.Invalid -> {
+                    _uiState.update { it.copy(quotaError = result.reason) }
+                    return@launch
+                }
+                is QuotaResult.Valid -> { /* proceed */ }
             }
 
-            // 防禦二：檢查今日發問總量是否超標
-            val todayCount = questionRepository.getTodayQuestionCount(userId)
-            if (todayCount >= 3) {
-                _uiState.update { it.copy(quotaError = "已達今日提問上限（每日最多 3 次）！") }
-                return@launch
-            }
-
-            // 通過防禦，執行發送流程
             questionRepository.sendQuestion(text, userId, object : QuestionRepository.SendQuestionCallback {
                 override fun onSent(questionId: String) {
                     currentUserQuestionId = questionId
@@ -136,14 +123,13 @@ class SeekerViewModel(
                         activeChatQuestionText = text,
                         isUserMatching = true
                     ) }
-                    
-                    // 成功發送後立即同步更新 UI 剩餘額度數字
+
                     refreshQuota(userId)
 
                     matchCoordinator.matchAndAssignExpert(questionId, text, userId)
                     matchCoordinator.startAiPreview(questionId, text, viewModelScope)
                     matchCoordinator.startMatchTimeout(questionId, viewModelScope)
-                    listenToMyQuestionStatus(questionId)
+                    observeStatus(questionId)
 
                     viewModelScope.launch {
                         try {
@@ -159,7 +145,7 @@ class SeekerViewModel(
                             messagesRef.child(aiMsgId).setValue(aiMessage)
 
                             if (selectedMedia.isNotEmpty()) {
-                                uploadSelectedMedia(chatroomId, messagesRef, selectedMedia, timestamp + 2)
+                                sendQuestionMediaUseCase(chatroomId, messagesRef, selectedMedia, timestamp + 2)
                             }
                         } catch (e: Exception) {
                             Log.w("SeekerViewModel", "AI response failed", e)
@@ -174,143 +160,48 @@ class SeekerViewModel(
         }
     }
 
-    data class SendMedia(val uri: Uri, val isVideo: Boolean, val isVoice: Boolean)
-
-    private suspend fun uploadSelectedMedia(
-        chatroomId: String,
-        messagesRef: DatabaseReference,
-        mediaList: List<SendMedia>,
-        startTimestamp: Long
-    ) {
-        withContext(Dispatchers.IO) {
-            mediaList.forEachIndexed { index, media ->
-                try {
-                    val timestamp = startTimestamp + index
-                    if (media.isVoice) {
-                        val voicePath = media.uri.path ?: return@forEachIndexed
-                        val voiceUrl = mediaUploader.sendVoice(
-                            chatroomId = chatroomId,
-                            filePath = voicePath,
-                            onProgress = {},
-                            onError = { Log.w("SeekerViewModel", "Voice upload failed: $it") }
-                        )
-                        if (voiceUrl != null) {
-                            val msgId = messagesRef.push().key ?: return@forEachIndexed
-                            val msg = mapOf(
-                                "senderId" to "",
-                                "sender" to "user",
-                                "text" to "",
-                                "timestamp" to timestamp,
-                                "voiceUrl" to voiceUrl,
-                                "readBy" to mapOf("system" to true)
-                            )
-                            messagesRef.child(msgId).setValue(msg)
-                        }
-                    } else if (media.isVideo) {
-                        val videoUrl = mediaUploader.sendVideo(
-                            chatroomId = chatroomId,
-                            uri = media.uri,
-                            onProgress = {},
-                            onError = { Log.w("SeekerViewModel", "Video upload failed: $it") }
-                        )
-                        if (videoUrl != null) {
-                            val msgId = messagesRef.push().key ?: return@forEachIndexed
-                            val msg = mapOf(
-                                "senderId" to "",
-                                "sender" to "user",
-                                "text" to "",
-                                "timestamp" to timestamp,
-                                "videoUrl" to videoUrl,
-                                "readBy" to mapOf("system" to true)
-                            )
-                            messagesRef.child(msgId).setValue(msg)
-                        }
-                    } else {
-                        val urls = mediaUploader.sendImages(
-                            chatroomId = chatroomId,
-                            userId = "",
-                            myRole = "user",
-                            uris = listOf(media.uri),
-                            onProgress = {},
-                            onError = { Log.w("SeekerViewModel", "Image upload failed: $it") }
-                        )
-                        if (urls.isNotEmpty()) {
-                            val msgId = messagesRef.push().key ?: return@forEachIndexed
-                            val msg = mapOf(
-                                "senderId" to "",
-                                "sender" to "user",
-                                "text" to "",
-                                "timestamp" to timestamp,
-                                "imageUrls" to urls,
-                                "readBy" to mapOf("system" to true)
-                            )
-                            messagesRef.child(msgId).setValue(msg)
-                        }
-                    }
-                } catch (e: Exception) {
-                    Log.w("SeekerViewModel", "Media upload failed", e)
-                }
-            }
-        }
-    }
-
-    fun listenToMyQuestionStatus(questionId: String) {
-        removeUserQuestionListener()
-        val ref = firebaseDb.getReference("questions").child(questionId)
-        userQuestionRef = ref
-        val listener = object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
-                if (!snapshot.exists()) return
-                val status = snapshot.child("status").value?.toString() ?: return
+    fun observeStatus(questionId: String) {
+        statusCollectionJob?.cancel()
+        statusCollectionJob = viewModelScope.launch {
+            observeQuestionStatusUseCase(questionId).collectLatest { status ->
                 when (status) {
-                    "taken" -> {
+                    is QuestionStatus.Taken -> {
                         _uiState.update { it.copy(
                             activeChatRoomId = questionId,
                             myRole = "user",
-                            activeChatQuestionText = snapshot.child("text").value?.toString().orEmpty(),
+                            activeChatQuestionText = status.questionText,
                             isUserMatching = false,
                             showSeekerConfirmDialog = false
                         ) }
                         cleanupListeners()
                         prefs.edit().putString("lastQuestionId", questionId).apply()
                     }
-                    "expert_accepted" -> {
-                        val expertId = snapshot.child("expertId").value?.toString().orEmpty()
-                        val expertText = snapshot.child("matchedExpText").value?.toString().orEmpty()
-                        val timestamp = snapshot.child("matchedExpTimestamp").value as? Long ?: 0L
-                        val dateStr = if (timestamp > 0) {
-                            SimpleDateFormat("yyyy/MM/dd HH:mm", Locale.getDefault()).format(Date(timestamp))
+                    is QuestionStatus.ExpertAccepted -> {
+                        val dateStr = if (status.timestamp > 0) {
+                            SimpleDateFormat("yyyy/MM/dd HH:mm", Locale.getDefault()).format(Date(status.timestamp))
                         } else ""
                         _uiState.update { it.copy(
-                            matchedExpertId = expertId,
-                            matchedExpertText = expertText,
+                            matchedExpertId = status.expertId,
+                            matchedExpertText = status.expertText,
                             matchedExpertDate = dateStr,
                             showSeekerConfirmDialog = true,
                             isUserMatching = false
                         ) }
                         cleanupListeners()
                     }
-                    "no_experts" -> {
+                    is QuestionStatus.NoExperts -> {
                         _uiState.update { it.copy(isUserMatching = false) }
                         cleanupListeners()
                     }
-                    "cancelled" -> {
+                    is QuestionStatus.Cancelled -> {
                         _uiState.update { it.copy(isUserMatching = false, showSeekerConfirmDialog = false) }
                         cleanupListeners()
-                        
-                        // 使用者取消提問時，即時把額度還給使用者
-                        val currentUserId = snapshot.child("authorId").value?.toString().orEmpty()
-                        refreshQuota(currentUserId)
+                        refreshQuota(status.authorId)
                     }
+                    is QuestionStatus.Matching -> { /* no-op */ }
                 }
             }
-
-            override fun onCancelled(error: DatabaseError) {
-                Log.w("SeekerViewModel", "Question status listener cancelled", error.toException())
-            }
         }
-        ref.addValueEventListener(listener)
-        userQuestionListener = listener
     }
 
     fun acceptExpertMatch() {
@@ -400,25 +291,18 @@ class SeekerViewModel(
         currentUserQuestionId = ""
     }
 
-    private fun removeUserQuestionListener() {
-        userQuestionRef?.let { ref ->
-            userQuestionListener?.let { ref.removeEventListener(it) }
-        }
-        userQuestionRef = null
-        userQuestionListener = null
-    }
-
     private fun cleanupListeners() {
         matchCoordinator.cancelMatchTimeout()
-        removeUserQuestionListener()
+        statusCollectionJob?.cancel()
+        statusCollectionJob = null
     }
 
     private fun checkUserReconnection() {
         val lastQuestionId = prefs.getString("lastQuestionId", "") ?: ""
         if (lastQuestionId.isBlank()) return
         val ref = firebaseDb.getReference("questions").child(lastQuestionId)
-        ref.addListenerForSingleValueEvent(object : ValueEventListener {
-            override fun onDataChange(snapshot: DataSnapshot) {
+        ref.addListenerForSingleValueEvent(object : com.google.firebase.database.ValueEventListener {
+            override fun onDataChange(snapshot: com.google.firebase.database.DataSnapshot) {
                 if (!snapshot.exists()) return
                 val status = snapshot.child("status").value?.toString()
                 if (status == "taken") {
@@ -430,7 +314,7 @@ class SeekerViewModel(
                 }
             }
 
-            override fun onCancelled(error: DatabaseError) {
+            override fun onCancelled(error: com.google.firebase.database.DatabaseError) {
                 Log.w("SeekerViewModel", "checkUserReconnection cancelled", error.toException())
             }
         })

@@ -23,6 +23,9 @@ import com.example.myapplication.domain.chat.RecallMessageUseCase
 import com.example.myapplication.domain.chat.SendMediaUseCase
 import com.example.myapplication.domain.chat.FetchOpponentUseCase
 import com.example.myapplication.domain.chat.SendTextMessageUseCase
+import com.example.myapplication.domain.seeker.ObserveQuestionStatusUseCase
+import com.example.myapplication.domain.seeker.SendQuestionMediaUseCase
+import com.example.myapplication.domain.seeker.ValidateQuestionQuotaUseCase
 import com.example.myapplication.ui.auth.AuthViewModel
 import com.example.myapplication.ui.chat.ChatViewModel
 import com.google.firebase.auth.FirebaseAuth
@@ -72,8 +75,12 @@ val appModule = module {
     single { ResetPasswordUseCase(get()) }
     single { LogoutUseCase(get()) }
 
+    single { ValidateQuestionQuotaUseCase(get()) }
+    single { ObserveQuestionStatusUseCase(get()) }
+    single { SendQuestionMediaUseCase(get()) }
+
     viewModel { AuthViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     viewModel { ExpertViewModel(get(), get()) }
-    viewModel { SeekerViewModel(get(), get(), get(), get(), get()) }
+    viewModel { SeekerViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     viewModel { ChatViewModel(get(), get(), get(), get(), get()) }
 }

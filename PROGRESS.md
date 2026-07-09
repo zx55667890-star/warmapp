@@ -1262,6 +1262,23 @@
   - `AskQuestionScreen`：進入畫面自動重整額度、`LaunchedEffect` 攔截 `quotaError` 彈 Snackbar、輸入框上方顯示「今日剩餘提問次數：X 次」（歸零變紅）
 
 ### 111. AGENTS.md 規則強化
+
+### 112. SeekerViewModel 瘦身：抽離 3 個 UseCase（441→293 行）
+- **狀態**: ✅ 完成
+- **新增檔案**（3 個）:
+  - `domain/seeker/ValidateQuestionQuotaUseCase.kt` — 封裝多開檢查 + 每日配額檢查，回傳 `QuotaResult.Valid / Invalid`
+  - `domain/seeker/ObserveQuestionStatusUseCase.kt` — Firebase ValueEventListener 包裝為 `Flow<QuestionStatus>`（callbackFlow），定義 `QuestionStatus` sealed class（Taken / ExpertAccepted / NoExperts / Cancelled / Matching）
+  - `domain/seeker/SendQuestionMediaUseCase.kt` — 三種媒體上傳邏輯（語音/影片/圖片）從 ViewModel 抽出，注入 `MediaUploader`；`SendMedia` data class 移至該檔案
+- **修改檔案**（5 個）:
+  - `di/SeekerViewModel.kt`（441→293 行）：移除 `uploadSelectedMedia`（~77 行）、`listenToMyQuestionStatus`（~58 行）、`removeUserQuestionListener`、`userQuestionRef`/`userQuestionListener` 欄位；改為注入 3 個 UseCase + `observeQuestionStatusUseCase(questionId).collectLatest{}` + `sendQuestionMediaUseCase(...)` + `validateQuestionQuotaUseCase(userId)`
+  - `di/AppModule.kt` — 註冊 3 個新 UseCase；SeekerViewModel 建構參數從 5 個增至 8 個
+  - `ui/seeker/AskQuestionScreen.kt` — 改用 `domain.seeker.SendMedia` 取代 `SeekerViewModel.SendMedia`
+  - `app/src/test/.../SeekerViewModelTest.kt` — 改用 mocking `ObserveQuestionStatusUseCase`（`MutableSharedFlow`）+ `UnconfinedTestDispatcher` 測試 Flow 驅動的狀態轉換
+  - `app/src/test/.../ExpertViewModelTest.kt` — 補上 `AiRepository` mock 參數
+- **編譯通過**: `./gradlew assembleDebug` ✅
+- **測試通過**: `./gradlew testDebugUnitTest` — 18 全綠 ✅
+- `domain/seeker/` 檔案數：1 → 4（+3 UseCase）
+- `di/SeekerViewModel.kt` 行數：441 → 293（-148 行）
 - **狀態**: ✅ 完成
 - **修改檔案**: `AGENTS.md`
 - **說明**:

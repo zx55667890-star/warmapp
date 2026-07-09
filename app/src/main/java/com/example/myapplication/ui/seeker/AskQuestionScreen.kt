@@ -23,6 +23,7 @@ import androidx.compose.ui.platform.LocalDensity
 import kotlinx.coroutines.delay
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.myapplication.di.SeekerViewModel
+import com.example.myapplication.domain.seeker.SendMedia
 import com.example.myapplication.ui.camera.CameraCaptureScreen
 import com.example.myapplication.ui.seeker.components.AskQuestionHeader
 import com.example.myapplication.ui.seeker.components.AskQuestionInputBar
@@ -72,7 +73,7 @@ fun AskQuestionScreen(
 
     val onSendQuestion = {
         if (selectedMediaList.isNotEmpty() || question.isNotBlank()) {
-            val media = selectedMediaList.map { SeekerViewModel.SendMedia(it.uri, it.isVideo, it.isVoice) }
+            val media = selectedMediaList.map { SendMedia(it.uri, it.isVideo, it.isVoice) }
             viewModel.sendQuestion(question, userId, media)
             question = ""
             selectedMediaList = emptyList()
