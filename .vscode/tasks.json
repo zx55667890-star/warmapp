@@ -1,0 +1,17 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "⚡ 快速部署 (有改代碼用)",
+            "type": "shell",
+            "command": "gradlew.bat installDebug && adb shell monkey -p com.example.myapplication -c android.intent.category.LAUNCHER 1",
+            "group": { "kind": "build", "isDefault": true }
+        },
+        {
+            "label": "🚀 僅重啟 App (沒改代碼用)",
+            "type": "shell",
+            "command": "adb shell am force-stop com.example.myapplication; adb shell monkey -p com.example.myapplication -c android.intent.category.LAUNCHER 1",
+            "group": "none"
+        }
+    ]
+}

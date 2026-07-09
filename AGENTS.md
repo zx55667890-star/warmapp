@@ -16,6 +16,12 @@
 - 編譯指令：`./gradlew installDebug`（自動建置 + 安裝到已連線裝置）
 - 仍需 **git push** 定期備份上 GitHub，但不用每次修改都 push
 
+## Workflow
+1. 修改程式碼
+2. 我先用 `./gradlew assembleDebug --daemon --parallel --offline` 編譯確認沒問題
+3. 沒問題就 git push
+4. 執行 `.\install.bat` 安裝到手機
+
 ## Prerequisites
 - Android SDK：`C:\Users\user\AppData\Local\Android\Sdk`
 - 透過 `adb devices` 確認裝置已連線（支援 USB / 無線偵錯）
