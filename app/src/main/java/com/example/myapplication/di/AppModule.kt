@@ -75,9 +75,9 @@ val appModule = module {
     single { ResetPasswordUseCase(get()) }
     single { LogoutUseCase(get()) }
 
-    single { ValidateQuestionQuotaUseCase(get()) }
-    single { ObserveQuestionStatusUseCase(get()) }
-    single { SendQuestionMediaUseCase(get()) }
+    factory { ValidateQuestionQuotaUseCase(get()) }
+    factory { ObserveQuestionStatusUseCase(get()) }
+    factory { SendQuestionMediaUseCase(get()) }
 
     viewModel { AuthViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     viewModel { ExpertViewModel(get(), get()) }

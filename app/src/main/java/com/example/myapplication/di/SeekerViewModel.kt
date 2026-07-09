@@ -45,10 +45,10 @@ class SeekerViewModel(
     private val matchingRepository: MatchingRepositoryInterface,
     private val aiRepository: AiRepository,
     private val mediaUploader: MediaUploader,
-    private val questionRepository: QuestionRepository = QuestionRepository(firebaseDb),
-    private val validateQuestionQuotaUseCase: ValidateQuestionQuotaUseCase = ValidateQuestionQuotaUseCase(questionRepository),
-    private val observeQuestionStatusUseCase: ObserveQuestionStatusUseCase = ObserveQuestionStatusUseCase(firebaseDb),
-    private val sendQuestionMediaUseCase: SendQuestionMediaUseCase = SendQuestionMediaUseCase(mediaUploader)
+    private val questionRepository: QuestionRepository,
+    private val validateQuestionQuotaUseCase: ValidateQuestionQuotaUseCase,
+    private val observeQuestionStatusUseCase: ObserveQuestionStatusUseCase,
+    private val sendQuestionMediaUseCase: SendQuestionMediaUseCase
 ) : ViewModel() {
 
     private val matchCoordinator = MatchCoordinator(firebaseDb, matchingRepository, aiRepository).apply {
