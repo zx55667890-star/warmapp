@@ -12,5 +12,10 @@
 - `ChatScreen.kt` 內不要加 `drawBackgroundGlow()` / `statusBarsPadding()` / `imePadding()`
 
 ## Development Environment
-- 編輯：`Documents\warmapp`
-- 模擬器編譯：`AndroidStudioProjects\warmapp`（編輯完後需 **git push**，再到另一台 **git pull** — 每次修改完都必須 PUSH，不可遺漏）
+- 編輯 + 編譯都在 `Documents\warmapp`
+- 編譯指令：`./gradlew installDebug`（自動建置 + 安裝到已連線裝置）
+- 仍需 **git push** 定期備份上 GitHub，但不用每次修改都 push
+
+## Prerequisites
+- Android SDK：`C:\Users\user\AppData\Local\Android\Sdk`
+- 透過 `adb devices` 確認裝置已連線（支援 USB / 無線偵錯）
