@@ -6,6 +6,7 @@
   - 只有確定完成、進入下一個任務或修復不同問題的改動才算入次數
 - 背景風格最終方案：`BackgroundGlow.kt` 使用單色 `#2631C9` + 黑色 radial 暗角
 - NAVIGATION EVENT: 使用 `ChatEvent` sealed class + LaunchedEffect collect
+- UI 元件必須嚴格遵守專案已建立的 Composable 命名規範，且狀態提升（State Hoisting）必須做到 ViewModel 層
 
 ## Deprecated / Don't Use
 - `AppTabRow.kt` — 已刪除，導航由 RoleSelectScreen 取代
