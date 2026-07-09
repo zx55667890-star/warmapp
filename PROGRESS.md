@@ -1325,3 +1325,19 @@
 - **編譯通過**: `./gradlew assembleDebug` ✅
 - **測試通過**: `./gradlew testDebugUnitTest` — 全數通過 ✅
 
+---
+
+### 113. 全螢幕 MatchingOverlay 取代 Snackbar + 延遲 activeChatRoomId 至 AI 回應完成
+- **狀態**: ✅ 完成
+- **新增檔案**:
+  - `ui/seeker/MatchingOverlay.kt` — 全螢幕配對中覆蓋層（半透明黑底 + 旋轉 spinner +「配對中請稍後」+「取消配對」按鈕）
+- **修改檔案**:
+  - `ui/seeker/AskQuestionScreen.kt` — 移除 `showSentFeedback` 區域狀態與 Snackbar 回饋；改用 `MatchingOverlay`（條件：`isUserMatching && activeChatRoomId.isBlank() && quotaError == null`）；`showSentFeedback` 參數改為 `seekerUiState.isUserMatching`
+  - `di/SeekerViewModel.kt` — `sendQuestion.onSent()` 不再立即設定 `activeChatRoomId`，改為 AI 回應寫入 Firebase 後（成功/例外）才設定，觸發導航至 ChatScreen
+- **說明**:
+  - Snackbar「問題已送出，正在為您配對專家」改為全螢幕半透明遮罩 MatchingOverlay，視覺更符合配對中等待感
+  - `activeChatRoomId` 延遲設定：送出問題後先顯示 overlay，等 Gemini AI 生成回應並寫入 Firebase 後才跳轉 ChatScreen
+  - 取消配對按鈕呼叫 `viewModel.cancelUserMatching()`（既有實作）
+  - overlay 會在「專家接受配對」（expert_accepted）或「逾期」（expired）時被 `isUserMatching = false` 自動隱藏
+- **commit**: `f20269d`
+
