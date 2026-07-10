@@ -188,13 +188,21 @@ class QuestionRepository(private val firebaseDb: FirebaseDatabase) {
     // Cancel Matching
     // =============================================================
     fun cancelMatching(questionId: String, onComplete: () -> Unit) {
-        val updates = mapOf<String, Any?>(
-            "questions/$questionId" to null,
-            "chatrooms/ai_$questionId" to null
-        )
-        firebaseDb.getReference().updateChildren(updates)
-            .addOnSuccessListener { onComplete() }
-            .addOnFailureListener { onComplete() }
+        val questionRef = firebaseDb.getReference("questions").child(questionId)
+        val chatroomRef = firebaseDb.getReference("chatrooms").child("ai_$questionId")
+        questionRef.removeValue()
+            .addOnSuccessListener {
+                chatroomRef.removeValue()
+                    .addOnSuccessListener { onComplete() }
+                    .addOnFailureListener { e ->
+                        Log.e("CancelMatch", "chatroom remove failed", e)
+                        onComplete()
+                    }
+            }
+            .addOnFailureListener { e ->
+                Log.e("CancelMatch", "question remove failed", e)
+                onComplete()
+            }
     }
 
     // =============================================================
