@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.myapplication.data.repository.AiRepository
 import com.example.myapplication.data.repository.ExpertRepository
+import com.example.myapplication.domain.expert.ExtractLocalTagsUseCase
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
@@ -88,6 +89,15 @@ class ExpertViewModel(
             if (tags.isEmpty()) {
                 sendEvent(ExpertUiEvent.ShowToast("AI 標籤生成失敗，請檢查 API Key 或 Logcat"))
             }
+            onResult(tags)
+        }
+    }
+
+    private val extractLocalTagsUseCase = ExtractLocalTagsUseCase()
+
+    fun extractTagsLocally(expertiseText: String, onResult: (List<String>) -> Unit) {
+        viewModelScope.launch {
+            val tags = extractLocalTagsUseCase(expertiseText)
             onResult(tags)
         }
     }

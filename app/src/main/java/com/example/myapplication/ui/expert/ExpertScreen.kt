@@ -12,11 +12,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.myapplication.di.ExpertViewModel
 import com.example.myapplication.ui.theme.AppColors
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.delay
 
 @Composable
 fun ExpertScreen(viewModel: ExpertViewModel, userId: String, onNavigateToInput: () -> Unit = {}) {
@@ -61,12 +63,9 @@ fun ExpertScreen(viewModel: ExpertViewModel, userId: String, onNavigateToInput: 
                 }
             }
 
-            // 升級：將 QuickLogCard 修改為結構化輸入，並將組合後的結構資料丟給 ViewModel
             item {
-                QuickLogCard(viewModel = viewModel, onLog = { domain, subDomain, problem, tags ->
-                    // 為了配合你目前後端 submitSolution 的單一字串設計，暫時將結構化資料轉為格式化文字儲存
-                    // 未來你的後端資料庫升級後，可以直接將這四個欄位分開寫入 Firebase 欄位
-                    val formattedSolution = "[$domain][$subDomain] $problem | 標籤: ${tags.joinToString(", ")}"
+                QuickLogCard(viewModel = viewModel, onLog = { expertise, tags ->
+                    val formattedSolution = "$expertise | 標籤: ${tags.joinToString(", ")}"
                     viewModel.submitSolution(userId, "Q_ID", formattedSolution)
                 })
             }
@@ -104,23 +103,26 @@ fun ExpertScreen(viewModel: ExpertViewModel, userId: String, onNavigateToInput: 
 }
 
 @Composable
-fun QuickLogCard(viewModel: ExpertViewModel, onLog: (domain: String, subDomain: String, problem: String, tags: List<String>) -> Unit) {
-    var domain by remember { mutableStateOf("") }
-    var subDomain by remember { mutableStateOf("") }
-    var concreteProblem by remember { mutableStateOf("") }
+fun QuickLogCard(viewModel: ExpertViewModel, onLog: (expertise: String, tags: List<String>) -> Unit) {
+    var expertise by remember { mutableStateOf("") }
     var aiTags by remember { mutableStateOf(listOf<String>()) }
     var isAiGenerating by remember { mutableStateOf(false) }
 
-    LaunchedEffect(concreteProblem) {
-        val trimmedProblem = concreteProblem.trim()
-        if (trimmedProblem.length > 5 && domain.isNotBlank()) {
+    val maxCharLimit = 20
+
+    LaunchedEffect(expertise) {
+        val trimmed = expertise.trim()
+        if (trimmed.length > 2) {
             isAiGenerating = true
-            viewModel.fetchTagsFromAi(domain, subDomain, trimmedProblem) { generatedTags ->
+            delay(400)
+
+            viewModel.extractTagsLocally(trimmed) { generatedTags ->
                 aiTags = generatedTags
                 isAiGenerating = false
             }
         } else {
             aiTags = emptyList()
+            isAiGenerating = false
         }
     }
 
@@ -129,81 +131,55 @@ fun QuickLogCard(viewModel: ExpertViewModel, onLog: (domain: String, subDomain: 
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
-            Text("✨ 設定您能解決的專業問題 (插旗解題池)", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Spacer(modifier = Modifier.height(12.dp))
+            Text("✨ 分享您能幫忙解決的事", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("越具體，越能配對到需要您的人！", fontSize = 12.sp, color = AppColors.TextGray, modifier = Modifier.padding(top = 4.dp))
 
-            // 欄位 1：大領域篩選器 (作為配對系統的第一層資料分池過濾)
+            Spacer(modifier = Modifier.height(16.dp))
+
             OutlinedTextField(
-                value = domain,
-                onValueChange = { domain = it },
+                value = expertise,
+                onValueChange = {
+                    if (it.length <= maxCharLimit) {
+                        expertise = it
+                    }
+                },
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text("1. 核心專業領域 (如: Android, iOS, 項目管理)") },
-                singleLine = true,
+                placeholder = { Text("例如：淘寶退貨從台灣到大陸流程") },
+                singleLine = false,
+                minLines = 2,
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedTextColor = AppColors.TextWhite,
                     unfocusedTextColor = AppColors.TextWhite,
                     focusedBorderColor = AppColors.AccentBlue,
-                    unfocusedBorderColor = AppColors.BorderGray,
-                    focusedLabelColor = AppColors.AccentBlue,
-                    unfocusedLabelColor = AppColors.TextGray
-                )
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // 欄位 2：技術子項目 (精準命中 Bigram 拆詞核心項目)
-            OutlinedTextField(
-                value = subDomain,
-                onValueChange = { subDomain = it },
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text("2. 技術子項目 / 框架 (如: CameraX, Koin, Compose)") },
-                singleLine = true,
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedTextColor = AppColors.TextWhite,
-                    unfocusedTextColor = AppColors.TextWhite,
-                    focusedBorderColor = AppColors.AccentBlue,
-                    unfocusedBorderColor = AppColors.BorderGray,
-                    focusedLabelColor = AppColors.AccentBlue,
-                    unfocusedLabelColor = AppColors.TextGray
-                )
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // 欄位 3：具體痛點或錯誤情境 (使用者發問時的比對核心句)
-            OutlinedTextField(
-                value = concreteProblem,
-                onValueChange = { concreteProblem = it },
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text("3. 您最能解決什麼具體的錯誤或痛點情靜？") },
-                minLines = 3,
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedTextColor = AppColors.TextWhite,
-                    unfocusedTextColor = AppColors.TextWhite,
-                    focusedBorderColor = AppColors.AccentBlue,
-                    unfocusedBorderColor = AppColors.BorderGray,
-                    focusedLabelColor = AppColors.AccentBlue,
-                    unfocusedLabelColor = AppColors.TextGray
-                )
+                    unfocusedBorderColor = AppColors.BorderGray
+                ),
+                supportingText = {
+                    Text(
+                        text = "${expertise.length} / $maxCharLimit",
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = TextAlign.End,
+                        color = if (expertise.length == maxCharLimit) Color(0xFFEF5350) else AppColors.TextGray
+                    )
+                }
             )
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // 欄位 4：AI 自動生成的延伸特徵標籤 (消除字串盲區)
-            Text("4. AI 關聯特徵標籤 (配對核心防禦圈)", fontSize = 12.sp, color = AppColors.TextGray)
+            Text("系統自動提取的配對關鍵字", fontSize = 12.sp, color = AppColors.TextGray)
             Spacer(modifier = Modifier.height(6.dp))
-            
+
             if (isAiGenerating) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = AppColors.AccentBlue)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("AI 正在提煉專業特徵...", fontSize = 12.sp, color = AppColors.TextGray)
+                    Text("系統分析中...", fontSize = 12.sp, color = AppColors.TextGray)
                 }
             } else if (aiTags.isNotEmpty()) {
-                // 模擬橫向流式標籤，點擊可刪除不需要的標籤
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    aiTags.forEach { tag ->
+                    aiTags.take(4).forEach { tag ->
                         Box(
                             modifier = Modifier
                                 .background(AppColors.AccentBlue.copy(alpha = 0.15f), shape = RoundedCornerShape(12.dp))
@@ -216,27 +192,24 @@ fun QuickLogCard(viewModel: ExpertViewModel, onLog: (domain: String, subDomain: 
                     }
                 }
             } else {
-                Text("於上方輸入具體問題後自動生成標籤", fontSize = 12.sp, color = AppColors.TextGray.copy(alpha = 0.6f))
+                Text("輸入完成後將自動生成", fontSize = 12.sp, color = AppColors.TextGray.copy(alpha = 0.6f))
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // 發布解題卡按鈕
             Button(
                 onClick = {
-                    if (concreteProblem.isNotBlank() && domain.isNotBlank()) {
-                        onLog(domain.trim(), subDomain.trim(), concreteProblem.trim(), aiTags)
-                        // 提交後重置輸入狀態
-                        subDomain = ""
-                        concreteProblem = ""
+                    if (expertise.isNotBlank()) {
+                        onLog(expertise.trim(), aiTags)
+                        expertise = ""
                         aiTags = emptyList()
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = concreteProblem.isNotBlank() && domain.isNotBlank() && !isAiGenerating,
+                enabled = expertise.isNotBlank() && !isAiGenerating,
                 colors = ButtonDefaults.buttonColors(containerColor = AppColors.AccentGreen)
             ) {
-                Text("發布此解題技能卡", color = Color.Black, fontWeight = FontWeight.Bold)
+                Text("發布此技能", color = Color.Black, fontWeight = FontWeight.Bold)
             }
         }
     }
