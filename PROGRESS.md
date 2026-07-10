@@ -262,8 +262,15 @@
   - MatchingOverlay.kt 新增「正在為您尋找合適的專家」尾綴循環打點動畫（0→3 點，1.5s 循環）
   - AskQuestionScreen.kt 以 `AnimatedVisibility` + `fadeIn/fadeOut(300ms)` 包裹 MatchingOverlay，進出場不再硬切
 
-### 117.
-- [ ] 待規劃
+### 117. Bug 修復：取消配對未清除 Firebase 資料
+- **狀態**: ✅ 完成
+- **說明**:
+  - `cancelMatching()` 原只將 question status 設為 "cancelled"，未刪除資料
+  - 改為 `removeValue()` 刪除 `questions/<id>` + `chatrooms/ai_<id>` 兩個節點
+  - 加入 `Log.e` 輸出刪除失敗原因
 
 ### 118.
+- [ ] 待規劃
+
+### 119.
 - [ ] 待規劃
