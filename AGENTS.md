@@ -15,13 +15,14 @@
 ## Development Environment
 - 編輯 + 編譯都在 `Documents\warmapp`
 - 編譯指令：`./gradlew installDebug`（自動建置 + 安裝到已連線裝置）
-- 仍需 **git push** 定期備份上 GitHub，但不用每次修改都 push
 
 ## Workflow
 1. 修改程式碼
-2. 我先用 `./gradlew assembleDebug --daemon --parallel --offline` 編譯確認沒問題
-3. 沒問題就 git push
+2. 我用 `./gradlew assembleDebug --daemon --parallel --offline` 編譯確認沒問題
+3. 編譯通過後自動 `git add -A && git commit -m "<conventional-commit>" && git push`
 4. 使用者自行 pull + 安裝到手機
+
+> 不再詢問是否 push。每次成功編譯後自動推送。
 
 ## Prerequisites
 - Android SDK：`C:\Users\user\AppData\Local\Android\Sdk`
