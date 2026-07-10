@@ -72,6 +72,14 @@ fun AskQuestionScreen(
         focusRequester.requestFocus()
     }
 
+    var wasMatching by remember { mutableStateOf(false) }
+    LaunchedEffect(seekerUiState.isUserMatching) {
+        if (wasMatching && !seekerUiState.isUserMatching) {
+            focusRequester.requestFocus()
+        }
+        wasMatching = seekerUiState.isUserMatching
+    }
+
     val onSendQuestion = {
         if (selectedMediaList.isNotEmpty() || question.isNotBlank()) {
             focusManager.clearFocus()
