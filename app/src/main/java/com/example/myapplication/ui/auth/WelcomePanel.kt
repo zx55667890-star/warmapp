@@ -26,6 +26,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -70,7 +71,11 @@ fun WelcomePanel(
             border = BorderStroke(1.dp, Color(0xFF444444))
         ) {
             if (isLoading) {
-                CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp, color = Color.White)
+                CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp).testTag("googleSignInLoading"),
+                    strokeWidth = 2.dp,
+                    color = Color.White
+                )
             } else {
                 Text("Google 登入", fontSize = 16.sp)
             }

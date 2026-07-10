@@ -247,8 +247,23 @@
 
 ## 接下來的開發目標 (TODO)
 
-### 115. 
+### 115. UI 自動化測試：WelcomePanel Compose UI Test
+- **狀態**: ✅ 完成
+- **說明**:
+  - 新增 `app/src/androidTest/java/.../ui/auth/WelcomePanelTest.kt`（10 test cases）
+  - WelcomePanel.kt 加入 `testTag("googleSignInLoading")` 支援載入狀態測試
+  - 測試 cover：所有 UI 元素顯示、載入狀態（ProgressIndicator + 按鈕禁用）、所有 callback 觸發（登入/註冊/Google/略過/條款/隱私/checkbox）
+  - 使用 Compose UI Test `v2.createComposeRule()`（StandardTestDispatcher）
+  - 編譯無錯誤/無警告
+
+### 116. MatchingOverlay 動畫強化：進場 fadeIn + 尋找中打點動畫
+- **狀態**: ✅ 完成
+- **說明**:
+  - MatchingOverlay.kt 新增「正在為您尋找合適的專家」尾綴循環打點動畫（0→3 點，1.5s 循環）
+  - AskQuestionScreen.kt 以 `AnimatedVisibility` + `fadeIn/fadeOut(300ms)` 包裹 MatchingOverlay，進出場不再硬切
+
+### 117.
 - [ ] 待規劃
 
-### 116. 
+### 118.
 - [ ] 待規劃

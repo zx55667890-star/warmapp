@@ -5,6 +5,10 @@ import java.io.File
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -143,7 +147,11 @@ fun AskQuestionScreen(
             }
 
             // 全螢幕配對中覆蓋層
-            if (seekerUiState.isUserMatching && seekerUiState.activeChatRoomId.isBlank() && seekerUiState.quotaError == null) {
+            AnimatedVisibility(
+                visible = seekerUiState.isUserMatching && seekerUiState.activeChatRoomId.isBlank() && seekerUiState.quotaError == null,
+                enter = fadeIn(animationSpec = tween(300)),
+                exit = fadeOut(animationSpec = tween(300))
+            ) {
                 MatchingOverlay(
                     onCancel = { viewModel.cancelUserMatching() }
                 )

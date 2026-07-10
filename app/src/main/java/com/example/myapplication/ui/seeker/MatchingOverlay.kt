@@ -35,6 +35,17 @@ fun MatchingOverlay(
         label = "rotation"
     )
 
+    val dotTransition = rememberInfiniteTransition(label = "dots")
+    val dotCount by dotTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 3f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1500, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "dotCount"
+    )
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -75,7 +86,7 @@ fun MatchingOverlay(
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = "正在為您尋找合適的專家",
+                text = "正在為您尋找合適的專家" + ".".repeat(dotCount.toInt()),
                 fontSize = 14.sp,
                 color = Color.White.copy(alpha = 0.6f),
                 textAlign = TextAlign.Center
