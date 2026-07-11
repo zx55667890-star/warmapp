@@ -6,6 +6,8 @@ import com.example.myapplication.BuildConfig
 import com.google.ai.client.generativeai.GenerativeModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.time.Instant
+import java.time.ZoneId
 import java.util.concurrent.atomic.AtomicInteger
 
 class ExtractLocalTagsUseCase(private val sharedPrefs: SharedPreferences) {
@@ -21,25 +23,31 @@ class ExtractLocalTagsUseCase(private val sharedPrefs: SharedPreferences) {
     )
 
     private val roundRobin = AtomicInteger(0)
+
+    private fun todayStartMs(): Long {
+        val now = Instant.now()
+        return now.atZone(ZoneId.of("America/Los_Angeles")).toLocalDate().atStartOfDay(ZoneId.of("America/Los_Angeles")).toInstant().toEpochMilli()
+    }
     private val counterLock = Any()
     private val rpmCounters = models.associate { it.name to mutableListOf<Long>() }
 
     private val rpdCounters = models.associate { entry ->
         val saved = sharedPrefs.getStringSet("rpd_${entry.name}", emptySet()) ?: emptySet()
-        val now = System.currentTimeMillis()
-        val valid = saved.mapNotNull { it.toLongOrNull() }.filter { it >= now - 86_400_000 }
+        val dayStart = todayStartMs()
+        val valid = saved.mapNotNull { it.toLongOrNull() }.filter { it >= dayStart }
         entry.name to valid.toMutableList()
     }
 
     private fun canUseModel(name: String, rpmLimit: Int, rpdLimit: Int): Boolean {
         val now = System.currentTimeMillis()
+        val dayStart = todayStartMs()
         synchronized(counterLock) {
             val rpmList = rpmCounters[name]!!
             rpmList.removeAll { it < now - 60_000 }
             if (rpmList.size >= rpmLimit) return false
 
             val rpdList = rpdCounters[name]!!
-            rpdList.removeAll { it < now - 86_400_000 }
+            rpdList.removeAll { it < dayStart }
             if (rpdList.size >= rpdLimit) {
                 Log.d("TagExtract", "⏭️ $name RPD 已滿 (${rpdList.size}/$rpdLimit)")
                 return false
@@ -50,11 +58,12 @@ class ExtractLocalTagsUseCase(private val sharedPrefs: SharedPreferences) {
 
     private fun recordRequest(name: String) {
         val now = System.currentTimeMillis()
+        val dayStart = todayStartMs()
         synchronized(counterLock) {
             rpmCounters[name]!!.add(now)
             rpdCounters[name]!!.add(now)
             val rpdList = rpdCounters[name]!!
-            rpdList.removeAll { it < now - 86_400_000 }
+            rpdList.removeAll { it < dayStart }
             sharedPrefs.edit()
                 .putStringSet("rpd_$name", rpdList.map { it.toString() }.toSet())
                 .apply()
