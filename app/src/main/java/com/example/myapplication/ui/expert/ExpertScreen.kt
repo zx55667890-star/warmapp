@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.*
@@ -102,6 +103,7 @@ fun ExpertScreen(viewModel: ExpertViewModel, userId: String, onNavigateToInput: 
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun QuickLogCard(viewModel: ExpertViewModel, onLog: (expertise: String, tags: List<String>) -> Unit) {
     var expertise by remember { mutableStateOf("") }
@@ -175,9 +177,10 @@ fun QuickLogCard(viewModel: ExpertViewModel, onLog: (expertise: String, tags: Li
                     Text("系統分析中...", fontSize = 12.sp, color = AppColors.TextGray)
                 }
             } else if (aiTags.isNotEmpty()) {
-                Row(
+                FlowRow(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     aiTags.take(4).forEach { tag ->
                         Box(
