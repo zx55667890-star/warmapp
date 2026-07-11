@@ -10,6 +10,7 @@ import java.util.concurrent.atomic.AtomicInteger
 class ExtractLocalTagsUseCase {
 
     private data class ModelEntry(val name: String, val rpmLimit: Int, val rpdLimit: Int, val model: GenerativeModel)
+
     private val models = listOf(
         ModelEntry("gemini-3.1-flash-lite", 15, 500, GenerativeModel("gemini-3.1-flash-lite", BuildConfig.GEMINI_API_KEY)),
         ModelEntry("gemini-2.5-flash-lite", 10, 20, GenerativeModel("gemini-2.5-flash-lite", BuildConfig.GEMINI_API_KEY)),
@@ -19,28 +20,30 @@ class ExtractLocalTagsUseCase {
     )
 
     private val roundRobin = AtomicInteger(0)
+    private val counterLock = Any()
     private val rpmCounters = models.associate { it.name to mutableListOf<Long>() }
     private val rpdCounters = models.associate { it.name to mutableListOf<Long>() }
 
     private fun canUseModel(name: String, rpmLimit: Int, rpdLimit: Int): Boolean {
         val now = System.currentTimeMillis()
-        synchronized(rpmCounters) {
-            val timestamps = rpmCounters[name]!!
-            timestamps.removeAll { it < now - 60_000 }
-            if (timestamps.size >= rpmLimit) return false
-        }
-        synchronized(rpdCounters) {
-            val timestamps = rpdCounters[name]!!
-            timestamps.removeAll { it < now - 86_400_000 }
-            if (timestamps.size >= rpdLimit) return false
+        synchronized(counterLock) {
+            val rpmList = rpmCounters[name]!!
+            rpmList.removeAll { it < now - 60_000 }
+            if (rpmList.size >= rpmLimit) return false
+
+            val rpdList = rpdCounters[name]!!
+            rpdList.removeAll { it < now - 86_400_000 }
+            if (rpdList.size >= rpdLimit) return false
         }
         return true
     }
 
     private fun recordRequest(name: String) {
         val now = System.currentTimeMillis()
-        synchronized(rpmCounters) { rpmCounters[name]!!.add(now) }
-        synchronized(rpdCounters) { rpdCounters[name]!!.add(now) }
+        synchronized(counterLock) {
+            rpmCounters[name]!!.add(now)
+            rpdCounters[name]!!.add(now)
+        }
     }
 
     suspend operator fun invoke(text: String): List<String> = withContext(Dispatchers.IO) {
@@ -54,13 +57,16 @@ class ExtractLocalTagsUseCase {
             文字內容：$text
         """.trimIndent()
 
-        val startIndex = roundRobin.getAndIncrement() % models.size
+        val rawIndex = roundRobin.getAndIncrement()
+        val startIndex = (rawIndex and Int.MAX_VALUE) % models.size
+
         for (i in models.indices) {
             val entry = models[(startIndex + i) % models.size]
             if (!canUseModel(entry.name, entry.rpmLimit, entry.rpdLimit)) {
                 Log.d("TagExtract", "⏭️ ${entry.name} 限額已滿，跳過")
                 continue
             }
+
             recordRequest(entry.name)
             try {
                 val response = entry.model.generateContent(prompt)

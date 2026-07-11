@@ -101,6 +101,7 @@ fun ExpertScreen(viewModel: ExpertViewModel, tagViewModel: TagViewModel, userId:
 @Composable
 fun QuickLogCard(tagViewModel: TagViewModel, onLog: (expertise: String, tags: List<String>) -> Unit) {
     var expertise by remember { mutableStateOf("") }
+    var isGenerating by remember { mutableStateOf(false) }
 
     val maxCharLimit = 20
 
@@ -117,7 +118,7 @@ fun QuickLogCard(tagViewModel: TagViewModel, onLog: (expertise: String, tags: Li
             OutlinedTextField(
                 value = expertise,
                 onValueChange = {
-                    if (it.length <= maxCharLimit) {
+                    if (it.length <= maxCharLimit && !isGenerating) {
                         expertise = it
                     }
                 },
@@ -125,6 +126,7 @@ fun QuickLogCard(tagViewModel: TagViewModel, onLog: (expertise: String, tags: Li
                 placeholder = { Text("例如：淘寶退貨從台灣到大陸流程") },
                 singleLine = false,
                 minLines = 2,
+                enabled = !isGenerating,
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedTextColor = AppColors.TextWhite,
                     unfocusedTextColor = AppColors.TextWhite,
@@ -147,17 +149,31 @@ fun QuickLogCard(tagViewModel: TagViewModel, onLog: (expertise: String, tags: Li
                 onClick = {
                     val text = expertise.trim()
                     if (text.isNotBlank()) {
+                        isGenerating = true
                         expertise = ""
                         tagViewModel.extractTags(text) { tags ->
                             onLog(text, tags)
+                            isGenerating = false
                         }
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = expertise.isNotBlank(),
+                enabled = expertise.isNotBlank() && !isGenerating,
                 colors = ButtonDefaults.buttonColors(containerColor = AppColors.AccentGreen)
             ) {
-                Text("發布此技能", color = Color.Black, fontWeight = FontWeight.Bold)
+                if (isGenerating) {
+                    Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            strokeWidth = 2.dp,
+                            color = Color.Black
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("AI 關鍵字生成中...", color = Color.Black, fontWeight = FontWeight.Bold)
+                    }
+                } else {
+                    Text("發布此技能", color = Color.Black, fontWeight = FontWeight.Bold)
+                }
             }
         }
     }
