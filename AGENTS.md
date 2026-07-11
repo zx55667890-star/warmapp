@@ -1,29 +1,55 @@
-# Project Rules for AI Agents
+# AGENTS.md — 專案對話紀錄
 
-## Critical Rules
-- 每 5 次修改程式碼後，更新 `PROGRESS.md`（新增 entry 記錄修改檔案、原因、commit hash）
-  - 規則：針對同一個問題的 debugging（如黑條問題的多種嘗試）**只算 1 次修改**，不算入 5 次計數
-  - 只有確定完成、進入下一個任務或修復不同問題的改動才算入次數
-- 背景風格最終方案：`BackgroundGlow.kt` 使用單色 `#2631C9` + 黑色 radial 暗角
-- NAVIGATION EVENT: 使用 `ChatEvent` sealed class + LaunchedEffect collect
-- UI 元件必須嚴格遵守專案已建立的 Composable 命名規範，且狀態提升（State Hoisting）必須做到 ViewModel 層
+## 專案概述
+Android App（warmapp），使用 Jetpack Compose + Firebase + Koin，目標是建立一個知識技能記錄平台，包含專家模式（Expert）的知識標籤提取功能。
 
-## Deprecated / Don't Use
-- `AppTabRow.kt` — 已刪除，導航由 RoleSelectScreen 取代
-- `ChatScreen.kt` 內不要加 `drawBackgroundGlow()` / `statusBarsPadding()` / `imePadding()`
+## 技術棧
+- Kotlin, Jetpack Compose, Material3
+- Firebase (Realtime Database, Auth, Storage, Functions, Messaging)
+- Koin (DI)
+- Google GenAI SDK (`com.google.genai:google-genai:1.61.0`)
+- Coil, Media3 ExoPlayer, CameraX
 
-## Development Environment
-- 編輯 + 編譯都在 `Documents\warmapp`
-- 編譯指令：`./gradlew installDebug`（自動建置 + 安裝到已連線裝置）
+## 關鍵對話摘要
 
-## Workflow
-1. 修改程式碼
-2. 我用 `./gradlew assembleDebug --daemon --parallel --offline` 編譯確認沒問題
-3. 編譯通過後自動 `git add -A && git commit -m "<conventional-commit>" && git push`
-4. 使用者自行 pull + 安裝到手機
+### 1. 模型輪換機制
+- 5 個 Gemini 模型輪換（後移除 3 Flash Preview），round-robin 分配請求
+- `AtomicInteger` 搭配 `(rawIndex and Int.MAX_VALUE) % models.size` 實現
 
-> 不再詢問是否 push。每次成功編譯後自動推送。
+### 2. 配額管理（RPM / RPD）
+- **RPM**: 滑動 60 秒窗口，in-memory `mutableListOf<Long>()`
+- **RPD**: 太平洋午夜重置，持久化到 `SharedPreferences`（`Set<String>` 時間戳）
+- RPD 窗口 = `America/Los_Angeles` 時區的 `todayStartMs()`，非滑動 24h
 
-## Prerequisites
-- Android SDK：`C:\Users\user\AppData\Local\Android\Sdk`
-- 透過 `adb devices` 確認裝置已連線（支援 USB / 無線偵錯）
+### 3. 伺服器時間校正
+- Firebase `.info/serverTimeOffset` 取得偏差
+- `withTimeoutOrNull(3000)` 防死鎖，超時降級回本地時間
+
+### 4. 配額封鎖（Quota Ban）
+- 偵測 `Quota exceeded` 或 HTTP `429` → 封鎖至太平洋午夜
+- 舊 ban 遷移：`migrateOldBans()` 校正超過明日午夜的封鎖
+
+### 5. Thinking Budget
+- Lite 模型：不支援 thinking，傳空 config
+- 非 Lite 模型：`thinkingBudget(0)` 關閉 thinking（3 Flash Preview 無效）
+
+### 6. SDK 遷移
+- `com.google.ai.client.generativeai:generativeai:0.9.0` → `com.google.genai:google-genai:1.61.0`
+- `AiRepository.kt` 和 `ExtractLocalTagsUseCase.kt` 都使用新 `Client` API
+- `response.text()` 為 `String?`，需處理 null
+
+### 7. 打包衝突
+- `META-INF/INDEX.LIST` 和 `META-INF/DEPENDENCIES` 排除
+
+## 建構指令
+```powershell
+cd C:\Users\zx556\warmapp
+.\gradlew.bat assembleDebug --daemon --parallel
+# 快取過期時加 --no-configuration-cache
+```
+
+## 測試
+- 目前無整合測試流程，只能裝到裝置上手動測試
+
+## 已知待解決問題
+見 PROGRESS.md「未解決問題」
