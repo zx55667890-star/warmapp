@@ -36,7 +36,7 @@ class ExtractLocalTagsUseCase {
         val pureChineseChunks = text.replace(Regex("[^\\p{IsHan}]+"), " ").split(" ")
 
         pureChineseChunks.filter { it.length >= 2 }.forEach { chunk ->
-            val bigrams = chunk.windowed(2)
+            val bigrams = chunk.windowed(2, step = 2)
             bigrams.forEach { word ->
                 val hasStopWord = stopWords.any { stopWord -> word.contains(stopWord) }
                 if (!hasStopWord) {
