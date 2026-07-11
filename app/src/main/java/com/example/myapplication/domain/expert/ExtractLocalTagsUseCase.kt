@@ -13,8 +13,8 @@ class ExtractLocalTagsUseCase {
     private val models = listOf(
         ModelEntry("gemini-2.5-flash-lite", 10, GenerativeModel("gemini-2.5-flash-lite", BuildConfig.GEMINI_API_KEY)),
         ModelEntry("gemini-3.1-flash-lite", 15, GenerativeModel("gemini-3.1-flash-lite", BuildConfig.GEMINI_API_KEY)),
-        ModelEntry("gemma-4-31b", 15, GenerativeModel("gemma-4-31b", BuildConfig.GEMINI_API_KEY)),
-        ModelEntry("gemma-4-26b", 15, GenerativeModel("gemma-4-26b", BuildConfig.GEMINI_API_KEY)),
+        ModelEntry("gemma-4-31b-it", 15, GenerativeModel("gemma-4-31b-it", BuildConfig.GEMINI_API_KEY)),
+        ModelEntry("gemma-4-26b-it", 15, GenerativeModel("gemma-4-26b-it", BuildConfig.GEMINI_API_KEY)),
         ModelEntry("gemini-3.5-flash", 5, GenerativeModel("gemini-3.5-flash", BuildConfig.GEMINI_API_KEY)),
         ModelEntry("gemini-2.5-flash", 5, GenerativeModel("gemini-2.5-flash", BuildConfig.GEMINI_API_KEY)),
         ModelEntry("gemini-3-flash", 5, GenerativeModel("gemini-3-flash", BuildConfig.GEMINI_API_KEY)),
