@@ -1,5 +1,6 @@
 package com.example.myapplication.domain.expert
 
+import android.content.SharedPreferences
 import android.util.Log
 import com.example.myapplication.BuildConfig
 import com.google.ai.client.generativeai.GenerativeModel
@@ -7,7 +8,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.concurrent.atomic.AtomicInteger
 
-class ExtractLocalTagsUseCase {
+class ExtractLocalTagsUseCase(private val sharedPrefs: SharedPreferences) {
 
     private data class ModelEntry(val name: String, val rpmLimit: Int, val rpdLimit: Int, val model: GenerativeModel)
 
@@ -23,10 +24,15 @@ class ExtractLocalTagsUseCase {
     private val counterLock = Any()
     private val rpmCounters = models.associate { it.name to mutableListOf<Long>() }
     private val rpdCounters = models.associate { it.name to mutableListOf<Long>() }
-    private val quotaBlacklist = mutableSetOf<String>()
+    private val banPrefKey = "quota_ban_"
 
     private fun canUseModel(name: String, rpmLimit: Int, rpdLimit: Int): Boolean {
         val now = System.currentTimeMillis()
+        val banUntil = sharedPrefs.getLong("$banPrefKey$name", 0L)
+        if (banUntil > now) {
+            Log.d("TagExtract", "⏭️ $name 黑名單中，剩餘 ${(banUntil - now) / 60_000} 分鐘")
+            return false
+        }
         synchronized(counterLock) {
             val rpmList = rpmCounters[name]!!
             rpmList.removeAll { it < now - 60_000 }
@@ -63,12 +69,7 @@ class ExtractLocalTagsUseCase {
 
         for (i in models.indices) {
             val entry = models[(startIndex + i) % models.size]
-            if (entry.name in quotaBlacklist) {
-                Log.d("TagExtract", "⏭️ ${entry.name} 已達配額黑名單，跳過")
-                continue
-            }
             if (!canUseModel(entry.name, entry.rpmLimit, entry.rpdLimit)) {
-                Log.d("TagExtract", "⏭️ ${entry.name} 限額已滿，跳過")
                 continue
             }
 
@@ -80,8 +81,8 @@ class ExtractLocalTagsUseCase {
             } catch (e: Exception) {
                 Log.w("TagExtract", "❌ 模型 ${entry.name} 失敗: ${e.message}")
                 if (e.message?.contains("Quota exceeded", ignoreCase = true) == true) {
-                    quotaBlacklist.add(entry.name)
-                    Log.d("TagExtract", "🚫 ${entry.name} 已加入 session 黑名單")
+                    sharedPrefs.edit().putLong("$banPrefKey${entry.name}", System.currentTimeMillis() + 86_400_000).apply()
+                    Log.d("TagExtract", "🚫 ${entry.name} 已封鎖 24 小時")
                 }
             }
         }
