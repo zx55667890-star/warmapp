@@ -11,8 +11,8 @@ class ExtractLocalTagsUseCase {
 
     private data class ModelEntry(val name: String, val rpmLimit: Int, val rpdLimit: Int, val model: GenerativeModel)
     private val models = listOf(
-        ModelEntry("gemini-2.5-flash-lite", 10, 20, GenerativeModel("gemini-2.5-flash-lite", BuildConfig.GEMINI_API_KEY)),
         ModelEntry("gemini-3.1-flash-lite", 15, 500, GenerativeModel("gemini-3.1-flash-lite", BuildConfig.GEMINI_API_KEY)),
+        ModelEntry("gemini-2.5-flash-lite", 10, 20, GenerativeModel("gemini-2.5-flash-lite", BuildConfig.GEMINI_API_KEY)),
         ModelEntry("gemini-3.5-flash", 5, 20, GenerativeModel("gemini-3.5-flash", BuildConfig.GEMINI_API_KEY)),
         ModelEntry("gemini-2.5-flash", 5, 20, GenerativeModel("gemini-2.5-flash", BuildConfig.GEMINI_API_KEY)),
         ModelEntry("gemini-3-flash", 5, 20, GenerativeModel("gemini-3-flash", BuildConfig.GEMINI_API_KEY)),
