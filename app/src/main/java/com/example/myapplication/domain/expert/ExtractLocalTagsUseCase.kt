@@ -29,7 +29,6 @@ class ExtractLocalTagsUseCase(
         ModelEntry("gemini-2.5-flash-lite", 10, 20, false),
         ModelEntry("gemini-3.5-flash", 5, 20, true),
         ModelEntry("gemini-2.5-flash", 5, 20, true),
-        ModelEntry("gemini-3-flash-preview", 5, 20, true),
     )
 
     private val client = Client.builder().apiKey(BuildConfig.GEMINI_API_KEY).build()
