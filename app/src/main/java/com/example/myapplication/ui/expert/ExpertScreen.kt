@@ -118,7 +118,7 @@ fun QuickLogCard(viewModel: ExpertViewModel, onLog: (expertise: String, tags: Li
             isAiGenerating = true
             delay(400)
 
-            viewModel.extractTagsLocally(trimmed) { generatedTags ->
+            viewModel.extractTags(trimmed) { generatedTags ->
                 aiTags = generatedTags
                 isAiGenerating = false
             }

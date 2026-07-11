@@ -95,7 +95,7 @@ class ExpertViewModel(
 
     private val extractLocalTagsUseCase = ExtractLocalTagsUseCase()
 
-    fun extractTagsLocally(expertiseText: String, onResult: (List<String>) -> Unit) {
+    fun extractTags(expertiseText: String, onResult: (List<String>) -> Unit) {
         viewModelScope.launch {
             val tags = extractLocalTagsUseCase(expertiseText)
             onResult(tags)
