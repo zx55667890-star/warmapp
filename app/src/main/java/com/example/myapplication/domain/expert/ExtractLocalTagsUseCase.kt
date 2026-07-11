@@ -5,6 +5,7 @@ import com.example.myapplication.BuildConfig
 import com.google.ai.client.generativeai.GenerativeModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.util.concurrent.atomic.AtomicInteger
 
 class ExtractLocalTagsUseCase {
 
@@ -19,6 +20,25 @@ class ExtractLocalTagsUseCase {
         ModelEntry("gemini-3-flash", 5, GenerativeModel("gemini-3-flash", BuildConfig.GEMINI_API_KEY)),
     )
 
+    private val roundRobin = AtomicInteger(0)
+    private val rpmCounters = models.associate { it.name to mutableListOf<Long>() }
+
+    private fun canUseModel(name: String, rpmHint: Int): Boolean {
+        val now = System.currentTimeMillis()
+        val windowStart = now - 60_000
+        synchronized(rpmCounters) {
+            val timestamps = rpmCounters[name]!!
+            timestamps.removeAll { it < windowStart }
+            return timestamps.size < rpmHint
+        }
+    }
+
+    private fun recordRequest(name: String) {
+        synchronized(rpmCounters) {
+            rpmCounters[name]!!.add(System.currentTimeMillis())
+        }
+    }
+
     suspend operator fun invoke(text: String): List<String> = withContext(Dispatchers.IO) {
         val prompt = """
             請從以下文字中提取 4 個最核心的關鍵字標籤。
@@ -30,7 +50,14 @@ class ExtractLocalTagsUseCase {
             文字內容：$text
         """.trimIndent()
 
-        for (entry in models) {
+        val startIndex = roundRobin.getAndIncrement() % models.size
+        for (i in models.indices) {
+            val entry = models[(startIndex + i) % models.size]
+            if (!canUseModel(entry.name, entry.rpmHint)) {
+                Log.d("ExtractTags", "⏭️ ${entry.name} RPM 已滿，跳過")
+                continue
+            }
+            recordRequest(entry.name)
             try {
                 val response = entry.model.generateContent(prompt)
                 Log.d("ExtractTags", "✅ 使用模型: ${entry.name} (${entry.rpmHint} RPM)")
