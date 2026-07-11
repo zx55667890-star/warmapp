@@ -19,7 +19,6 @@ import androidx.compose.ui.unit.sp
 import com.example.myapplication.di.ExpertViewModel
 import com.example.myapplication.ui.theme.AppColors
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.delay
 
 @Composable
 fun ExpertScreen(viewModel: ExpertViewModel, userId: String, onNavigateToInput: () -> Unit = {}) {
@@ -112,22 +111,6 @@ fun QuickLogCard(viewModel: ExpertViewModel, onLog: (expertise: String, tags: Li
 
     val maxCharLimit = 20
 
-    LaunchedEffect(expertise) {
-        val trimmed = expertise.trim()
-        if (trimmed.length > 2) {
-            isAiGenerating = true
-            delay(400)
-
-            viewModel.extractTags(trimmed) { generatedTags ->
-                aiTags = generatedTags
-                isAiGenerating = false
-            }
-        } else {
-            aiTags = emptyList()
-            isAiGenerating = false
-        }
-    }
-
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
@@ -195,17 +178,23 @@ fun QuickLogCard(viewModel: ExpertViewModel, onLog: (expertise: String, tags: Li
                     }
                 }
             } else {
-                Text("輸入完成後將自動生成", fontSize = 12.sp, color = AppColors.TextGray.copy(alpha = 0.6f))
+                Text("發布後將自動提取關鍵字", fontSize = 12.sp, color = AppColors.TextGray.copy(alpha = 0.6f))
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
             Button(
                 onClick = {
-                    if (expertise.isNotBlank()) {
-                        onLog(expertise.trim(), aiTags)
-                        expertise = ""
-                        aiTags = emptyList()
+                    val text = expertise.trim()
+                    if (text.isNotBlank()) {
+                        isAiGenerating = true
+                        viewModel.extractTags(text) { tags ->
+                            aiTags = tags
+                            isAiGenerating = false
+                            onLog(text, tags)
+                            expertise = ""
+                            aiTags = emptyList()
+                        }
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
