@@ -23,16 +23,16 @@ class ExtractLocalTagsUseCase(private val sharedPrefs: SharedPreferences) {
     private val roundRobin = AtomicInteger(0)
     private val counterLock = Any()
     private val rpmCounters = models.associate { it.name to mutableListOf<Long>() }
-    private val rpdCounters = models.associate { it.name to mutableListOf<Long>() }
-    private val banPrefKey = "quota_ban_"
+
+    private val rpdCounters = models.associate { entry ->
+        val saved = sharedPrefs.getStringSet("rpd_${entry.name}", emptySet()) ?: emptySet()
+        val now = System.currentTimeMillis()
+        val valid = saved.mapNotNull { it.toLongOrNull() }.filter { it >= now - 86_400_000 }
+        entry.name to valid.toMutableList()
+    }
 
     private fun canUseModel(name: String, rpmLimit: Int, rpdLimit: Int): Boolean {
         val now = System.currentTimeMillis()
-        val banUntil = sharedPrefs.getLong("$banPrefKey$name", 0L)
-        if (banUntil > now) {
-            Log.d("TagExtract", "⏭️ $name 黑名單中，剩餘 ${(banUntil - now) / 60_000} 分鐘")
-            return false
-        }
         synchronized(counterLock) {
             val rpmList = rpmCounters[name]!!
             rpmList.removeAll { it < now - 60_000 }
@@ -40,7 +40,10 @@ class ExtractLocalTagsUseCase(private val sharedPrefs: SharedPreferences) {
 
             val rpdList = rpdCounters[name]!!
             rpdList.removeAll { it < now - 86_400_000 }
-            if (rpdList.size >= rpdLimit) return false
+            if (rpdList.size >= rpdLimit) {
+                Log.d("TagExtract", "⏭️ $name RPD 已滿 (${rpdList.size}/$rpdLimit)")
+                return false
+            }
         }
         return true
     }
@@ -50,6 +53,11 @@ class ExtractLocalTagsUseCase(private val sharedPrefs: SharedPreferences) {
         synchronized(counterLock) {
             rpmCounters[name]!!.add(now)
             rpdCounters[name]!!.add(now)
+            val rpdList = rpdCounters[name]!!
+            rpdList.removeAll { it < now - 86_400_000 }
+            sharedPrefs.edit()
+                .putStringSet("rpd_$name", rpdList.map { it.toString() }.toSet())
+                .apply()
         }
     }
 
@@ -80,10 +88,6 @@ class ExtractLocalTagsUseCase(private val sharedPrefs: SharedPreferences) {
                 return@withContext response.text?.split(",")?.map { it.trim() }?.filter { it.isNotEmpty() }?.take(4) ?: emptyList()
             } catch (e: Exception) {
                 Log.w("TagExtract", "❌ 模型 ${entry.name} 失敗: ${e.message}")
-                if (e.message?.contains("Quota exceeded", ignoreCase = true) == true) {
-                    sharedPrefs.edit().putLong("$banPrefKey${entry.name}", System.currentTimeMillis() + 86_400_000).apply()
-                    Log.d("TagExtract", "🚫 ${entry.name} 已封鎖 24 小時")
-                }
             }
         }
         Log.e("TagExtract", "所有模型皆失敗，回傳空標籤")
