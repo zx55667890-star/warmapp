@@ -103,8 +103,21 @@ class ExtractLocalTagsUseCase(
         }
     }
 
+    private fun migrateOldBans() {
+        val nextMidnight = todayStartMs() + 86_400_000
+        models.forEach { entry ->
+            val key = "quota_banned_${entry.name}"
+            val existing = sharedPrefs.getLong(key, 0L)
+            if (existing > nextMidnight) {
+                sharedPrefs.edit().putLong(key, nextMidnight).apply()
+                Log.d("TagExtract", "🔄 ${entry.name} ban 已校正至太平洋午夜")
+            }
+        }
+    }
+
     suspend operator fun invoke(text: String): List<String> = withContext(Dispatchers.IO) {
         ensureOffset()
+        migrateOldBans()
 
         val prompt = """
             請從以下文字中提取 4 個最核心的關鍵字標籤。
