@@ -27,7 +27,7 @@ class ExtractLocalTagsUseCase(
         ModelEntry("gemini-2.5-flash-lite", 10, 20, GenerativeModel("gemini-2.5-flash-lite", BuildConfig.GEMINI_API_KEY)),
         ModelEntry("gemini-3.5-flash", 5, 20, GenerativeModel("gemini-3.5-flash", BuildConfig.GEMINI_API_KEY)),
         ModelEntry("gemini-2.5-flash", 5, 20, GenerativeModel("gemini-2.5-flash", BuildConfig.GEMINI_API_KEY)),
-        ModelEntry("gemini-3-flash", 5, 20, GenerativeModel("gemini-3-flash", BuildConfig.GEMINI_API_KEY)),
+        ModelEntry("gemini-3-flash-preview", 5, 20, GenerativeModel("gemini-3-flash-preview", BuildConfig.GEMINI_API_KEY)),
     )
 
     private val roundRobin = AtomicInteger(0)
