@@ -69,6 +69,13 @@ class ExtractLocalTagsUseCase(
     private fun canUseModel(name: String, rpmLimit: Int, rpdLimit: Int): Boolean {
         val now = nowMs()
         val dayStart = todayStartMs()
+
+        val bannedUntil = sharedPrefs.getLong("quota_banned_$name", 0L)
+        if (bannedUntil > now) {
+            Log.d("TagExtract", "⏭️ $name 伺服器配額已滿，封鎖至 ${Instant.ofEpochMilli(bannedUntil).atZone(ZoneId.of("America/Los_Angeles"))}")
+            return false
+        }
+
         synchronized(counterLock) {
             val rpmList = rpmCounters[name]!!
             rpmList.removeAll { it < now - 60_000 }
@@ -127,6 +134,11 @@ class ExtractLocalTagsUseCase(
                 return@withContext response.text?.split(",")?.map { it.trim() }?.filter { it.isNotEmpty() }?.take(4) ?: emptyList()
             } catch (e: Exception) {
                 Log.w("TagExtract", "❌ 模型 ${entry.name} 失敗: ${e.message}")
+                if (e.message?.contains("Quota exceeded", ignoreCase = true) == true) {
+                    val banUntil = nowMs() + 86_400_000
+                    sharedPrefs.edit().putLong("quota_banned_${entry.name}", banUntil).apply()
+                    Log.d("TagExtract", "🚫 ${entry.name} 已封鎖 24 小時")
+                }
             }
         }
         Log.e("TagExtract", "所有模型皆失敗，回傳空標籤")
