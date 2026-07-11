@@ -8,7 +8,7 @@ import kotlinx.coroutines.withContext
 class ExtractLocalTagsUseCase {
 
     private val generativeModel = GenerativeModel(
-        modelName = "gemini-1.5-flash",
+        modelName = "gemini-2.5-flash-lite",
         apiKey = BuildConfig.GEMINI_API_KEY
     )
 
