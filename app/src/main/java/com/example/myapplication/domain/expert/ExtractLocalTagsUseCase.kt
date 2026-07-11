@@ -1,28 +1,33 @@
 package com.example.myapplication.domain.expert
 
-import com.huaban.analysis.jieba.JiebaSegmenter
+import com.example.myapplication.BuildConfig
+import com.google.ai.client.generativeai.GenerativeModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 class ExtractLocalTagsUseCase {
 
-    private val segmenter = JiebaSegmenter()
-    private val priorityKeywords = setOf("Android", "iOS", "Compose", "淘寶", "台積電")
+    private val generativeModel = GenerativeModel(
+        modelName = "gemini-1.5-flash",
+        apiKey = BuildConfig.GEMINI_API_KEY
+    )
 
-    suspend operator fun invoke(text: String): List<String> = withContext(Dispatchers.Default) {
-        val segments = segmenter.sentenceProcess(text)
-        val filteredTags = segments.filter { word ->
-            word.length >= 2 && !isStopWord(word)
-        }.toMutableSet()
+    suspend operator fun invoke(text: String): List<String> = withContext(Dispatchers.IO) {
+        val prompt = """
+            請從以下文字中提取 4 個最核心的關鍵字標籤。
+            要求：
+            1. 只回傳標籤內容，用逗號分隔 (例如：台積電,股票,投資,理財)。
+            2. 不要包含任何解釋、序號或符號。
+            3. 處理「台積電」、「比特幣」等熱門專有名詞時，請務必完整保留，不要拆開。
+            
+            文字內容：$text
+        """.trimIndent()
 
-        return@withContext filteredTags.toList()
-            .sortedWith(compareByDescending<String> { priorityKeywords.contains(it) }
-                .thenByDescending { it.length })
-            .take(5)
-    }
-
-    private fun isStopWord(word: String): Boolean {
-        val stopWords = setOf("的", "了", "和", "從", "到", "在", "是", "嗎", "呢", "啊", "買", "賣")
-        return stopWords.contains(word)
+        try {
+            val response = generativeModel.generateContent(prompt)
+            response.text?.split(",")?.map { it.trim() }?.filter { it.isNotEmpty() }?.take(4) ?: emptyList()
+        } catch (e: Exception) {
+            emptyList()
+        }
     }
 }
