@@ -42,6 +42,11 @@ android {
     lint {
         disable.add("UnsafeOptInUsageError")
     }
+
+    packaging {
+        resources.excludes.add("META-INF/INDEX.LIST")
+        resources.excludes.add("META-INF/DEPENDENCIES")
+    }
 }
 
 kotlin {
@@ -97,7 +102,7 @@ dependencies {
     implementation("androidx.navigation:navigation-compose:2.8.0")
 
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.9.0")
-    implementation("com.google.ai.client.generativeai:generativeai:0.9.0")
+    implementation("com.google.genai:google-genai:1.61.0")
 
     testImplementation(libs.junit)
     testImplementation("io.mockk:mockk:1.13.5")

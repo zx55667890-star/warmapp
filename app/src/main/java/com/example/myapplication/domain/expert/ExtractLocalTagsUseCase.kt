@@ -3,11 +3,13 @@ package com.example.myapplication.domain.expert
 import android.content.SharedPreferences
 import android.util.Log
 import com.example.myapplication.BuildConfig
-import com.google.ai.client.generativeai.GenerativeModel
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
+import com.google.genai.Client
+import com.google.genai.types.GenerateContentConfig
+import com.google.genai.types.ThinkingConfig
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -20,15 +22,18 @@ class ExtractLocalTagsUseCase(
     private val firebaseDb: FirebaseDatabase
 ) {
 
-    private data class ModelEntry(val name: String, val rpmLimit: Int, val rpdLimit: Int, val model: GenerativeModel)
+    private data class ModelEntry(val name: String, val rpmLimit: Int, val rpdLimit: Int, val supportsThinking: Boolean)
 
     private val models = listOf(
-        ModelEntry("gemini-3.1-flash-lite", 15, 500, GenerativeModel("gemini-3.1-flash-lite", BuildConfig.GEMINI_API_KEY)),
-        ModelEntry("gemini-2.5-flash-lite", 10, 20, GenerativeModel("gemini-2.5-flash-lite", BuildConfig.GEMINI_API_KEY)),
-        ModelEntry("gemini-3.5-flash", 5, 20, GenerativeModel("gemini-3.5-flash", BuildConfig.GEMINI_API_KEY)),
-        ModelEntry("gemini-2.5-flash", 5, 20, GenerativeModel("gemini-2.5-flash", BuildConfig.GEMINI_API_KEY)),
-        ModelEntry("gemini-3-flash-preview", 5, 20, GenerativeModel("gemini-3-flash-preview", BuildConfig.GEMINI_API_KEY)),
+        ModelEntry("gemini-3.1-flash-lite", 15, 500, false),
+        ModelEntry("gemini-2.5-flash-lite", 10, 20, false),
+        ModelEntry("gemini-3.5-flash", 5, 20, true),
+        ModelEntry("gemini-2.5-flash", 5, 20, true),
+        ModelEntry("gemini-3-flash-preview", 5, 20, true),
     )
+
+    private val client = Client.builder().apiKey(BuildConfig.GEMINI_API_KEY).build()
+    private val emptyConfig = GenerateContentConfig.builder().build()
 
     private val roundRobin = AtomicInteger(0)
     private val counterLock = Any()
@@ -115,6 +120,13 @@ class ExtractLocalTagsUseCase(
         }
     }
 
+    private fun buildConfig(entry: ModelEntry): GenerateContentConfig? {
+        if (!entry.supportsThinking) return null
+        return GenerateContentConfig.builder()
+            .thinkingConfig(ThinkingConfig.builder().thinkingBudget(0).build())
+            .build()
+    }
+
     suspend operator fun invoke(text: String): List<String> = withContext(Dispatchers.IO) {
         ensureOffset()
         migrateOldBans()
@@ -140,9 +152,11 @@ class ExtractLocalTagsUseCase(
 
             recordRequest(entry.name)
             try {
-                val response = entry.model.generateContent(prompt)
+                val config = if (entry.supportsThinking) buildConfig(entry)!! else emptyConfig
+                val response = client.models.generateContent(entry.name, prompt, config)
+                val text = response.text() ?: throw Exception("空回應")
                 Log.d("TagExtract", "✅ 使用模型: ${entry.name} (RPM ${entry.rpmLimit} / RPD ${entry.rpdLimit})")
-                return@withContext response.text?.split(",")?.map { it.trim() }?.filter { it.isNotEmpty() }?.take(4) ?: emptyList()
+                return@withContext text.split(",").map { it.trim() }.filter { it.isNotEmpty() }.take(4)
             } catch (e: Exception) {
                 Log.w("TagExtract", "❌ 模型 ${entry.name} 失敗: ${e.message}")
                 if (e.message?.contains("Quota exceeded", ignoreCase = true) == true) {
