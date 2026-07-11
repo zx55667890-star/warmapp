@@ -39,6 +39,7 @@ import com.example.myapplication.data.repository.DataMigrator
 import com.example.myapplication.data.repository.UserRepository
 import com.example.myapplication.di.ExpertViewModel
 import com.example.myapplication.di.SeekerViewModel
+import com.example.myapplication.di.TagViewModel
 import com.example.myapplication.ui.auth.AuthScreen
 import com.example.myapplication.ui.auth.AuthViewModel
 import com.example.myapplication.ui.auth.NicknameSettingsDialog
@@ -63,6 +64,7 @@ fun AppNavigation() {
     val scope = rememberCoroutineScope()
 
     val expertViewModel: ExpertViewModel = koinViewModel()
+    val tagViewModel: TagViewModel = koinViewModel()
     val seekerViewModel: SeekerViewModel = koinViewModel()
     val expertUiState by expertViewModel.uiState.collectAsStateWithLifecycle()
     val seekerUiState by seekerViewModel.uiState.collectAsStateWithLifecycle()
@@ -217,7 +219,9 @@ fun AppNavigation() {
                     popExitTransition = { slideOutHorizontally(animationSpec = tween(350)) { it } + fadeOut(animationSpec = tween(350)) }
                 ) {
                     ExpertScreen(
-                        viewModel = expertViewModel, userId = userId,
+                        viewModel = expertViewModel,
+                        tagViewModel = tagViewModel,
+                        userId = userId,
                         onNavigateToInput = {
                             navController.navigate(Routes.ROLE_SELECT) {
                                 popUpTo(navController.graph.startDestinationId) { saveState = true }

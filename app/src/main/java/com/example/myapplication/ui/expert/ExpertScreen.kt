@@ -1,10 +1,6 @@
 package com.example.myapplication.ui.expert
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.*
@@ -17,11 +13,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.myapplication.di.ExpertViewModel
+import com.example.myapplication.di.TagViewModel
 import com.example.myapplication.ui.theme.AppColors
 import kotlinx.coroutines.flow.collectLatest
 
 @Composable
-fun ExpertScreen(viewModel: ExpertViewModel, userId: String, onNavigateToInput: () -> Unit = {}) {
+fun ExpertScreen(viewModel: ExpertViewModel, tagViewModel: TagViewModel, userId: String, onNavigateToInput: () -> Unit = {}) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -64,7 +61,7 @@ fun ExpertScreen(viewModel: ExpertViewModel, userId: String, onNavigateToInput: 
             }
 
             item {
-                QuickLogCard(viewModel = viewModel, onLog = { expertise, tags ->
+                QuickLogCard(tagViewModel = tagViewModel, onLog = { expertise, tags ->
                     val formattedSolution = "$expertise | 標籤: ${tags.joinToString(", ")}"
                     viewModel.submitSolution(userId, "Q_ID", formattedSolution)
                 })
@@ -102,11 +99,9 @@ fun ExpertScreen(viewModel: ExpertViewModel, userId: String, onNavigateToInput: 
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun QuickLogCard(viewModel: ExpertViewModel, onLog: (expertise: String, tags: List<String>) -> Unit) {
+fun QuickLogCard(tagViewModel: TagViewModel, onLog: (expertise: String, tags: List<String>) -> Unit) {
     var expertise by remember { mutableStateOf("") }
-    var aiTags by remember { mutableStateOf(listOf<String>()) }
     var isAiGenerating by remember { mutableStateOf(false) }
 
     val maxCharLimit = 20
@@ -150,50 +145,24 @@ fun QuickLogCard(viewModel: ExpertViewModel, onLog: (expertise: String, tags: Li
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            Text("系統自動提取的配對關鍵字", fontSize = 12.sp, color = AppColors.TextGray)
-            Spacer(modifier = Modifier.height(6.dp))
-
             if (isAiGenerating) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = AppColors.AccentBlue)
                     Spacer(modifier = Modifier.width(8.dp))
                     Text("系統分析中...", fontSize = 12.sp, color = AppColors.TextGray)
                 }
-            } else if (aiTags.isNotEmpty()) {
-                FlowRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    aiTags.take(4).forEach { tag ->
-                        Box(
-                            modifier = Modifier
-                                .background(AppColors.AccentBlue.copy(alpha = 0.15f), shape = RoundedCornerShape(12.dp))
-                                .border(1.dp, AppColors.AccentBlue, shape = RoundedCornerShape(12.dp))
-                                .padding(horizontal = 8.dp, vertical = 4.dp)
-                                .clickable { aiTags = aiTags.filter { it != tag } }
-                        ) {
-                            Text("#$tag ✕", color = AppColors.TextWhite, fontSize = 11.sp)
-                        }
-                    }
-                }
-            } else {
-                Text("發布後將自動提取關鍵字", fontSize = 12.sp, color = AppColors.TextGray.copy(alpha = 0.6f))
+                Spacer(modifier = Modifier.height(16.dp))
             }
-
-            Spacer(modifier = Modifier.height(16.dp))
 
             Button(
                 onClick = {
                     val text = expertise.trim()
                     if (text.isNotBlank()) {
                         isAiGenerating = true
-                        viewModel.extractTags(text) { tags ->
-                            aiTags = tags
+                        tagViewModel.extractTags(text) { tags ->
                             isAiGenerating = false
                             onLog(text, tags)
                             expertise = ""
-                            aiTags = emptyList()
                         }
                     }
                 },

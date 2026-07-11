@@ -81,6 +81,7 @@ val appModule = module {
 
     viewModel { AuthViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     viewModel { ExpertViewModel(get(), get()) }
+    viewModel { TagViewModel() }
     viewModel { SeekerViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     viewModel { ChatViewModel(get(), get(), get(), get(), get()) }
 }
