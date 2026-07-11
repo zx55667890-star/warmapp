@@ -5,7 +5,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -102,7 +101,6 @@ fun ExpertScreen(viewModel: ExpertViewModel, tagViewModel: TagViewModel, userId:
 @Composable
 fun QuickLogCard(tagViewModel: TagViewModel, onLog: (expertise: String, tags: List<String>) -> Unit) {
     var expertise by remember { mutableStateOf("") }
-    var isAiGenerating by remember { mutableStateOf(false) }
 
     val maxCharLimit = 20
 
@@ -143,31 +141,20 @@ fun QuickLogCard(tagViewModel: TagViewModel, onLog: (expertise: String, tags: Li
                 }
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
-
-            if (isAiGenerating) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = AppColors.AccentBlue)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("系統分析中...", fontSize = 12.sp, color = AppColors.TextGray)
-                }
-                Spacer(modifier = Modifier.height(16.dp))
-            }
+            Spacer(modifier = Modifier.height(16.dp))
 
             Button(
                 onClick = {
                     val text = expertise.trim()
                     if (text.isNotBlank()) {
-                        isAiGenerating = true
+                        expertise = ""
                         tagViewModel.extractTags(text) { tags ->
-                            isAiGenerating = false
                             onLog(text, tags)
-                            expertise = ""
                         }
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = expertise.isNotBlank() && !isAiGenerating,
+                enabled = expertise.isNotBlank(),
                 colors = ButtonDefaults.buttonColors(containerColor = AppColors.AccentGreen)
             ) {
                 Text("發布此技能", color = Color.Black, fontWeight = FontWeight.Bold)
