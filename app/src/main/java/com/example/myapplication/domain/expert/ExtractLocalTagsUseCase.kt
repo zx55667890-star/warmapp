@@ -23,6 +23,7 @@ class ExtractLocalTagsUseCase {
     private val counterLock = Any()
     private val rpmCounters = models.associate { it.name to mutableListOf<Long>() }
     private val rpdCounters = models.associate { it.name to mutableListOf<Long>() }
+    private val quotaBlacklist = mutableSetOf<String>()
 
     private fun canUseModel(name: String, rpmLimit: Int, rpdLimit: Int): Boolean {
         val now = System.currentTimeMillis()
@@ -62,6 +63,10 @@ class ExtractLocalTagsUseCase {
 
         for (i in models.indices) {
             val entry = models[(startIndex + i) % models.size]
+            if (entry.name in quotaBlacklist) {
+                Log.d("TagExtract", "⏭️ ${entry.name} 已達配額黑名單，跳過")
+                continue
+            }
             if (!canUseModel(entry.name, entry.rpmLimit, entry.rpdLimit)) {
                 Log.d("TagExtract", "⏭️ ${entry.name} 限額已滿，跳過")
                 continue
@@ -74,6 +79,10 @@ class ExtractLocalTagsUseCase {
                 return@withContext response.text?.split(",")?.map { it.trim() }?.filter { it.isNotEmpty() }?.take(4) ?: emptyList()
             } catch (e: Exception) {
                 Log.w("TagExtract", "❌ 模型 ${entry.name} 失敗: ${e.message}")
+                if (e.message?.contains("Quota exceeded", ignoreCase = true) == true) {
+                    quotaBlacklist.add(entry.name)
+                    Log.d("TagExtract", "🚫 ${entry.name} 已加入 session 黑名單")
+                }
             }
         }
         Log.e("TagExtract", "所有模型皆失敗，回傳空標籤")
