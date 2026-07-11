@@ -1,5 +1,6 @@
 package com.example.myapplication.domain.expert
 
+import android.util.Log
 import com.example.myapplication.BuildConfig
 import com.google.ai.client.generativeai.GenerativeModel
 import kotlinx.coroutines.Dispatchers
@@ -7,9 +8,15 @@ import kotlinx.coroutines.withContext
 
 class ExtractLocalTagsUseCase {
 
-    private val generativeModel = GenerativeModel(
-        modelName = "gemini-2.5-flash-lite",
-        apiKey = BuildConfig.GEMINI_API_KEY
+    private data class ModelEntry(val name: String, val rpmHint: Int, val model: GenerativeModel)
+    private val models = listOf(
+        ModelEntry("gemini-2.5-flash-lite", 10, GenerativeModel("gemini-2.5-flash-lite", BuildConfig.GEMINI_API_KEY)),
+        ModelEntry("gemini-3.1-flash-lite", 15, GenerativeModel("gemini-3.1-flash-lite", BuildConfig.GEMINI_API_KEY)),
+        ModelEntry("gemma-4-31b", 15, GenerativeModel("gemma-4-31b", BuildConfig.GEMINI_API_KEY)),
+        ModelEntry("gemma-4-26b", 15, GenerativeModel("gemma-4-26b", BuildConfig.GEMINI_API_KEY)),
+        ModelEntry("gemini-3.5-flash", 5, GenerativeModel("gemini-3.5-flash", BuildConfig.GEMINI_API_KEY)),
+        ModelEntry("gemini-2.5-flash", 5, GenerativeModel("gemini-2.5-flash", BuildConfig.GEMINI_API_KEY)),
+        ModelEntry("gemini-3-flash", 5, GenerativeModel("gemini-3-flash", BuildConfig.GEMINI_API_KEY)),
     )
 
     suspend operator fun invoke(text: String): List<String> = withContext(Dispatchers.IO) {
@@ -23,11 +30,16 @@ class ExtractLocalTagsUseCase {
             文字內容：$text
         """.trimIndent()
 
-        try {
-            val response = generativeModel.generateContent(prompt)
-            response.text?.split(",")?.map { it.trim() }?.filter { it.isNotEmpty() }?.take(4) ?: emptyList()
-        } catch (e: Exception) {
-            emptyList()
+        for (entry in models) {
+            try {
+                val response = entry.model.generateContent(prompt)
+                Log.d("ExtractTags", "✅ 使用模型: ${entry.name} (${entry.rpmHint} RPM)")
+                return@withContext response.text?.split(",")?.map { it.trim() }?.filter { it.isNotEmpty() }?.take(4) ?: emptyList()
+            } catch (e: Exception) {
+                Log.w("ExtractTags", "❌ 模型 ${entry.name} 失敗: ${e.message}")
+            }
         }
+        Log.e("ExtractTags", "所有模型皆失敗，回傳空標籤")
+        emptyList()
     }
 }
