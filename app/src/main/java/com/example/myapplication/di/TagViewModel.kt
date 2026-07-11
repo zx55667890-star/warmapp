@@ -5,10 +5,11 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.myapplication.domain.expert.ExtractLocalTagsUseCase
+import com.google.firebase.database.FirebaseDatabase
 import kotlinx.coroutines.launch
 
-class TagViewModel(sharedPrefs: SharedPreferences) : ViewModel() {
-    private val extractLocalTagsUseCase = ExtractLocalTagsUseCase(sharedPrefs)
+class TagViewModel(sharedPrefs: SharedPreferences, firebaseDb: FirebaseDatabase) : ViewModel() {
+    private val extractLocalTagsUseCase = ExtractLocalTagsUseCase(sharedPrefs, firebaseDb)
 
     fun extractTags(text: String, onResult: (List<String>) -> Unit) {
         viewModelScope.launch {

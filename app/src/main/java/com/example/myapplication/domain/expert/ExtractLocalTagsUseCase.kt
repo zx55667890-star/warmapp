@@ -4,13 +4,21 @@ import android.content.SharedPreferences
 import android.util.Log
 import com.example.myapplication.BuildConfig
 import com.google.ai.client.generativeai.GenerativeModel
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.ValueEventListener
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.time.Instant
 import java.time.ZoneId
 import java.util.concurrent.atomic.AtomicInteger
 
-class ExtractLocalTagsUseCase(private val sharedPrefs: SharedPreferences) {
+class ExtractLocalTagsUseCase(
+    private val sharedPrefs: SharedPreferences,
+    private val firebaseDb: FirebaseDatabase
+) {
 
     private data class ModelEntry(val name: String, val rpmLimit: Int, val rpdLimit: Int, val model: GenerativeModel)
 
@@ -23,23 +31,43 @@ class ExtractLocalTagsUseCase(private val sharedPrefs: SharedPreferences) {
     )
 
     private val roundRobin = AtomicInteger(0)
-
-    private fun todayStartMs(): Long {
-        val now = Instant.now()
-        return now.atZone(ZoneId.of("America/Los_Angeles")).toLocalDate().atStartOfDay(ZoneId.of("America/Los_Angeles")).toInstant().toEpochMilli()
-    }
     private val counterLock = Any()
     private val rpmCounters = models.associate { it.name to mutableListOf<Long>() }
 
+    private var serverOffsetMs: Long? = null
+
+    private fun nowMs(): Long = System.currentTimeMillis() + (serverOffsetMs ?: 0L)
+
+    private fun todayStartMs(): Long {
+        val now = Instant.ofEpochMilli(nowMs())
+        return now.atZone(ZoneId.of("America/Los_Angeles")).toLocalDate().atStartOfDay(ZoneId.of("America/Los_Angeles")).toInstant().toEpochMilli()
+    }
+
     private val rpdCounters = models.associate { entry ->
         val saved = sharedPrefs.getStringSet("rpd_${entry.name}", emptySet()) ?: emptySet()
-        val dayStart = todayStartMs()
+        val dayStart = Instant.now().atZone(ZoneId.of("America/Los_Angeles")).toLocalDate().atStartOfDay(ZoneId.of("America/Los_Angeles")).toInstant().toEpochMilli()
         val valid = saved.mapNotNull { it.toLongOrNull() }.filter { it >= dayStart }
         entry.name to valid.toMutableList()
     }
 
+    private suspend fun ensureOffset() {
+        if (serverOffsetMs != null) return
+        val deferred = CompletableDeferred<Long>()
+        firebaseDb.reference.child(".info/serverTimeOffset")
+            .addListenerForSingleValueEvent(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    deferred.complete(snapshot.getValue(Long::class.java) ?: 0L)
+                }
+                override fun onCancelled(error: DatabaseError) {
+                    deferred.complete(0L)
+                }
+            })
+        serverOffsetMs = deferred.await()
+        Log.d("TagExtract", "🕐 伺服器時間偏移: ${serverOffsetMs}ms")
+    }
+
     private fun canUseModel(name: String, rpmLimit: Int, rpdLimit: Int): Boolean {
-        val now = System.currentTimeMillis()
+        val now = nowMs()
         val dayStart = todayStartMs()
         synchronized(counterLock) {
             val rpmList = rpmCounters[name]!!
@@ -57,7 +85,7 @@ class ExtractLocalTagsUseCase(private val sharedPrefs: SharedPreferences) {
     }
 
     private fun recordRequest(name: String) {
-        val now = System.currentTimeMillis()
+        val now = nowMs()
         val dayStart = todayStartMs()
         synchronized(counterLock) {
             rpmCounters[name]!!.add(now)
@@ -71,6 +99,8 @@ class ExtractLocalTagsUseCase(private val sharedPrefs: SharedPreferences) {
     }
 
     suspend operator fun invoke(text: String): List<String> = withContext(Dispatchers.IO) {
+        ensureOffset()
+
         val prompt = """
             請從以下文字中提取 4 個最核心的關鍵字標籤。
             要求：
