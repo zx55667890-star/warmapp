@@ -54,19 +54,19 @@ class ExtractLocalTagsUseCase {
         for (i in models.indices) {
             val entry = models[(startIndex + i) % models.size]
             if (!canUseModel(entry.name, entry.rpmHint)) {
-                Log.d("ExtractTags", "⏭️ ${entry.name} RPM 已滿，跳過")
+                Log.d("TagExtract", "⏭️ ${entry.name} RPM 已滿，跳過")
                 continue
             }
             recordRequest(entry.name)
             try {
                 val response = entry.model.generateContent(prompt)
-                Log.d("ExtractTags", "✅ 使用模型: ${entry.name} (${entry.rpmHint} RPM)")
+                Log.d("TagExtract", "✅ 使用模型: ${entry.name} (${entry.rpmHint} RPM)")
                 return@withContext response.text?.split(",")?.map { it.trim() }?.filter { it.isNotEmpty() }?.take(4) ?: emptyList()
             } catch (e: Exception) {
-                Log.w("ExtractTags", "❌ 模型 ${entry.name} 失敗: ${e.message}")
+                Log.w("TagExtract", "❌ 模型 ${entry.name} 失敗: ${e.message}")
             }
         }
-        Log.e("ExtractTags", "所有模型皆失敗，回傳空標籤")
+        Log.e("TagExtract", "所有模型皆失敗，回傳空標籤")
         emptyList()
     }
 }
