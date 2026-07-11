@@ -98,6 +98,7 @@ dependencies {
 
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.9.0")
     implementation("com.google.ai.client.generativeai:generativeai:0.9.0")
+    implementation("com.huaban:jieba-analysis:1.0.2")
 
     testImplementation(libs.junit)
     testImplementation("io.mockk:mockk:1.13.5")
