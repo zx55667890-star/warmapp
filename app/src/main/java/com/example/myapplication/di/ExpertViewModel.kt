@@ -3,6 +3,7 @@ package com.example.myapplication.di
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.myapplication.data.model.SolutionItem
 import com.example.myapplication.data.repository.AiRepository
 import com.example.myapplication.data.repository.ExpertRepository
 import com.google.firebase.database.DataSnapshot
@@ -22,7 +23,7 @@ data class ExpertUiState(
     val rating: Double = 5.0,
     val helpCount: Long = 0L,
     // 新增：知識庫狀態
-    val solutionHistory: List<String> = emptyList(),
+    val solutionHistory: List<SolutionItem> = emptyList(),
     val isSubmittingSolution: Boolean = false,
     val activeExperienceId: String = "",
     val activeExperienceText: String = "",
@@ -66,10 +67,10 @@ class ExpertViewModel(
         }
     }
 
-    fun submitSolution(userId: String, questionId: String, content: String) {
+    fun submitSolution(userId: String, questionId: String, expertise: String, tags: List<String>) {
         _uiState.update { it.copy(isSubmittingSolution = true) }
 
-        repository.saveSolution(userId, questionId, content,
+        repository.saveSolution(userId, questionId, expertise, tags,
             onSuccess = {
                 _uiState.update { it.copy(isSubmittingSolution = false) }
                 sendEvent(ExpertUiEvent.ShowToast("已成功記錄到您的知識庫！"))

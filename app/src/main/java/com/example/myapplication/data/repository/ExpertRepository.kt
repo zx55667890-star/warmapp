@@ -1,5 +1,6 @@
 package com.example.myapplication.data.repository
 
+import com.example.myapplication.data.model.SolutionItem
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
@@ -14,18 +15,17 @@ class ExpertRepository(private val db: FirebaseDatabase) {
     private var statusListener: ValueEventListener? = null
     private var currentUserId: String? = null
 
-    // 新增：儲存解法至知識庫
-    fun saveSolution(userId: String, questionId: String, content: String, onSuccess: () -> Unit, onError: (String) -> Unit) {
+    fun saveSolution(userId: String, questionId: String, expertise: String, tags: List<String>, onSuccess: () -> Unit, onError: (String) -> Unit) {
         val solutionRef = db.getReference("solutions").child(userId).push()
         val solutionId = solutionRef.key ?: return
 
         val solutionData = mapOf(
             "questionId" to questionId,
-            "content" to content,
+            "expertise" to expertise,
+            "tags" to tags,
             "timestamp" to System.currentTimeMillis()
         )
 
-        // 原子性操作：存入解法 + 增加協助計數
         val updates = mapOf(
             "solutions/$userId/$solutionId" to solutionData,
             "users/$userId/helpCount" to com.google.firebase.database.ServerValue.increment(1)
@@ -36,11 +36,20 @@ class ExpertRepository(private val db: FirebaseDatabase) {
             .addOnFailureListener { onError(it.message ?: "儲存失敗") }
     }
 
-    fun listenToSolutionHistory(userId: String, onHistoryUpdate: (List<String>) -> Unit) {
+    fun listenToSolutionHistory(userId: String, onHistoryUpdate: (List<SolutionItem>) -> Unit) {
         db.getReference("solutions").child(userId)
             .addValueEventListener(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
-                    val history = snapshot.children.mapNotNull { it.child("content").getValue(String::class.java) }
+                    val history = snapshot.children.mapNotNull { child ->
+                        val expertise = child.child("expertise").getValue(String::class.java) ?: return@mapNotNull null
+                        SolutionItem(
+                            id = child.key ?: "",
+                            questionId = child.child("questionId").getValue(String::class.java) ?: "",
+                            expertise = expertise,
+                            tags = child.child("tags").children.mapNotNull { it.getValue(String::class.java) },
+                            timestamp = child.child("timestamp").getValue(Long::class.java) ?: 0L
+                        )
+                    }
                     onHistoryUpdate(history)
                 }
                 override fun onCancelled(error: DatabaseError) {}

@@ -61,8 +61,7 @@ fun ExpertScreen(viewModel: ExpertViewModel, tagViewModel: TagViewModel, userId:
 
             item {
                 QuickLogCard(tagViewModel = tagViewModel, onLog = { expertise, tags ->
-                    val formattedSolution = "$expertise | 標籤: ${tags.joinToString(", ")}"
-                    viewModel.submitSolution(userId, "Q_ID", formattedSolution)
+                    viewModel.submitSolution(userId, "Q_ID", expertise, tags)
                 })
             }
 
@@ -70,9 +69,19 @@ fun ExpertScreen(viewModel: ExpertViewModel, tagViewModel: TagViewModel, userId:
                 Spacer(modifier = Modifier.height(16.dp))
                 Text("📜 我的知識庫 (已轉化為配對技能)", modifier = Modifier.padding(vertical = 16.dp), fontWeight = FontWeight.Bold, color = AppColors.TextWhite)
                 uiState.solutionHistory.forEach { solution ->
-                    Row(modifier = Modifier.padding(vertical = 4.dp)) {
-                        Text("•  ", color = AppColors.AccentGreen)
-                        Text(solution, fontSize = 15.sp, color = AppColors.TextLightGray)
+                    Column(modifier = Modifier.padding(vertical = 4.dp)) {
+                        Row {
+                            Text("•  ", color = AppColors.AccentGreen)
+                            Text(solution.expertise, fontSize = 15.sp, color = AppColors.TextLightGray)
+                        }
+                        if (solution.tags.isNotEmpty()) {
+                            Text(
+                                solution.tags.joinToString(" · ") { "#$it" },
+                                fontSize = 12.sp,
+                                color = AppColors.AccentBlue,
+                                modifier = Modifier.padding(start = 20.dp, top = 2.dp)
+                            )
+                        }
                     }
                 }
                 if (uiState.solutionHistory.isEmpty()) {
