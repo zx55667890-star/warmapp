@@ -45,9 +45,7 @@ class ExtractLocalTagsUseCase(
 
     private val rpdCounters = models.associate { entry ->
         val saved = sharedPrefs.getStringSet("rpd_${entry.name}", emptySet()) ?: emptySet()
-        val dayStart = Instant.now().atZone(ZoneId.of("America/Los_Angeles")).toLocalDate().atStartOfDay(ZoneId.of("America/Los_Angeles")).toInstant().toEpochMilli()
-        val valid = saved.mapNotNull { it.toLongOrNull() }.filter { it >= dayStart }
-        entry.name to valid.toMutableList()
+        entry.name to saved.mapNotNull { it.toLongOrNull() }.toMutableList()
     }
 
     private suspend fun ensureOffset() {
