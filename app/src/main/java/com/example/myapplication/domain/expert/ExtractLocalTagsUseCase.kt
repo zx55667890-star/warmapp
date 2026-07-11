@@ -11,8 +11,11 @@ class ExtractLocalTagsUseCase {
 
     private data class ModelEntry(val name: String, val rpmHint: Int, val model: GenerativeModel)
     private val models = listOf(
-        ModelEntry("gemma-4-31b-it", 15, GenerativeModel("gemma-4-31b-it", BuildConfig.GEMINI_API_KEY)),
-        ModelEntry("gemma-4-26b-a4b-it", 15, GenerativeModel("gemma-4-26b-a4b-it", BuildConfig.GEMINI_API_KEY)),
+        ModelEntry("gemini-2.5-flash-lite", 10, GenerativeModel("gemini-2.5-flash-lite", BuildConfig.GEMINI_API_KEY)),
+        ModelEntry("gemini-3.1-flash-lite", 15, GenerativeModel("gemini-3.1-flash-lite", BuildConfig.GEMINI_API_KEY)),
+        ModelEntry("gemini-3.5-flash", 5, GenerativeModel("gemini-3.5-flash", BuildConfig.GEMINI_API_KEY)),
+        ModelEntry("gemini-2.5-flash", 5, GenerativeModel("gemini-2.5-flash", BuildConfig.GEMINI_API_KEY)),
+        ModelEntry("gemini-3-flash", 5, GenerativeModel("gemini-3-flash", BuildConfig.GEMINI_API_KEY)),
     )
 
     private val roundRobin = AtomicInteger(0)
