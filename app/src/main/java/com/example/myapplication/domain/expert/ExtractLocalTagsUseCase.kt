@@ -13,6 +13,7 @@ import com.google.genai.types.ThinkingConfig
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import java.time.Instant
 import java.time.ZoneId
 import java.util.concurrent.atomic.AtomicInteger
@@ -64,7 +65,7 @@ class ExtractLocalTagsUseCase(
                     deferred.complete(0L)
                 }
             })
-        serverOffsetMs = deferred.await()
+        serverOffsetMs = withTimeoutOrNull(3000) { deferred.await() } ?: 0L
         Log.d("TagExtract", "🕐 伺服器時間偏移: ${serverOffsetMs}ms")
     }
 
@@ -153,12 +154,13 @@ class ExtractLocalTagsUseCase(
             try {
                 val config = if (entry.supportsThinking) buildConfig(entry)!! else emptyConfig
                 val response = client.models.generateContent(entry.name, prompt, config)
-                val text = response.text() ?: throw Exception("空回應")
+                val responseText = response.text() ?: throw Exception("空回應")
                 Log.d("TagExtract", "✅ 使用模型: ${entry.name} (RPM ${entry.rpmLimit} / RPD ${entry.rpdLimit})")
-                return@withContext text.split(",").map { it.trim() }.filter { it.isNotEmpty() }.take(4)
+                return@withContext responseText.split(",").map { it.trim() }.filter { it.isNotEmpty() }.take(4)
             } catch (e: Exception) {
                 Log.w("TagExtract", "❌ 模型 ${entry.name} 失敗: ${e.message}")
-                if (e.message?.contains("Quota exceeded", ignoreCase = true) == true) {
+                val errorMsg = e.message ?: ""
+                if (errorMsg.contains("Quota exceeded", ignoreCase = true) || errorMsg.contains("429")) {
                     val banUntil = todayStartMs() + 86_400_000
                     sharedPrefs.edit().putLong("quota_banned_${entry.name}", banUntil).apply()
                     Log.d("TagExtract", "🚫 ${entry.name} 已封鎖至太平洋午夜")
