@@ -67,7 +67,7 @@ class ExtractLocalTagsUseCase(
                 }
             })
         serverOffsetMs = withTimeoutOrNull(3000) { deferred.await() } ?: 0L
-        Log.d("TagExtract", "ðŸ• ä¼ºæœå™¨æ™‚é–“åç§»: ${serverOffsetMs}ms")
+        Log.d("TagExtract", "serverTimeOffset: ${serverOffsetMs}ms")
     }
 
     private fun canUseModel(name: String, rpmLimit: Int, rpdLimit: Int): Boolean {
@@ -76,7 +76,7 @@ class ExtractLocalTagsUseCase(
 
         val bannedUntil = sharedPrefs.getLong("quota_banned_$name", 0L)
         if (bannedUntil > now) {
-            Log.d("TagExtract", "â­ï¸ $name ä¼ºæœå™¨é…é¡å·²æ»¿ï¼Œå°éŽ–è‡³ ${Instant.ofEpochMilli(bannedUntil).atZone(ZoneId.of("America/Los_Angeles"))}")
+            Log.d("TagExtract", "$name quota banned until ${Instant.ofEpochMilli(bannedUntil).atZone(ZoneId.of("America/Los_Angeles"))}")
             return false
         }
 
@@ -88,7 +88,7 @@ class ExtractLocalTagsUseCase(
             val rpdList = rpdCounters[name]!!
             rpdList.removeAll { it < dayStart }
             if (rpdList.size >= rpdLimit) {
-                Log.d("TagExtract", "â­ï¸ $name RPD å·²æ»¿ (${rpdList.size}/$rpdLimit)")
+                Log.d("TagExtract", "$name RPD full (${rpdList.size}/$rpdLimit)")
                 return false
             }
         }
@@ -114,7 +114,7 @@ class ExtractLocalTagsUseCase(
             val existing = sharedPrefs.getLong(key, 0L)
             if (existing > nextMidnight) {
                 sharedPrefs.edit { putLong(key, nextMidnight) }
-                Log.d("TagExtract", "ðŸ”„ ${entry.name} ban å·²æ ¡æ­£è‡³å¤ªå¹³æ´‹åˆå¤œ")
+                Log.d("TagExtract", "${entry.name} ban corrected to Pacific midnight")
             }
         }
     }
@@ -147,8 +147,8 @@ class ExtractLocalTagsUseCase(
 
         val hasAnyAvailableModel = models.any { canUseModel(it.name, it.rpmLimit, it.rpdLimit) }
         if (!hasAnyAvailableModel) {
-            Log.w("TagExtract", "æ‰€æœ‰æ¨¡åž‹é…é¡çš†å·²æ»¿ï¼Œç„¡æ³•ç™¼èµ·è«‹æ±‚")
-            throw IllegalStateException("AI æœå‹™é…é¡å·²æ»¿ï¼Œè«‹ç¨å¾Œé‡è©¦æˆ–æ‰‹å‹•è¼¸å…¥æ¨™ç±¤")
+            Log.w("TagExtract", "all models quota full, cannot request")
+            throw IllegalStateException("AI service quota full, please try later or enter tags manually")
         }
 
         val rawIndex = roundRobin.getAndIncrement()
@@ -164,21 +164,21 @@ class ExtractLocalTagsUseCase(
             try {
                 val config = if (entry.supportsThinking) buildConfig(entry)!! else emptyConfig
                 val response = client.models.generateContent(entry.name, prompt, config)
-                val responseText = response.text() ?: throw Exception("ç©ºå›žæ‡‰")
-                Log.d("TagExtract", "âœ… ä½¿ç”¨æ¨¡åž‹: ${entry.name} (RPM ${entry.rpmLimit} / RPD ${entry.rpdLimit})")
+                val responseText = response.text() ?: throw Exception("empty response")
+                Log.d("TagExtract", "OK using model: ${entry.name} (RPM ${entry.rpmLimit} / RPD ${entry.rpdLimit})")
                 return@withContext responseText.split(",").map { it.trim() }.filter { it.isNotEmpty() }.take(4)
             } catch (e: Exception) { if (e is kotlinx.coroutines.CancellationException) throw e;
-                Log.w("TagExtract", "âŒ æ¨¡åž‹ ${entry.name} å¤±æ•—: ${e.message}")
+                Log.w("TagExtract", "model ${entry.name} failed: ${e.message}")
                 val errorMsg = e.message ?: ""
                 if (errorMsg.contains("Quota exceeded", ignoreCase = true) || errorMsg.contains("429")) {
                     val banUntil = todayStartMs() + 86_400_000
                     sharedPrefs.edit { putLong("quota_banned_${entry.name}", banUntil) }
-                    Log.d("TagExtract", "ðŸš« ${entry.name} å·²å°éŽ–è‡³å¤ªå¹³æ´‹åˆå¤œ")
+                    Log.d("TagExtract", "${entry.name} banned until Pacific midnight")
                 }
             }
         }
-        Log.e("TagExtract", "æ‰€æœ‰å˜—è©¦çš„æ¨¡åž‹çš†å¤±æ•—")
-        throw IllegalStateException("AI æ¨™ç±¤æå–å¤±æ•—ï¼Œè«‹æ‰‹å‹•è¼¸å…¥æ¨™ç±¤")
+        Log.e("TagExtract", "all models exhausted after retry")
+        throw IllegalStateException("AI tag extraction failed, please enter tags manually")
     }
 }
 
