@@ -125,7 +125,7 @@ class ExtractLocalTagsUseCase(
         if (!entry.supportsThinking) return null
         val thinkingConfig = if (entry.name.contains("3.")) {
             ThinkingConfig.builder()
-                .thinkingLevel(ThinkingLevel("minimal"))
+                .thinkingLevel(ThinkingLevel("off"))
                 .build()
         } else {
             ThinkingConfig.builder()
