@@ -11,6 +11,7 @@ import com.google.firebase.database.ValueEventListener
 import com.google.genai.Client
 import com.google.genai.types.GenerateContentConfig
 import com.google.genai.types.ThinkingConfig
+import com.google.genai.types.ThinkingLevel
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -30,6 +31,7 @@ class ExtractLocalTagsUseCase(
         ModelEntry("gemini-3.1-flash-lite", 15, 500, false),
         ModelEntry("gemini-2.5-flash-lite", 10, 20, false),
         ModelEntry("gemini-3.5-flash", 5, 20, true),
+        ModelEntry("gemini-3-flash-preview", 5, 20, true),
         ModelEntry("gemini-2.5-flash", 5, 20, true),
     )
 
@@ -121,8 +123,17 @@ class ExtractLocalTagsUseCase(
 
     private fun buildConfig(entry: ModelEntry): GenerateContentConfig? {
         if (!entry.supportsThinking) return null
+        val thinkingConfig = if (entry.name.contains("3.")) {
+            ThinkingConfig.builder()
+                .thinkingLevel(ThinkingLevel("minimal"))
+                .build()
+        } else {
+            ThinkingConfig.builder()
+                .thinkingBudget(0)
+                .build()
+        }
         return GenerateContentConfig.builder()
-            .thinkingConfig(ThinkingConfig.builder().thinkingBudget(0).build())
+            .thinkingConfig(thinkingConfig)
             .build()
     }
 

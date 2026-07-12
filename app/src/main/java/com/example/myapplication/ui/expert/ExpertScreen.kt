@@ -262,9 +262,15 @@ fun QuickLogCard(
                                     isGenerating = true
                                     viewModel.fetchTagsFromAi(text) { tags ->
                                         isGenerating = false
-                                        if (tags.isEmpty()) {
+                                        if (tags == null) {
+                                            // 系統或配額故障：直接進入確認頁面，允許用戶手動新增標籤
+                                            tagsList.clear()
+                                            step = CardStep.CONFIRM
+                                        } else if (tags.isEmpty()) {
+                                            // AI 判定為無意義內容（垃圾過濾）：報錯並留在輸入頁面
                                             errorMessage = "輸入的內容似乎不屬於合法的專業技能，請重新描述。"
                                         } else {
+                                            // 正常生成標籤
                                             tagsList.clear()
                                             tagsList.addAll(tags)
                                             step = CardStep.CONFIRM

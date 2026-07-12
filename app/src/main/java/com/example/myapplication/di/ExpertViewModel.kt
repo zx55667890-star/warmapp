@@ -84,7 +84,7 @@ class ExpertViewModel(
         }
     }
 
-    fun fetchTagsFromAi(text: String, onResult: (List<String>) -> Unit) {
+    fun fetchTagsFromAi(text: String, onResult: (List<String>?) -> Unit) {
         viewModelScope.launch {
             Log.d("ExpertVM", "fetchTagsFromAi: text=$text")
             try {
@@ -94,7 +94,7 @@ class ExpertViewModel(
                 if (e is kotlinx.coroutines.CancellationException) throw e
                 Log.e("ExpertVM", "AI 標籤擷取失敗: ${e.message}")
                 sendEvent(ExpertUiEvent.ShowToast(e.message ?: "AI 標籤擷取失敗"))
-                onResult(emptyList())
+                onResult(null)
             }
         }
     }
