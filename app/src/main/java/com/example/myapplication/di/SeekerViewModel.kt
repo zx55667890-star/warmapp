@@ -82,6 +82,10 @@ class SeekerViewModel(
         _uiState.update { it.copy(quotaError = null) }
     }
 
+    fun clearActiveChatRoomId() {
+        _uiState.update { it.copy(activeChatRoomId = "") }
+    }
+
     fun sendQuestion(text: String, userId: String, selectedMedia: List<com.example.myapplication.domain.seeker.SendMedia> = emptyList()) {
         viewModelScope.launch {
             when (val result = validateQuestionQuotaUseCase(userId)) {

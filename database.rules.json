@@ -1,0 +1,119 @@
+{
+  "rules": {
+    "users": {
+      ".indexOn": ["email"],
+      "$uid": {
+        ".read": "$uid === auth.uid",
+        ".write": "$uid === auth.uid",
+        "nickname": { ".validate": "newData.isString() && newData.val().length <= 50" },
+        "fcmToken": { ".validate": "newData.isString()" },
+        "rating": { ".read": true, ".write": "$uid === auth.uid" },
+        "ratingCount": { ".read": true, ".write": "$uid === auth.uid" },
+        "helpCount": { ".read": true, ".write": "$uid === auth.uid" },
+        "isOnline": { ".validate": "newData.isBoolean()" }
+      }
+    },
+    "questions": {
+      ".indexOn": ["status", "expertId"],
+      "$qid": {
+        ".read": "auth.uid !== null",
+        ".write": "auth.uid !== null",
+        "expertId": { ".validate": "newData.isString() || newData.val() === ''" },
+        "text": { ".validate": "newData.isString() && newData.val().length <= 2000" },
+        "status": { ".validate": "newData.isString() && (newData.val() == 'pending' || newData.val() == 'taken' || newData.val() == 'active' || newData.val() == 'completed' || newData.val() == 'cancelled')" },
+        "rejectedExperts": {
+          "$expertId": { ".validate": "newData.isBoolean()" }
+        }
+      }
+    },
+    "chatrooms": {
+      "$roomId": {
+        "messages": {
+          "$msgId": {
+            ".read": "auth.uid !== null",
+            ".write": "auth.uid !== null",
+            "senderId": { ".validate": "newData.isString()" },
+            "sender": { ".validate": "newData.isString() && (newData.val() == 'user' || newData.val() == 'expert' || newData.val() == 'system')" },
+            "text": { ".validate": "newData.isString() && newData.val().length <= 5000" },
+            "imageUrl": { ".validate": "newData.isString()" },
+            "imageUrls": { ".validate": "newData.hasChildren()" },
+            "videoUrl": { ".validate": "newData.isString()" },
+            "voiceUrl": { ".validate": "newData.isString()" },
+            "voiceDuration": { ".validate": "newData.isNumber()" },
+            "timestamp": { ".validate": "newData.isNumber()" },
+            "readBy": {
+              "$uid": { ".validate": "newData.isBoolean()" }
+            },
+            "replyToId": { ".validate": "newData.isString()" },
+            "replyToText": { ".validate": "newData.isString()" }
+          }
+        },
+        "status": {
+          ".read": "auth.uid !== null",
+          ".write": "auth.uid !== null"
+        },
+        "typing_status": {
+          "$uid": {
+            ".read": "auth.uid !== null",
+            ".write": "$uid === auth.uid"
+          }
+        }
+      }
+    },
+    "experts": {
+      "$eid": {
+        ".read": "auth.uid !== null",
+        ".write": "$eid === auth.uid",
+        "rating": { ".validate": "newData.isNumber()" },
+        "ratingCount": { ".validate": "newData.isNumber()" },
+        "reviews": {
+          "$chatroomId": {
+            ".write": "auth.uid !== null",
+            "score": { ".validate": "newData.isNumber()" },
+            "comment": { ".validate": "newData.isString() && newData.val().length <= 500" },
+            "timestamp": { ".validate": "newData.isNumber()" }
+          }
+        }
+      }
+    },
+    "solutions": {
+      "$uid": {
+        ".read": "$uid === auth.uid",
+        ".write": "$uid === auth.uid",
+        "$pushId": {
+          "questionId": { ".validate": "newData.isString()" },
+          "expertise": { ".validate": "newData.isString()" },
+          "tags": { ".validate": "newData.hasChildren()" },
+          "timestamp": { ".validate": "newData.isNumber()" }
+        }
+      }
+    },
+    "active_experiences": {
+      "$expId": {
+        ".read": "auth.uid !== null",
+        ".write": "auth.uid !== null",
+        "text": { ".validate": "newData.isString() && newData.val().length <= 200" },
+        "status": { ".validate": "newData.isString() && (newData.val() == 'active' || newData.val() == 'offline')" },
+        "isOnline": { ".validate": "newData.isBoolean()" }
+      }
+    },
+    "email_verification": {
+      "$emailKey": {
+        ".read": "auth.uid !== null || root.child('email_verification').child($emailKey).child('createdAt').val() > (now - 3600000)",
+        ".write": "auth.uid !== null || !root.child('email_verification').child($emailKey).hasChild('verified')",
+        "dailyCount": {
+          "$date": {
+            ".validate": "newData.isNumber() && newData.val() <= 5"
+          }
+        },
+        "code": { ".validate": "newData.isString() && newData.val().length <= 6" },
+        "createdAt": { ".validate": "newData.isNumber()" },
+        "verified": { ".validate": "newData.isBoolean()" }
+      }
+    },
+    "$other": {
+      ".read": "auth.uid !== null",
+      ".write": "auth.uid !== null"
+    }
+  }
+}

@@ -60,6 +60,11 @@ fun AskQuestionScreen(
         viewModel.refreshQuota(userId)
     }
 
+    // 清除上次的 activeChatRoomId，確保配對覆蓋層能正常顯示
+    LaunchedEffect(Unit) {
+        viewModel.clearActiveChatRoomId()
+    }
+
     // 🛡️ 新增：攔截並監聽 ViewModel 拋出的額度超標/多開限制警告
     LaunchedEffect(seekerUiState.quotaError) {
         seekerUiState.quotaError?.let { errorMsg ->
