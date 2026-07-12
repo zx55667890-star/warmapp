@@ -67,6 +67,7 @@ class SeekerViewModel(
     val matchedExpertDate: String get() = _uiState.value.matchedExpertDate
 
     private var currentUserQuestionId = ""
+    private var currentUserId = ""
     private var statusCollectionJob: kotlinx.coroutines.Job? = null
 
     fun refreshQuota(userId: String) {
@@ -87,6 +88,7 @@ class SeekerViewModel(
     }
 
     fun sendQuestion(text: String, userId: String, selectedMedia: List<com.example.myapplication.domain.seeker.SendMedia> = emptyList()) {
+        currentUserId = userId
         viewModelScope.launch {
             when (val result = validateQuestionQuotaUseCase(userId)) {
                 is QuotaResult.Invalid -> {
@@ -231,9 +233,11 @@ class SeekerViewModel(
 
     fun cancelUserMatching() {
         cleanupListeners()
+        val uid = currentUserId
         if (currentUserQuestionId.isNotBlank()) {
             questionRepository.cancelMatching(currentUserQuestionId) {
                 resetMatchingState()
+                if (uid.isNotBlank()) refreshQuota(uid)
             }
         } else {
             resetMatchingState()
