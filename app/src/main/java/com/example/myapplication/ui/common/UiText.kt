@@ -6,7 +6,7 @@ import androidx.compose.ui.res.stringResource
 
 sealed class UiText {
     class Dynamic(val value: String) : UiText()
-    class Resource(@StringRes val resId: Int, vararg val args: Any) : UiText() {
+    class Resource(@param:StringRes val resId: Int, vararg args: Any) : UiText() {
         val resolvedArgs: Array<out Any> = args
     }
 

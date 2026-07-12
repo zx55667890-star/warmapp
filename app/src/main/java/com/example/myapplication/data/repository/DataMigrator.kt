@@ -34,7 +34,9 @@ class DataMigrator(
         val oldRef = firebaseDb.getReference("experts").child(deviceId)
         oldRef.get().addOnSuccessListener { snap ->
             if (snap.exists()) {
-                firebaseDb.getReference("experts").child(uid).updateChildren(snap.value as? Map<String, Any> ?: return@addOnSuccessListener)
+                val data = snap.value as? Map<*, *>
+                val map = data?.entries?.associate { it.key.toString() to (it.value as Any) } ?: return@addOnSuccessListener
+                firebaseDb.getReference("experts").child(uid).updateChildren(map)
                     .addOnSuccessListener { oldRef.removeValue() }
             }
         }

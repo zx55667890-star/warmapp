@@ -19,6 +19,7 @@ import org.koin.compose.KoinApplication
 
 class MainActivity : ComponentActivity() {
 
+    @Suppress("DEPRECATION")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 

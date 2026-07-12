@@ -41,15 +41,15 @@
 
 1. **無整合測試** — 只能靠單元測試與手動安裝 APK 測試。
 
-2. **3 Flash Preview 強制 thinking** — 已移除該模型，但若未來要加回來需注意 `thinkingBudget(0)` 對它無效。
+2. **3 Flash Preview 強制 thinking** — 已移除該模型。
 
-3. **AGP 棄用警告** — `android.overridePathCheck=true`、`android.defaults.buildfeatures.resvalues=true`、`android.enableNewResourceShrinker` 為棄用選項，需在 `gradle.properties` 中清理。
+3. **AGP 棄用警告** — 已清理。
 
-4. **Lint 棄用警告** — `GoogleSignIn` (AuthRepository, AuthScreen)、`statusBarColor` / `navigationBarColor` / `isStatusBarContrastEnforced` (MainActivity) 在 SDK 37 中標記為 deprecated，後續需遷移至新 API。
+4. **Lint 棄用警告** — GoogleSignIn 尚待遷移，UI 部分已加上 @Suppress。
 
-5. **未檢查的型別轉換** — `DataMigrator.kt:37` 有 `Unchecked cast: Any? → Map<String, Any>`，可能引發 runtime 崩潰。
+5. **未檢查的型別轉換** — 已修復。
 
-6. **UiText annotation target 警告** — `UiText.kt:9` 需要 `@param:` annotation target 限定，否則未來 Kotlin 版本會改變行為。
+6. **UiText annotation target 警告** — 已修復。
 
 ## 模型清單與配額
 
