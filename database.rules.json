@@ -20,7 +20,7 @@
         ".write": "auth.uid !== null",
         "expertId": { ".validate": "newData.isString() || newData.val() === ''" },
         "text": { ".validate": "newData.isString() && newData.val().length <= 2000" },
-        "status": { ".validate": "newData.isString() && (newData.val() == 'pending' || newData.val() == 'taken' || newData.val() == 'active' || newData.val() == 'completed' || newData.val() == 'cancelled')" },
+        "status": { ".validate": "newData.isString() && (newData.val() == 'matching' || newData.val() == 'pending_acceptance' || newData.val() == 'expert_accepted' || newData.val() == 'taken' || newData.val() == 'active' || newData.val() == 'completed' || newData.val() == 'cancelled' || newData.val() == 'no_experts')" },
         "rejectedExperts": {
           "$expertId": { ".validate": "newData.isBoolean()" }
         }
@@ -33,7 +33,7 @@
             ".read": "auth.uid !== null",
             ".write": "auth.uid !== null",
             "senderId": { ".validate": "newData.isString()" },
-            "sender": { ".validate": "newData.isString() && (newData.val() == 'user' || newData.val() == 'expert' || newData.val() == 'system')" },
+            "sender": { ".validate": "newData.isString() && (newData.val() == 'user' || newData.val() == 'expert' || newData.val() == 'system' || newData.val() == 'ai')" },
             "text": { ".validate": "newData.isString() && newData.val().length <= 5000" },
             "imageUrl": { ".validate": "newData.isString()" },
             "imageUrls": { ".validate": "newData.hasChildren()" },
