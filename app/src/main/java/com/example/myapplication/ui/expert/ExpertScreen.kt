@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.myapplication.data.model.SolutionItem
 import com.example.myapplication.di.ExpertViewModel
+import com.example.myapplication.domain.expert.ExpertInputValidator
 import com.example.myapplication.ui.theme.AppColors
 import kotlinx.coroutines.flow.collectLatest
 
@@ -246,23 +247,32 @@ fun QuickLogCard(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                Button(
-                    onClick = {
-                        val text = expertise.trim()
-                        val isDuplicate = historyList.any { it.expertise == text }
+                    Button(
+                        onClick = {
+                            val text = expertise.trim()
+                            val isDuplicate = historyList.any { it.expertise == text }
 
-                        if (isDuplicate) {
-                            errorMessage = "您已經新增過這項技能囉！"
-                        } else if (text.isNotBlank()) {
-                            isGenerating = true
-                            viewModel.fetchTagsFromAi(text) { tags ->
-                                isGenerating = false
-                                tagsList.clear()
-                                tagsList.addAll(tags)
-                                step = CardStep.CONFIRM
+                            if (isDuplicate) {
+                                errorMessage = "您已經新增過這項技能囉！"
+                            } else {
+                                val validationError = ExpertInputValidator.validate(text)
+                                if (validationError != null) {
+                                    errorMessage = validationError
+                                } else {
+                                    isGenerating = true
+                                    viewModel.fetchTagsFromAi(text) { tags ->
+                                        isGenerating = false
+                                        if (tags.isEmpty()) {
+                                            errorMessage = "輸入的內容似乎不屬於合法的專業技能，請重新描述。"
+                                        } else {
+                                            tagsList.clear()
+                                            tagsList.addAll(tags)
+                                            step = CardStep.CONFIRM
+                                        }
+                                    }
+                                }
                             }
-                        }
-                    },
+                        },
                     modifier = Modifier.fillMaxWidth(),
                     enabled = expertise.isNotBlank() && !isGenerating,
                     colors = ButtonDefaults.buttonColors(containerColor = AppColors.AccentGreen)
