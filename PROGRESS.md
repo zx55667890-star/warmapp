@@ -11,9 +11,12 @@
 - [x] QuickLogCard 重複檢測（expertise 比對）
 
 ### Gemini API 整合與架構重構
-- [x] 5 模型輪換（已移除 3 Flash Preview）
+- [x] 5 模型輪換（已移除 3 Flash Preview，但代碼中保留作為備援）
 - [x] RPM 滑動 60 秒窗口（in-memory）
 - [x] RPD 太平洋午夜重置（SharedPreferences 持久化）
+- [x] **[NEW]** 修正 RPD 儲存漏洞：加上隨機後綴防止同毫秒請求被 `StringSet` 過濾
+- [x] **[NEW]** 優化亂碼拒絕邏輯：當模型識別胡言亂語回傳空字串時，視為「成功識別」並立即停止輪詢，節省配額
+- [x] **[NEW]** 增加詳細配額監控 Log：在 Logcat 顯示 RPD/RPM 即時計數與 Ban 狀態
 - [x] 伺服器時間校正（Firebase .info/serverTimeOffset）
 - [x] withTimeoutOrNull(3000) 防死鎖
 - [x] 配額封鎖（Quota exceeded / HTTP 429）
@@ -21,10 +24,10 @@
 - [x] Non-Lite 模型 thinkingBudget(0)
 - [x] SDK 遷移至 google-genai:1.61.0
 - [x] 打包 META-INF 衝突排除
-- [x] **[NEW]** 優化配額用盡處理，在 ExtractLocalTagsUseCase 中主動拋出 Exception，解決靜默失敗
-- [x] **[NEW]** 優化 Token 耗費，在 checks 後才調用 API 避免浪費
-- [x] **[NEW]** 重構移除 TagViewModel，將職責合併至 ExpertViewModel，清除了 dead code fetchTagsFromAi
-- [x] **[NEW]** 實現 QuickLogCard 的兩步確認與手動新增/編輯標籤流程（UI 降級與微調機制）
+- [x] 優化配額用盡處理，在 ExtractLocalTagsUseCase 中主動拋出 Exception，解決靜默失敗
+- [x] 優化 Token 耗費，在 checks 後才調用 API 避免浪費
+- [x] 重構移除 TagViewModel，將職責合併至 ExpertViewModel，清除了 dead code fetchTagsFromAi
+- [x] 實現 QuickLogCard 的兩步確認與手動新增/編輯標籤流程（UI 降級與微調機制）
 
 ### Git
 - [x] 約 28 次提交，已全部推送至 main

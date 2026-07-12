@@ -53,7 +53,8 @@ class ExtractLocalTagsUseCase(
 
     private val rpdCounters = models.associate { entry ->
         val saved = sharedPrefs.getStringSet("rpd_${entry.name}", emptySet()) ?: emptySet()
-        entry.name to saved.mapNotNull { it.toLongOrNull() }.toMutableList()
+        // 讀取時移除可能存在的隨機後綴
+        entry.name to saved.mapNotNull { it.substringBefore('_').toLongOrNull() }.toMutableList()
     }
 
     private suspend fun ensureOffset() {
@@ -89,6 +90,9 @@ class ExtractLocalTagsUseCase(
 
             val rpdList = rpdCounters[name]!!
             rpdList.removeAll { it < dayStart }
+
+            Log.d("TagExtract", "Check $name -> RPD: ${rpdList.size}/$rpdLimit, RPM: ${rpmList.size}/$rpmLimit")
+
             if (rpdList.size >= rpdLimit) {
                 Log.d("TagExtract", "$name RPD full (${rpdList.size}/$rpdLimit)")
                 return false
@@ -105,7 +109,9 @@ class ExtractLocalTagsUseCase(
             rpdCounters[name]!!.add(now)
             val rpdList = rpdCounters[name]!!
             rpdList.removeAll { it < dayStart }
-            sharedPrefs.edit { putStringSet("rpd_$name", rpdList.map { it.toString() }.toSet()) }
+            // 在時間戳後加上隨機後綴，防止 StringSet 過濾掉同毫秒的請求
+            val toSave = rpdList.mapIndexed { index, ts -> "${ts}_$index" }.toSet()
+            sharedPrefs.edit { putStringSet("rpd_$name", toSave) }
         }
     }
 
@@ -142,18 +148,18 @@ class ExtractLocalTagsUseCase(
         migrateOldBans()
 
         val prompt = """
-            è«‹å¾žä»¥ä¸‹æ–‡å­—ä¸­æå– 4 å€‹æœ€æ ¸å¿ƒçš„é—œéµå­—æ¨™ç±¤ã€‚
+            請從以下文字中提取 4 個最核心的關鍵字標籤。
 
-            è­¦å‘Šï¼š
-            å¦‚æžœè¼¸å…¥çš„æ–‡å­—æ˜¯ç„¡æ„ç¾©çš„èƒ¡è¨€ä¹±èªžã€éµç›¤ä¹±æ‰“ã€å‰·æ°£æœŸçš„ç¬¦è™Ÿã€ç”Ÿç–Žå­—ä¹±å †ã€æˆ–æ˜¯å®Œå…¨ç„¡æ³•å°æ‡‰åˆ°ä»»ä½•å¯¦éš›ç”Ÿæ´»ã€å·¥ä½œæˆ–å°ˆæ¥­æŠ€èƒ½å ´æ™¯çš„å…§å®¹ï¼Œ
-            ä½ å¿…é ˆã€Œç«‹åˆ»æ‹’çµ•ç”Ÿæˆã€ï¼Œä¸”åªå›žå‚³ä¸€å€‹ç©ºå­—ç¬¦ä¸²ï¼Œä¸è¦å¸¶æœ‰ä»»ä½•æ¨™ç±¤ã€å­—å…ƒã€æ¨™é»žç¬¦è™Ÿæˆ–è§£é‡‹ã€‚
+            警告：
+            如果輸入的文字是無意義的胡言亂語、鍵盤亂打、重複的符號、生僻字亂堆、或是完全無法對應到任何實際生活、工作或專業技能場景的内容，
+            你必須「立刻拒絕生成」，且只回傳一個空字串，不要帶有任何標籤、字元、標點符號或解釋。
 
-            ä¸€èˆ¬æå–è¦æ±‚ï¼š
-            1. åªå›žå‚³æ¨™ç±¤å…§å®¹ï¼Œç”¨é€—è™Ÿåˆ†éš” (ä¾‹å¦‚ï¼šå°ç©é›»,è‚¡ç¥¨,æŠ•è³‡,ç†è²¡)ã€‚
-            2. ä¸è¦åŒ…å«ä»»ä½•è§£é‡‹ã€åºè™Ÿæˆ–ç¬¦è™Ÿã€‚
-            3. è™•ç†ã€Œå°ç©é›»ã€ã€ã€Œæ¯”ç‰¹å¹£ã€ç­‰ç†±é–€å°ˆæœ‰åè©žæ™‚ï¼Œè«‹å‹™å¿…å®Œæ•´ä¿ç•™ï¼Œä¸è¦é‹–é–‹ã€‚
+            一般提取要求：
+            1. 只回傳標籤內容，用逗號分隔 (例如：台積電,股票,投資,理財)。
+            2. 不要包含任何解釋、序號或符號。
+            3. 處理「台積電」、「比特幣」等熱門專有名詞時，請務必完整保留，不要分開。
 
-            æ–‡å­—å…§å®¹ï¼š$text
+            文字內容：$text
         """.trimIndent()
 
         val hasAnyAvailableModel = models.any { canUseModel(it.name, it.rpmLimit, it.rpdLimit) }
@@ -175,9 +181,18 @@ class ExtractLocalTagsUseCase(
             try {
                 val config = if (entry.supportsThinking) buildConfig(entry)!! else emptyConfig
                 val response = client.models.generateContent(entry.name, prompt, config)
-                val responseText = response.text() ?: throw Exception("empty response")
-                Log.d("TagExtract", "OK using model: ${entry.name} (RPM ${entry.rpmLimit} / RPD ${entry.rpdLimit})")
-                return@withContext responseText.split(",").map { it.trim() }.filter { it.isNotEmpty() }.take(4)
+                val responseText = response.text()
+                
+                // 如果模型回傳 null 或空字串，代表它遵循指令「拒絕為胡言亂語生成標籤」
+                // 這屬於「成功識別」而非「執行失敗」，應直接結束並回傳空列表，不需輪詢下一個模型
+                if (responseText.isNullOrBlank()) {
+                    Log.d("TagExtract", "Model ${entry.name} identified gibberish or returned empty. Stopping.")
+                    return@withContext emptyList<String>()
+                }
+
+                val currentRpd = rpdCounters[entry.name]?.size ?: 0
+                Log.d("TagExtract", "OK [${entry.name}] - Today's count: $currentRpd/${entry.rpdLimit}")
+                return@withContext responseText.split(",", "，").map { it.trim() }.filter { it.isNotEmpty() }.take(4)
             } catch (e: Exception) { if (e is kotlinx.coroutines.CancellationException) throw e;
                 Log.w("TagExtract", "model ${entry.name} failed: ${e.message}")
                 val errorMsg = e.message ?: ""
