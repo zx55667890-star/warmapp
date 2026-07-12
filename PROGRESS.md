@@ -29,11 +29,27 @@
 ### Git
 - [x] 約 28 次提交，已全部推送至 main
 
+### 全域代碼優化（第 2 輪）
+- [x] Modifier 參數順序檢查 — 全部 21 個 Composable 符合慣例，無需修改
+- [x] 未使用資源檢查 — 無 `colors.xml` / `backup_rules.xml`，所有資源皆在使用
+- [x] 依賴管理確認 — `libs.versions.toml` 完整，`build.gradle.kts` 全用 `libs.*`
+- [x] 修復 `local.properties` PropertyEscape lint error（`C:` → `C\:`）
+- [x] 更新 `.gitignore` 加入 `.kotlin/`，移除已追蹤的 compiler session 快取
+- [x] `lintDebug` ✅、`testDebugUnitTest` ✅、`assembleDebug` ✅
+
 ## 未解決問題
 
 1. **無整合測試** — 只能靠單元測試與手動安裝 APK 測試。
 
 2. **3 Flash Preview 強制 thinking** — 已移除該模型，但若未來要加回來需注意 `thinkingBudget(0)` 對它無效。
+
+3. **AGP 棄用警告** — `android.overridePathCheck=true`、`android.defaults.buildfeatures.resvalues=true`、`android.enableNewResourceShrinker` 為棄用選項，需在 `gradle.properties` 中清理。
+
+4. **Lint 棄用警告** — `GoogleSignIn` (AuthRepository, AuthScreen)、`statusBarColor` / `navigationBarColor` / `isStatusBarContrastEnforced` (MainActivity) 在 SDK 37 中標記為 deprecated，後續需遷移至新 API。
+
+5. **未檢查的型別轉換** — `DataMigrator.kt:37` 有 `Unchecked cast: Any? → Map<String, Any>`，可能引發 runtime 崩潰。
+
+6. **UiText annotation target 警告** — `UiText.kt:9` 需要 `@param:` annotation target 限定，否則未來 Kotlin 版本會改變行為。
 
 ## 模型清單與配額
 

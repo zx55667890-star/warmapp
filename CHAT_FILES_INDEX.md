@@ -14,6 +14,10 @@
 - `ui/expert/ExpertScreen.kt` — KnowledgeItemCard、QuickLogCard（重複檢測）、FlowRow chip
 - `ui/navigation/AppNavigation.kt` — koinViewModel()
 
+## 第 2 輪優化（本次）
+- `.gitignore` — 加入 `.kotlin/` 避免 compiler session 快取被追蹤
+- `local.properties` — 修復 PropertyEscape lint 錯誤
+
 ## 主要資料夾結構
 ```
 warmapp/
