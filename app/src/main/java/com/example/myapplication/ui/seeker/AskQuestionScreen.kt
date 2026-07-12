@@ -102,8 +102,8 @@ fun AskQuestionScreen(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         containerColor = Color.Transparent,
         contentWindowInsets = WindowInsets(0.dp)
-    ) { _ ->
-        Box(modifier = Modifier.fillMaxSize()) {
+    ) { innerPadding ->
+        Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
 
             val imeInsets = WindowInsets.ime
             val density = LocalDensity.current

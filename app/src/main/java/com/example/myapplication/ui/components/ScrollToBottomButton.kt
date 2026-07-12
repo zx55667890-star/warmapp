@@ -22,8 +22,8 @@ fun ScrollToBottomButton(
     listState: LazyListState,
     isDarkTheme: Boolean,
     totalMessages: Int,
-    isLoadingMore: Boolean = false,
     modifier: Modifier = Modifier,
+    isLoadingMore: Boolean = false,
     onScrollToBottom: () -> Unit
 ) {
     val isAtBottom by remember { derivedStateOf { !listState.canScrollBackward } }

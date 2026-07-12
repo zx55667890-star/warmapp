@@ -2,6 +2,7 @@ package com.example.myapplication.domain.expert
 
 import android.content.SharedPreferences
 import android.util.Log
+import androidx.core.content.edit
 import com.example.myapplication.BuildConfig
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
@@ -66,7 +67,7 @@ class ExtractLocalTagsUseCase(
                 }
             })
         serverOffsetMs = withTimeoutOrNull(3000) { deferred.await() } ?: 0L
-        Log.d("TagExtract", "🕐 伺服器時間偏移: ${serverOffsetMs}ms")
+        Log.d("TagExtract", "ðŸ• ä¼ºæœå™¨æ™‚é–“åç§»: ${serverOffsetMs}ms")
     }
 
     private fun canUseModel(name: String, rpmLimit: Int, rpdLimit: Int): Boolean {
@@ -75,7 +76,7 @@ class ExtractLocalTagsUseCase(
 
         val bannedUntil = sharedPrefs.getLong("quota_banned_$name", 0L)
         if (bannedUntil > now) {
-            Log.d("TagExtract", "⏭️ $name 伺服器配額已滿，封鎖至 ${Instant.ofEpochMilli(bannedUntil).atZone(ZoneId.of("America/Los_Angeles"))}")
+            Log.d("TagExtract", "â­ï¸ $name ä¼ºæœå™¨é…é¡å·²æ»¿ï¼Œå°éŽ–è‡³ ${Instant.ofEpochMilli(bannedUntil).atZone(ZoneId.of("America/Los_Angeles"))}")
             return false
         }
 
@@ -87,7 +88,7 @@ class ExtractLocalTagsUseCase(
             val rpdList = rpdCounters[name]!!
             rpdList.removeAll { it < dayStart }
             if (rpdList.size >= rpdLimit) {
-                Log.d("TagExtract", "⏭️ $name RPD 已滿 (${rpdList.size}/$rpdLimit)")
+                Log.d("TagExtract", "â­ï¸ $name RPD å·²æ»¿ (${rpdList.size}/$rpdLimit)")
                 return false
             }
         }
@@ -102,9 +103,7 @@ class ExtractLocalTagsUseCase(
             rpdCounters[name]!!.add(now)
             val rpdList = rpdCounters[name]!!
             rpdList.removeAll { it < dayStart }
-            sharedPrefs.edit()
-                .putStringSet("rpd_$name", rpdList.map { it.toString() }.toSet())
-                .apply()
+            sharedPrefs.edit { putStringSet("rpd_$name", rpdList.map { it.toString() }.toSet()) }
         }
     }
 
@@ -114,8 +113,8 @@ class ExtractLocalTagsUseCase(
             val key = "quota_banned_${entry.name}"
             val existing = sharedPrefs.getLong(key, 0L)
             if (existing > nextMidnight) {
-                sharedPrefs.edit().putLong(key, nextMidnight).apply()
-                Log.d("TagExtract", "🔄 ${entry.name} ban 已校正至太平洋午夜")
+                sharedPrefs.edit { putLong(key, nextMidnight) }
+                Log.d("TagExtract", "ðŸ”„ ${entry.name} ban å·²æ ¡æ­£è‡³å¤ªå¹³æ´‹åˆå¤œ")
             }
         }
     }
@@ -132,14 +131,20 @@ class ExtractLocalTagsUseCase(
         migrateOldBans()
 
         val prompt = """
-            請從以下文字中提取 4 個最核心的關鍵字標籤。
-            要求：
-            1. 只回傳標籤內容，用逗號分隔 (例如：台積電,股票,投資,理財)。
-            2. 不要包含任何解釋、序號或符號。
-            3. 處理「台積電」、「比特幣」等熱門專有名詞時，請務必完整保留，不要拆開。
+            è«‹å¾žä»¥ä¸‹æ–‡å­—ä¸­æå– 4 å€‹æœ€æ ¸å¿ƒçš„é—œéµå­—æ¨™ç±¤ã€‚
+            è¦æ±‚ï¼š
+            1. åªå›žå‚³æ¨™ç±¤å…§å®¹ï¼Œç”¨é€—è™Ÿåˆ†éš” (ä¾‹å¦‚ï¼šå°ç©é›»,è‚¡ç¥¨,æŠ•è³‡,ç†è²¡)ã€‚
+            2. ä¸è¦åŒ…å«ä»»ä½•è§£é‡‹ã€åºè™Ÿæˆ–ç¬¦è™Ÿã€‚
+            3. è™•ç†ã€Œå°ç©é›»ã€ã€ã€Œæ¯”ç‰¹å¹£ã€ç­‰ç†±é–€å°ˆæœ‰åè©žæ™‚ï¼Œè«‹å‹™å¿…å®Œæ•´ä¿ç•™ï¼Œä¸è¦æ‹†é–‹ã€‚
             
-            文字內容：$text
+            æ–‡å­—å…§å®¹ï¼š$text
         """.trimIndent()
+
+        val hasAnyAvailableModel = models.any { canUseModel(it.name, it.rpmLimit, it.rpdLimit) }
+        if (!hasAnyAvailableModel) {
+            Log.w("TagExtract", "æ‰€æœ‰æ¨¡åž‹é…é¡çš†å·²æ»¿ï¼Œç„¡æ³•ç™¼èµ·è«‹æ±‚")
+            throw IllegalStateException("AI æœå‹™é…é¡å·²æ»¿ï¼Œè«‹ç¨å¾Œé‡è©¦æˆ–æ‰‹å‹•è¼¸å…¥æ¨™ç±¤")
+        }
 
         val rawIndex = roundRobin.getAndIncrement()
         val startIndex = (rawIndex and Int.MAX_VALUE) % models.size
@@ -154,20 +159,21 @@ class ExtractLocalTagsUseCase(
             try {
                 val config = if (entry.supportsThinking) buildConfig(entry)!! else emptyConfig
                 val response = client.models.generateContent(entry.name, prompt, config)
-                val responseText = response.text() ?: throw Exception("空回應")
-                Log.d("TagExtract", "✅ 使用模型: ${entry.name} (RPM ${entry.rpmLimit} / RPD ${entry.rpdLimit})")
+                val responseText = response.text() ?: throw Exception("ç©ºå›žæ‡‰")
+                Log.d("TagExtract", "âœ… ä½¿ç”¨æ¨¡åž‹: ${entry.name} (RPM ${entry.rpmLimit} / RPD ${entry.rpdLimit})")
                 return@withContext responseText.split(",").map { it.trim() }.filter { it.isNotEmpty() }.take(4)
-            } catch (e: Exception) {
-                Log.w("TagExtract", "❌ 模型 ${entry.name} 失敗: ${e.message}")
+            } catch (e: Exception) { if (e is kotlinx.coroutines.CancellationException) throw e;
+                Log.w("TagExtract", "âŒ æ¨¡åž‹ ${entry.name} å¤±æ•—: ${e.message}")
                 val errorMsg = e.message ?: ""
                 if (errorMsg.contains("Quota exceeded", ignoreCase = true) || errorMsg.contains("429")) {
                     val banUntil = todayStartMs() + 86_400_000
-                    sharedPrefs.edit().putLong("quota_banned_${entry.name}", banUntil).apply()
-                    Log.d("TagExtract", "🚫 ${entry.name} 已封鎖至太平洋午夜")
+                    sharedPrefs.edit { putLong("quota_banned_${entry.name}", banUntil) }
+                    Log.d("TagExtract", "ðŸš« ${entry.name} å·²å°éŽ–è‡³å¤ªå¹³æ´‹åˆå¤œ")
                 }
             }
         }
-        Log.e("TagExtract", "所有模型皆失敗，回傳空標籤")
-        emptyList()
+        Log.e("TagExtract", "æ‰€æœ‰å˜—è©¦çš„æ¨¡åž‹çš†å¤±æ•—")
+        throw IllegalStateException("AI æ¨™ç±¤æå–å¤±æ•—ï¼Œè«‹æ‰‹å‹•è¼¸å…¥æ¨™ç±¤")
     }
 }
+

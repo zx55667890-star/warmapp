@@ -104,11 +104,11 @@ fun AuthScreen(
                 Log.d("AuthScreen", "Google account: ${account.email}, idToken=${account.idToken?.take(20)}")
                 account.idToken?.let { viewModel.signInWithGoogle(it) }
                     ?: run {
-                        viewModel.setError("無法取得 Google 憑證，請確認 default_web_client_id 是否正確")
+                        viewModel.setError("ç„¡æ³•å–å¾— Google æ†‘è­‰ï$resetEmail，è«‹ç¢ºèª default_web_client_id æ˜¯å¦æ­£ç¢º")
                     }
             } catch (e: ApiException) {
                 Log.w("AuthScreen", "Google Sign-In ApiException: ${e.statusCode}", e)
-                viewModel.setError("Google 登入失敗: ${e.localizedMessage}")
+                viewModel.setError("Google ç™»å…¥å¤±æ•—: ${e.localizedMessage}")
             }
         } else {
             Log.d("AuthScreen", "Google Sign-In cancelled: resultCode=$result.resultCode")
@@ -184,12 +184,12 @@ fun AuthScreen(
                 onGoogleSignIn = {
                     val avail = GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(context)
                     if (avail != ConnectionResult.SUCCESS) {
-                        viewModel.setError("Google 服務不可用，請確認模擬器已安裝 Google Play 服務")
+                        viewModel.setError("Google æœå‹™ä¸å¯ç”¨ï$resetEmail，è«‹ç¢ºèªæ¨¡æ“¬å™¨å·²å®‰è£ Google Play æœå‹™")
                     } else {
                         try {
                             googleSignInLauncher.launch(googleSignInClient.signInIntent)
-                        } catch (e: Exception) {
-                            viewModel.setError("Google 登入失敗：${e.localizedMessage ?: "請確認 Google 服務是否正常"}")
+                        } catch (e: Exception) { if (e is kotlinx.coroutines.CancellationException) throw e;
+                            viewModel.setError("Google ç™»å…¥å¤±æ•—ï¼š${e.localizedMessage ?: "è«‹ç¢ºèª Google æœå‹™æ˜¯å¦æ­£å¸¸"}")
                         }
                     }
                 },
@@ -221,3 +221,4 @@ fun AuthScreen(
         LoadingOverlay(uiState.isLoading)
     }
 }
+

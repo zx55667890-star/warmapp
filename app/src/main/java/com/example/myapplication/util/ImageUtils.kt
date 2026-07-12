@@ -3,7 +3,7 @@ package com.example.myapplication.util
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.media.ExifInterface
+import androidx.exifinterface.media.ExifInterface
 import android.net.Uri
 import java.io.ByteArrayOutputStream
 
@@ -41,7 +41,7 @@ object ImageUtils {
             } else {
                 compressedBytes
             }
-        } catch (e: Exception) {
+        } catch (e: Exception) { if (e is kotlinx.coroutines.CancellationException) throw e;
             e.printStackTrace()
             null
         }
@@ -54,7 +54,7 @@ object ImageUtils {
             val exif = ExifInterface(inputStream)
             inputStream.close()
             exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)
-        } catch (e: Exception) {
+        } catch (e: Exception) { if (e is kotlinx.coroutines.CancellationException) throw e;
             ExifInterface.ORIENTATION_NORMAL
         }
     }
@@ -77,3 +77,4 @@ object ImageUtils {
         return rotated
     }
 }
+

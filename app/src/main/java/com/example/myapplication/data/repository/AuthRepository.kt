@@ -158,7 +158,7 @@ class AuthRepository(
                     cont.resumeWithException(Exception("請求次數過多，請明天再試"))
                     return@addOnSuccessListener
                 }
-                val code = String.format("%06d", Random.nextInt(0, 999999))
+                val code = String.format(java.util.Locale.US, "%06d", Random.nextInt(0, 999999))
                 countRef.setValue(count + 1)
                 firebaseDb.getReference("email_verification").child(emailKey).child("code").setValue(code)
                 firebaseDb.getReference("email_verification").child(emailKey).child("createdAt")
@@ -171,7 +171,7 @@ class AuthRepository(
                     .addOnFailureListener { e -> Log.e("AuthRepository", "sendEmail failed: ${e.message}") }
                 cont.resume(Unit)
             }.addOnFailureListener {
-                val code = String.format("%06d", Random.nextInt(0, 999999))
+                val code = String.format(java.util.Locale.US, "%06d", Random.nextInt(0, 999999))
                 firebaseDb.getReference("email_verification").child(emailKey).child("code").setValue(code)
                 firebaseDb.getReference("email_verification").child(emailKey).child("createdAt")
                     .setValue(System.currentTimeMillis())

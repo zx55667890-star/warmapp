@@ -150,10 +150,10 @@ private fun MediaPreviewItem(uri: Uri, isVideo: Boolean, isVoice: Boolean, onRem
                 try {
                     retriever.setDataSource(context, uri)
                     retriever.getFrameAtTime()
-                } catch (e: Exception) {
+                } catch (e: Exception) { if (e is kotlinx.coroutines.CancellationException) throw e;
                     null
                 } finally {
-                    try { retriever.release() } catch (_: Exception) {}
+                    try { retriever.release() } catch (e: Exception) { if (e is kotlinx.coroutines.CancellationException) throw e;}
                 }
             }
         }
@@ -190,3 +190,4 @@ private fun MediaPreviewItem(uri: Uri, isVideo: Boolean, isVoice: Boolean, onRem
         }
     }
 }
+

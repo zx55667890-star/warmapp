@@ -167,7 +167,7 @@ fun CameraCaptureScreen(
                                             point, FocusMeteringAction.FLAG_AF
                                         ).build()
                                         cam.cameraControl.startFocusAndMetering(action)
-                                    } catch (_: Exception) {}
+                                    } catch (e: Exception) { if (e is kotlinx.coroutines.CancellationException) throw e;}
                                 }
                                 true
                             }
@@ -337,3 +337,4 @@ private fun exitFullScreen(activity: Activity) {
             android.view.View.SYSTEM_UI_FLAG_FULLSCREEN.inv() and android.view.View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY.inv()
     }
 }
+

@@ -18,9 +18,7 @@ class FetchOpponentUseCase(
                 onFailure = { cont.resume(Pair(5.0, 0L)) }
             )
         }
-        val nickname = suspendCancellableCoroutine { cont ->
-            userRepository.getNickname(opponentId) { cont.resume(it) }
-        }
+        val nickname = userRepository.getNickname(opponentId)
         return OpponentProfile(nickname, rating, helpCount)
     }
 }

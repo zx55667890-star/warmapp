@@ -32,8 +32,10 @@ class MainActivity : ComponentActivity() {
         window.navigationBarColor = Color.TRANSPARENT
         window.decorView.setBackgroundColor(android.graphics.Color.parseColor("#133281"))
 
-        window.isStatusBarContrastEnforced = false
-        window.isNavigationBarContrastEnforced = false
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            window.isStatusBarContrastEnforced = false
+            window.isNavigationBarContrastEnforced = false
+        }
 
         createNotificationChannel()
 
@@ -62,14 +64,11 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    @SuppressLint("NewApi")
     private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                "chat_messages", "聊天訊息",
-                NotificationManager.IMPORTANCE_HIGH
-            )
-            getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
-        }
+        val channel = NotificationChannel(
+            "chat_messages", "聊天訊息",
+            NotificationManager.IMPORTANCE_HIGH
+        )
+        getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
     }
 }

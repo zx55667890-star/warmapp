@@ -59,7 +59,7 @@ class VoiceRecordingViewModel : ViewModel() {
 
     fun stopRecording(): String? {
         recorder?.apply {
-            try { stop() } catch (_: Exception) {}
+            try { stop() } catch (e: Exception) { if (e is kotlinx.coroutines.CancellationException) throw e;}
             release()
         }
         recorder = null
@@ -71,7 +71,7 @@ class VoiceRecordingViewModel : ViewModel() {
 
     fun release() {
         recorder?.apply {
-            try { stop() } catch (_: Exception) {}
+            try { stop() } catch (e: Exception) { if (e is kotlinx.coroutines.CancellationException) throw e;}
             release()
         }
         recorder = null
@@ -82,3 +82,4 @@ class VoiceRecordingViewModel : ViewModel() {
         release()
     }
 }
+

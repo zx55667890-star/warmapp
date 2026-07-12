@@ -38,7 +38,7 @@ fun TypingIndicator(modifier: Modifier = Modifier) {
                 Box(
                     modifier = Modifier
                         .size(5.dp)
-                        .offset(y = offsetY.dp)
+                        .offset { androidx.compose.ui.unit.IntOffset(0, offsetY.dp.roundToPx()) }
                         .background(if (isDarkTheme) Color(0xFFAAAAAA) else Color.Gray, CircleShape)
                 )
             }

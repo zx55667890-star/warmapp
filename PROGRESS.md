@@ -10,7 +10,7 @@
 - [x] FlowRow 標籤晶片顯示
 - [x] QuickLogCard 重複檢測（expertise 比對）
 
-### Gemini API 整合
+### Gemini API 整合與架構重構
 - [x] 5 模型輪換（已移除 3 Flash Preview）
 - [x] RPM 滑動 60 秒窗口（in-memory）
 - [x] RPD 太平洋午夜重置（SharedPreferences 持久化）
@@ -21,23 +21,19 @@
 - [x] Non-Lite 模型 thinkingBudget(0)
 - [x] SDK 遷移至 google-genai:1.61.0
 - [x] 打包 META-INF 衝突排除
+- [x] **[NEW]** 優化配額用盡處理，在 ExtractLocalTagsUseCase 中主動拋出 Exception，解決靜默失敗
+- [x] **[NEW]** 優化 Token 耗費，在 checks 後才調用 API 避免浪費
+- [x] **[NEW]** 重構移除 TagViewModel，將職責合併至 ExpertViewModel，清除了 dead code fetchTagsFromAi
+- [x] **[NEW]** 實現 QuickLogCard 的兩步確認與手動新增/編輯標籤流程（UI 降級與微調機制）
 
 ### Git
 - [x] 約 28 次提交，已全部推送至 main
 
 ## 未解決問題
 
-1. **配額用盡時靜默失敗** — 當所有模型 RPM/RPD 滿時，使用者會看到「成功記錄」但實際送出空標籤。無任何錯誤提示或重試 UI。
+1. **無整合測試** — 只能靠單元測試與手動安裝 APK 測試。
 
-2. **無手動標籤輸入備案** — QuickLogCard 沒有任何手動輸入/編輯標籤的欄位。AI 提取失敗時使用者無法自行補上標籤。
-
-3. **無整合測試** — 只能靠手動安裝 APK 測試。
-
-4. **Token 耗費** — 每次提取都傳送完整 prompt 和原文，即使只是 RPD 滿了也會浪費 token（記錄在 RPM 前就已發出請求）。應在 `canUseModel()` 檢查後再決定是否請求。
-
-5. **`fetchTagsFromAi` 未使用** — ExpertViewModel 有一個 `fetchTagsFromAi()` 函式包含 Toast 提示，但 QuickLogCard 沒用到它，變成 dead code。
-
-6. **3 Flash Preview 強制 thinking** — 已移除該模型，但若未來要加回來需注意 `thinkingBudget(0)` 對它無效。
+2. **3 Flash Preview 強制 thinking** — 已移除該模型，但若未來要加回來需注意 `thinkingBudget(0)` 對它無效。
 
 ## 模型清單與配額
 

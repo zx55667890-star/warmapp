@@ -2,6 +2,7 @@ package com.example.myapplication.data.repository
 
 import android.content.SharedPreferences
 import android.util.Log
+import androidx.core.content.edit
 import com.google.firebase.database.FirebaseDatabase
 
 class DataMigrator(
@@ -21,12 +22,12 @@ class DataMigrator(
 
         migrateExpertData(deviceId, uid)
         migrateQuestions(deviceId, uid)
-        prefs.edit().putBoolean(KEY_MIGRATION_DONE, true).apply()
+        prefs.edit { putBoolean(KEY_MIGRATION_DONE, true) }
         Log.d("DataMigrator", "Migration complete: $deviceId → $uid")
     }
 
     fun saveDeviceId(deviceId: String) {
-        prefs.edit().putString(KEY_DEVICE_ID, deviceId).apply()
+        prefs.edit { putString(KEY_DEVICE_ID, deviceId) }
     }
 
     private fun migrateExpertData(deviceId: String, uid: String) {

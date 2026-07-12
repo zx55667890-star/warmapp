@@ -193,7 +193,7 @@ fun RoleSelectScreen(
         // 右移的主畫面
         Box(
             modifier = Modifier
-                .offset(x = offsetX)
+                .offset { androidx.compose.ui.unit.IntOffset(offsetX.roundToPx(), 0) }
                 .scale(scale)
                 .clip(RoundedCornerShape(cornerRadius))
                 .border(

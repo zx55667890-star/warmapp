@@ -26,8 +26,8 @@ fun FullScreenImageDialog(
     imageUrls: List<String>,
     startIndex: Int,
     onDismiss: () -> Unit,
-    isCameraCaptureList: List<Boolean> = emptyList(),
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isCameraCaptureList: List<Boolean> = emptyList()
 ) {
     if (imageUrls.isEmpty()) {
         onDismiss()

@@ -68,7 +68,7 @@ class MediaUploader(private val storage: FirebaseStorage) {
 
                         uploadTask.await()
                         return@async ref.downloadUrl.await().toString()
-                    } catch (e: Exception) {
+                    } catch (e: Exception) { if (e is kotlinx.coroutines.CancellationException) throw e;
                         onError(e.message ?: "上傳失敗，請再試一次")
                         return@async null
                     }
@@ -104,7 +104,7 @@ class MediaUploader(private val storage: FirebaseStorage) {
                 }
                 uploadTask.await()
                 ref.downloadUrl.await().toString()
-            } catch (e: Exception) {
+            } catch (e: Exception) { if (e is kotlinx.coroutines.CancellationException) throw e;
                 onError(e.message ?: "影片上傳失敗，請再試一次")
                 null
             }
@@ -118,7 +118,7 @@ class MediaUploader(private val storage: FirebaseStorage) {
                     if (url.isNotBlank()) {
                         storage.getReferenceFromUrl(url).delete().await()
                     }
-                } catch (_: Exception) { }
+                } catch (e: Exception) { if (e is kotlinx.coroutines.CancellationException) throw e; }
             }
         }
     }
@@ -142,10 +142,11 @@ class MediaUploader(private val storage: FirebaseStorage) {
                 uploadTask.await()
                 val downloadUrl = ref.downloadUrl.await().toString()
                 downloadUrl
-            } catch (e: Exception) {
+            } catch (e: Exception) { if (e is kotlinx.coroutines.CancellationException) throw e;
                 onError("語音上傳失敗：${e.message}")
                 null
             }
         }
     }
 }
+

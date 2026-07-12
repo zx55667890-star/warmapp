@@ -1,4 +1,4 @@
-package com.example.myapplication.di
+﻿package com.example.myapplication.di
 
 import android.content.SharedPreferences
 import android.util.Log
@@ -140,7 +140,7 @@ class SeekerViewModel(
                             if (selectedMedia.isNotEmpty()) {
                                 sendQuestionMediaUseCase(chatroomId, messagesRef, selectedMedia, timestamp + 2)
                             }
-                        } catch (e: Exception) {
+                        } catch (e: Exception) { if (e is kotlinx.coroutines.CancellationException) throw e;
                             Log.w("SeekerViewModel", "AI response failed", e)
                         }
                     }
@@ -319,3 +319,4 @@ class SeekerViewModel(
         super.onCleared()
     }
 }
+

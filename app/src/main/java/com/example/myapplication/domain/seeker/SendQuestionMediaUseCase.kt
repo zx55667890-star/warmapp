@@ -1,4 +1,4 @@
-package com.example.myapplication.domain.seeker
+﻿package com.example.myapplication.domain.seeker
 
 import android.net.Uri
 import android.util.Log
@@ -30,7 +30,7 @@ class SendQuestionMediaUseCase(
                     media.isVideo -> uploadVideo(chatroomId, messagesRef, media, timestamp)
                     else -> uploadImages(chatroomId, messagesRef, media, timestamp)
                 }
-            } catch (e: Exception) {
+            } catch (e: Exception) { if (e is kotlinx.coroutines.CancellationException) throw e;
                 Log.w("SendQuestionMedia", "Upload failed", e)
             }
         }
@@ -80,3 +80,4 @@ class SendQuestionMediaUseCase(
         ))
     }
 }
+

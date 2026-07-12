@@ -57,6 +57,7 @@ kotlin {
 
 dependencies {
     implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.exifinterface)
     implementation(libs.androidx.activity.compose)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
@@ -65,30 +66,29 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation(libs.compose.icons)
     implementation(libs.material)
-    implementation("androidx.compose.material:material-icons-extended:1.5.0")
 
-    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.0")
-    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.0")
+    implementation(libs.lifecycle.viewmodel.compose)
+    implementation(libs.lifecycle.viewmodel.ktx)
 
     implementation(libs.firebase.database)
     implementation(libs.firebase.auth)
     implementation(libs.firebase.messaging)
     implementation(libs.play.services.auth)
-    implementation("com.google.firebase:firebase-storage:21.0.1")
-    implementation("com.google.firebase:firebase-functions:21.1.0")
+    implementation(libs.firebase.storage)
+    implementation(libs.firebase.functions)
 
-    implementation("io.coil-kt:coil-compose:2.7.0") {
+    implementation(libs.coil.compose) {
         exclude(group = "androidx.compose.runtime", module = "runtime")
         exclude(group = "androidx.compose.runtime", module = "runtime-android")
     }
-    implementation("io.coil-kt:coil-video:2.7.0") {
+    implementation(libs.coil.video) {
         exclude(group = "androidx.compose.runtime", module = "runtime")
         exclude(group = "androidx.compose.runtime", module = "runtime-android")
     }
 
-    implementation("androidx.media3:media3-exoplayer:1.6.0")
-    implementation("androidx.media3:media3-ui:1.6.0")
-    implementation("androidx.media3:media3-database:1.6.0")
+    implementation(libs.media3.exoplayer)
+    implementation(libs.media3.ui)
+    implementation(libs.media3.database)
 
     implementation(libs.camerax.core)
     implementation(libs.camerax.camera2)
@@ -99,14 +99,14 @@ dependencies {
     implementation(libs.koin.core)
     implementation(libs.koin.android)
     implementation(libs.koin.compose)
-    implementation("androidx.navigation:navigation-compose:2.8.0")
+    implementation(libs.navigation.compose)
 
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.9.0")
-    implementation("com.google.genai:google-genai:1.61.0")
+    implementation(libs.kotlinx.coroutines.play.services)
+    implementation(libs.google.genai)
 
     testImplementation(libs.junit)
-    testImplementation("io.mockk:mockk:1.13.5")
-    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
+    testImplementation(libs.mockk)
+    testImplementation(libs.kotlinx.coroutines.test)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))

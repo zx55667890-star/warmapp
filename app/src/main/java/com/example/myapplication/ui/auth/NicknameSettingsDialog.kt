@@ -25,11 +25,10 @@ fun NicknameSettingsDialog(
     var validationError by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(userId) {
-        userRepository.getNickname(userId) { nickname ->
-            currentNickname = nickname
-            newNickname = nickname
-            isLoading = false
-        }
+        val nickname = userRepository.getNickname(userId)
+        currentNickname = nickname
+        newNickname = nickname
+        isLoading = false
     }
 
     AlertDialog(

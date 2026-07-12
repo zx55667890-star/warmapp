@@ -17,8 +17,8 @@ import androidx.compose.ui.unit.sp
 @Composable
 fun MatchingDialog(
     onDismiss: () -> Unit,
-    onCancel: () -> Unit = onDismiss,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onCancel: () -> Unit = onDismiss
 ) {
     val isDarkTheme = isSystemInDarkTheme()
 

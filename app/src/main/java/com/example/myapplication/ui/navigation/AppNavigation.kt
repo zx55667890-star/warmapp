@@ -15,6 +15,7 @@ import androidx.core.content.ContextCompat
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -39,7 +40,6 @@ import com.example.myapplication.data.repository.DataMigrator
 import com.example.myapplication.data.repository.UserRepository
 import com.example.myapplication.di.ExpertViewModel
 import com.example.myapplication.di.SeekerViewModel
-import com.example.myapplication.di.TagViewModel
 import com.example.myapplication.ui.auth.AuthScreen
 import com.example.myapplication.ui.auth.AuthViewModel
 import com.example.myapplication.ui.auth.NicknameSettingsDialog
@@ -64,7 +64,6 @@ fun AppNavigation() {
     val scope = rememberCoroutineScope()
 
     val expertViewModel: ExpertViewModel = koinViewModel()
-    val tagViewModel: TagViewModel = koinViewModel()
     val seekerViewModel: SeekerViewModel = koinViewModel()
     val expertUiState by expertViewModel.uiState.collectAsStateWithLifecycle()
     val seekerUiState by seekerViewModel.uiState.collectAsStateWithLifecycle()
@@ -148,6 +147,7 @@ fun AppNavigation() {
                 startDestination = if (authRepository.isLoggedIn()) Routes.ROLE_SELECT else Routes.AUTH,
                 modifier = Modifier
                     .fillMaxSize()
+                    .padding(innerPadding)
             ) {
                 composable(Routes.AUTH) {
                     AuthScreen(
@@ -171,9 +171,8 @@ fun AppNavigation() {
                     val photoUrl = currentUser?.photoUrl?.toString()
                     var nickname by remember { mutableStateOf("使用者") }
                     LaunchedEffect(userId) {
-                        userRepository.getNickname(userId) { n ->
-                            nickname = n.ifBlank { displayName.ifBlank { "使用者" } }
-                        }
+                        val n = userRepository.getNickname(userId)
+                        nickname = n.ifBlank { displayName.ifBlank { "使用者" } }
                     }
                     RoleSelectScreen(
                         nickname = nickname,
@@ -204,7 +203,7 @@ fun AppNavigation() {
                     popExitTransition = { slideOutHorizontally(animationSpec = tween(350)) { it } + fadeOut(animationSpec = tween(350)) }
                 ) {
                     var nickname by remember { mutableStateOf("使用者") }
-                    LaunchedEffect(userId) { userRepository.getNickname(userId) { n -> nickname = n.ifBlank { "使用者" } } }
+                    LaunchedEffect(userId) { nickname = userRepository.getNickname(userId).ifBlank { "使用者" } }
                     AskQuestionScreen(
                         viewModel = seekerViewModel, userId = userId, nickname = nickname,
                         onBack = { navController.popBackStack(Routes.ROLE_SELECT, inclusive = false) }
@@ -220,7 +219,6 @@ fun AppNavigation() {
                 ) {
                     ExpertScreen(
                         viewModel = expertViewModel,
-                        tagViewModel = tagViewModel,
                         userId = userId,
                         onNavigateToInput = {
                             navController.navigate(Routes.ROLE_SELECT) {

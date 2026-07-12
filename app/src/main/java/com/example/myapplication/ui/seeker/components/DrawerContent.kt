@@ -25,11 +25,11 @@ import coil.compose.AsyncImage
 @Composable
 fun DrawerContent(
     nickname: String,
-    avatarUrl: String? = null,
     onSearch: (String) -> Unit,
     onHistoryItemClick: (String) -> Unit,
     onSettingsClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    avatarUrl: String? = null
 ) {
     var searchQuery by remember { mutableStateOf("") }
     val drawerBackground = Color(0xFF171717) // 契合 ChatGPT 風格的優雅深灰

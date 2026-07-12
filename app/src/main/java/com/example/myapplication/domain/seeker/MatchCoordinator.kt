@@ -1,4 +1,4 @@
-package com.example.myapplication.domain.seeker
+﻿package com.example.myapplication.domain.seeker
 
 import android.util.Log
 import com.example.myapplication.data.repository.AiRepository
@@ -59,7 +59,7 @@ class MatchCoordinator(
                             aiRepository.createAiChatroom(questionId, questionText, answer) { chatroomId ->
                                 onAiChatroomReady?.invoke(chatroomId, questionText)
                             }
-                        } catch (e: Exception) {
+                        } catch (e: Exception) { if (e is kotlinx.coroutines.CancellationException) throw e;
                             Log.w("MatchCoordinator", "AI preview failed", e)
                         }
                     }
@@ -77,3 +77,4 @@ class MatchCoordinator(
         cancelMatchTimeout()
     }
 }
+

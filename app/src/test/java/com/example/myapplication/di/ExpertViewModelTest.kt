@@ -1,6 +1,5 @@
 package com.example.myapplication.di
 
-import com.example.myapplication.data.repository.AiRepository
 import com.example.myapplication.di.ExpertViewModel
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseReference
@@ -26,7 +25,7 @@ class ExpertViewModelTest {
     private lateinit var firebaseDb: FirebaseDatabase
 
     @RelaxedMockK
-    private lateinit var aiRepository: AiRepository
+    private lateinit var sharedPrefs: android.content.SharedPreferences
 
     private lateinit var viewModel: ExpertViewModel
 
@@ -37,7 +36,7 @@ class ExpertViewModelTest {
     @Before
     fun setUp() {
         MockKAnnotations.init(this)
-        viewModel = ExpertViewModel(firebaseDb, aiRepository)
+        viewModel = ExpertViewModel(firebaseDb, sharedPrefs)
     }
 
     @After

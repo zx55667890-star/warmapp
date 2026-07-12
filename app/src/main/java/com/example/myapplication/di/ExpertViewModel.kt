@@ -1,11 +1,12 @@
 package com.example.myapplication.di
 
+import android.content.SharedPreferences
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.myapplication.data.model.SolutionItem
-import com.example.myapplication.data.repository.AiRepository
 import com.example.myapplication.data.repository.ExpertRepository
+import com.example.myapplication.domain.expert.ExtractLocalTagsUseCase
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
@@ -47,9 +48,10 @@ sealed class ExpertUiEvent {
 
 class ExpertViewModel(
     private val firebaseDb: FirebaseDatabase,
-    private val aiRepository: AiRepository
+    private val sharedPrefs: SharedPreferences
 ) : ViewModel() {
     private val repository = ExpertRepository(firebaseDb)
+    private val extractLocalTagsUseCase = ExtractLocalTagsUseCase(sharedPrefs, firebaseDb)
 
     private val _uiState = MutableStateFlow(ExpertUiState())
     val uiState: StateFlow<ExpertUiState> = _uiState.asStateFlow()
@@ -69,36 +71,38 @@ class ExpertViewModel(
 
     fun submitSolution(userId: String, questionId: String, expertise: String, tags: List<String>) {
         _uiState.update { it.copy(isSubmittingSolution = true) }
-
-        repository.saveSolution(userId, questionId, expertise, tags,
-            onSuccess = {
+        viewModelScope.launch {
+            try {
+                repository.saveSolution(userId, questionId, expertise, tags)
                 _uiState.update { it.copy(isSubmittingSolution = false) }
                 sendEvent(ExpertUiEvent.ShowToast("已成功記錄到您的知識庫！"))
-            },
-            onError = { msg ->
+            } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
                 _uiState.update { it.copy(isSubmittingSolution = false) }
-                sendEvent(ExpertUiEvent.ShowToast("記錄失敗：$msg"))
+                sendEvent(ExpertUiEvent.ShowToast("記錄失敗：${e.message}"))
             }
-        )
+        }
     }
 
-    fun fetchTagsFromAi(domain: String, subDomain: String, problem: String, onResult: (List<String>) -> Unit) {
+    fun fetchTagsFromAi(text: String, onResult: (List<String>) -> Unit) {
         viewModelScope.launch {
-            Log.d("ExpertVM", "fetchTagsFromAi: domain=$domain subDomain=$subDomain problem=$problem")
-            val tags = aiRepository.generateExpertTags(domain, subDomain, problem)
-            if (tags.isEmpty()) {
-                sendEvent(ExpertUiEvent.ShowToast("AI 標籤生成失敗，請檢查 API Key 或 Logcat"))
+            Log.d("ExpertVM", "fetchTagsFromAi: text=$text")
+            try {
+                val tags = extractLocalTagsUseCase(text)
+                onResult(tags)
+            } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
+                Log.e("ExpertVM", "AI 標籤擷取失敗: ${e.message}")
+                sendEvent(ExpertUiEvent.ShowToast(e.message ?: "AI 標籤擷取失敗"))
+                onResult(emptyList())
             }
-            onResult(tags)
         }
     }
 
     fun initializeExpertStatus(userId: String) {
-        repository.initializeExpertStatus(userId, object : ExpertRepository.ExpertStatusCallback {
-            override fun onStatusUpdated(rating: Double, helpCount: Long) {
-                _uiState.update { it.copy(rating = rating, helpCount = helpCount) }
-            }
-        })
+        repository.initializeExpertStatus(userId) { rating, helpCount ->
+            _uiState.update { it.copy(rating = rating, helpCount = helpCount) }
+        }
         listenToSolutions(userId)
     }
 
@@ -112,13 +116,13 @@ class ExpertViewModel(
             sendEvent(ExpertUiEvent.ShowToast("請填寫您的經驗描述"))
             return
         }
-
-        repository.publishExperience(userId, trimmed) { experienceId ->
-            _uiState.update {
-                it.copy(
-                    activeExperienceId = experienceId,
-                    activeExperienceText = trimmed
-                )
+        viewModelScope.launch {
+            try {
+                val experienceId = repository.publishExperience(userId, trimmed)
+                _uiState.update { it.copy(activeExperienceId = experienceId, activeExperienceText = trimmed) }
+            } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
+                sendEvent(ExpertUiEvent.ShowToast(e.message ?: "發佈失敗"))
             }
         }
     }
@@ -151,11 +155,12 @@ class ExpertViewModel(
         }
 
         _uiState.update { it.copy(isSubmitting = true) }
-
-        repository.editExperience(
-            experienceId = currentState.activeExperienceId,
-            newText = trimmed,
-            onSuccess = {
+        viewModelScope.launch {
+            try {
+                repository.editExperience(
+                    experienceId = currentState.activeExperienceId,
+                    newText = trimmed
+                )
                 _uiState.update {
                     it.copy(
                         isSubmitting = false,
@@ -164,11 +169,11 @@ class ExpertViewModel(
                         editError = null
                     )
                 }
-            },
-            onError = { msg ->
-                _uiState.update { it.copy(isSubmitting = false, editError = msg) }
+            } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
+                _uiState.update { it.copy(isSubmitting = false, editError = e.message) }
             }
-        )
+        }
     }
 
     fun stopExperience() {

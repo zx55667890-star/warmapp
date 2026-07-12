@@ -56,17 +56,17 @@ fun ChatScreen(
         var myNickname by remember { mutableStateOf("") }
         val userRepository: UserRepository = koinInject()
         LaunchedEffect(Unit) {
-            userRepository.getNickname(userId) { myNickname = it }
+            myNickname = userRepository.getNickname(userId)
             val opponentId = if (myRole == "user") expertId else ""
             if (opponentId.isNotBlank()) {
-                userRepository.getNickname(opponentId) { opponentNickname = it }
+                opponentNickname = userRepository.getNickname(opponentId)
             }
         }
         LaunchedEffect(uiState.messages) {
             if (myRole != "user" && opponentNickname.isBlank()) {
                 val opponentId = uiState.messages.firstOrNull { it.senderId != userId }?.senderId
-                if (opponentId != null) userRepository.getNickname(opponentId) {
-                    opponentNickname = it
+                if (opponentId != null) {
+                    opponentNickname = userRepository.getNickname(opponentId)
                 }
             }
         }

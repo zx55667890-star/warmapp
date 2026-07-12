@@ -5,19 +5,28 @@ import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
 class ExpertRepository(private val db: FirebaseDatabase) {
-
-    interface ExpertStatusCallback {
-        fun onStatusUpdated(rating: Double, helpCount: Long)
-    }
 
     private var statusListener: ValueEventListener? = null
     private var currentUserId: String? = null
 
-    fun saveSolution(userId: String, questionId: String, expertise: String, tags: List<String>, onSuccess: () -> Unit, onError: (String) -> Unit) {
+    /** 儲存解法並更新 helpCount，失敗時拋出 Exception。 */
+    suspend fun saveSolution(
+        userId: String,
+        questionId: String,
+        expertise: String,
+        tags: List<String>
+    ) = suspendCancellableCoroutine<Unit> { cont ->
         val solutionRef = db.getReference("solutions").child(userId).push()
-        val solutionId = solutionRef.key ?: return
+        val solutionId = solutionRef.key
+        if (solutionId == null) {
+            cont.resumeWithException(Exception("無法建立方案 ID"))
+            return@suspendCancellableCoroutine
+        }
 
         val solutionData = mapOf(
             "questionId" to questionId,
@@ -32,8 +41,8 @@ class ExpertRepository(private val db: FirebaseDatabase) {
         )
 
         db.reference.updateChildren(updates)
-            .addOnSuccessListener { onSuccess() }
-            .addOnFailureListener { onError(it.message ?: "儲存失敗") }
+            .addOnSuccessListener { if (cont.isActive) cont.resume(Unit) }
+            .addOnFailureListener { if (cont.isActive) cont.resumeWithException(Exception(it.message ?: "儲存失敗")) }
     }
 
     fun listenToSolutionHistory(userId: String, onHistoryUpdate: (List<SolutionItem>) -> Unit) {
@@ -41,7 +50,8 @@ class ExpertRepository(private val db: FirebaseDatabase) {
             .addValueEventListener(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
                     val history = snapshot.children.mapNotNull { child ->
-                        val expertise = child.child("expertise").getValue(String::class.java) ?: return@mapNotNull null
+                        val expertise = child.child("expertise").getValue(String::class.java)
+                            ?: return@mapNotNull null
                         SolutionItem(
                             id = child.key ?: "",
                             questionId = child.child("questionId").getValue(String::class.java) ?: "",
@@ -56,7 +66,7 @@ class ExpertRepository(private val db: FirebaseDatabase) {
             })
     }
 
-    fun initializeExpertStatus(userId: String, callback: ExpertStatusCallback) {
+    fun initializeExpertStatus(userId: String, onUpdate: (rating: Double, helpCount: Long) -> Unit) {
         currentUserId = userId
         val userRef = db.getReference("users").child(userId)
 
@@ -64,43 +74,49 @@ class ExpertRepository(private val db: FirebaseDatabase) {
             override fun onDataChange(snapshot: DataSnapshot) {
                 val rating = snapshot.child("rating").getValue(Double::class.java) ?: 5.0
                 val helpCount = snapshot.child("helpCount").getValue(Long::class.java) ?: 0L
-                callback.onStatusUpdated(rating, helpCount)
+                onUpdate(rating, helpCount)
             }
-            override fun onCancelled(error: DatabaseError) {
-            }
+            override fun onCancelled(error: DatabaseError) {}
         }
         userRef.addValueEventListener(statusListener!!)
     }
 
-    fun publishExperience(userId: String, text: String, onSuccess: (String) -> Unit) {
-        val expRef = db.getReference("active_experiences").push()
-        val expId = expRef.key ?: return
+    /** 發佈新的專家經驗，成功後回傳新建的 experienceId。 */
+    suspend fun publishExperience(userId: String, text: String): String =
+        suspendCancellableCoroutine { cont ->
+            val expRef = db.getReference("active_experiences").push()
+            val expId = expRef.key
+            if (expId == null) {
+                cont.resumeWithException(Exception("無法建立經驗 ID"))
+                return@suspendCancellableCoroutine
+            }
 
-        val experienceData = mapOf(
-            "expertId" to userId,
-            "text" to text,
-            "timestamp" to System.currentTimeMillis(),
-            "status" to "active",
-            "isOnline" to true
-        )
+            val experienceData = mapOf(
+                "expertId" to userId,
+                "text" to text,
+                "timestamp" to System.currentTimeMillis(),
+                "status" to "active",
+                "isOnline" to true
+            )
 
-        expRef.setValue(experienceData).addOnSuccessListener {
-            onSuccess(expId)
+            expRef.setValue(experienceData)
+                .addOnSuccessListener { if (cont.isActive) cont.resume(expId) }
+                .addOnFailureListener { if (cont.isActive) cont.resumeWithException(Exception(it.message ?: "發佈失敗")) }
         }
-    }
 
-    fun editExperience(experienceId: String, newText: String, onSuccess: () -> Unit, onError: (String) -> Unit) {
-        if (experienceId.isBlank()) {
-            onError("無效的經驗 ID")
-            return
+    /** 編輯既有的專家經驗文字，失敗時拋出 Exception。 */
+    suspend fun editExperience(experienceId: String, newText: String) {
+        if (experienceId.isBlank()) throw IllegalArgumentException("無效的經驗 ID")
+        suspendCancellableCoroutine<Unit> { cont ->
+            db.getReference("active_experiences")
+                .child(experienceId)
+                .child("text")
+                .setValue(newText)
+                .addOnSuccessListener { if (cont.isActive) cont.resume(Unit) }
+                .addOnFailureListener {
+                    if (cont.isActive) cont.resumeWithException(Exception(it.message ?: "更新失敗，請稍後再試"))
+                }
         }
-
-        db.getReference("active_experiences")
-            .child(experienceId)
-            .child("text")
-            .setValue(newText)
-            .addOnSuccessListener { onSuccess() }
-            .addOnFailureListener { onError(it.message ?: "更新失敗，請稍後再試") }
     }
 
     fun stopExperience(experienceId: String) {
