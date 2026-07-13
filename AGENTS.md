@@ -1,64 +1,29 @@
-# AGENTS.md — 專案對話紀錄
+# AGENTS.md — 專案對話紀錄與 AI 指南
 
-## 專案概述
-Android App（warmapp），使用 Jetpack Compose + Firebase + Koin，目標是建立一個知識技能記錄平台，包含專家模式（Expert）的知識標籤提取功能。
+## 🛑 強制規則 (CRITICAL)
+- **查閱最新文檔：** 在回答任何關於 API、SDK 或技術實作的語法前，**必須**使用搜尋工具查詢最新的官方文檔。
+- **標註來源：** 必須在回答中附上你參考的官方文檔連結。
+- **版本對齊：** 請嚴格遵守下方「技術棧」中指定的版本，不要提供舊版語法。
 
-## 技術棧
-- Kotlin, Jetpack Compose, Material3
-- Firebase (Realtime Database, Auth, Storage, Functions, Messaging)
-- Koin (DI)
-- Google GenAI SDK (`com.google.genai:google-genai:1.61.0`)
-- Coil, Media3 ExoPlayer, CameraX
+## 📦 專案概述 & 技術棧
+- **專案目標：** 知識技能記錄平台 Android App (warmapp)，包含專家模式 (Expert) 的知識標籤提取。
+- **核心技術：** Kotlin, Jetpack Compose, Material3, Koin (DI), Coil, Media3, CameraX.
+- **Firebase：** Realtime Database, Auth, Storage, Functions, Messaging.
+- **GenAI SDK：** `com.google.genai:google-genai:1.61.0` (注意：`response.text()` 為 `String?`，需處理 null)。
 
-## 關鍵對話摘要
+## 🏗️ 核心架構與現有運作機制 (Context)
+1. **模型與配額 (GenAI)：**
+   - 4 個 Gemini 模型 Round-robin 輪換。
+   - **RPM：** 滑動 60 秒窗口 (in-memory)。
+   - **RPD：** 太平洋時間 (America/Los_Angeles) 午夜重置，持久化於 SharedPreferences。
+   - **Quota Ban：** 遇到 `Quota exceeded` 或 `429` 則封鎖至太平洋午夜。
+2. **時間處理：**
+   - 依賴 Firebase `.info/serverTimeOffset` 校正，超時 (3s) 則降級使用本地時間。
+3. **專案規範：**
+   - **Compose Modifier：** 遵守慣例順序 (required → modifier → optional)。
+   - **資源檔：** 無 `colors.xml` 或 `backup_rules.xml`。
+   - **依賴管理：** 統一使用 `libs.versions.toml`。
 
-### 1. 模型輪換機制
-- 5 個 Gemini 模型輪換（後移除 3 Flash Preview），round-robin 分配請求
-- `AtomicInteger` 搭配 `(rawIndex and Int.MAX_VALUE) % models.size` 實現
-
-### 2. 配額管理（RPM / RPD）
-- **RPM**: 滑動 60 秒窗口，in-memory `mutableListOf<Long>()`
-- **RPD**: 太平洋午夜重置，持久化到 `SharedPreferences`（`Set<String>` 時間戳）
-- RPD 窗口 = `America/Los_Angeles` 時區的 `todayStartMs()`，非滑動 24h
-
-### 3. 伺服器時間校正
-- Firebase `.info/serverTimeOffset` 取得偏差
-- `withTimeoutOrNull(3000)` 防死鎖，超時降級回本地時間
-
-### 4. 配額封鎖（Quota Ban）
-- 偵測 `Quota exceeded` 或 HTTP `429` → 封鎖至太平洋午夜
-- 舊 ban 遷移：`migrateOldBans()` 校正超過明日午夜的封鎖
-
-### 5. Thinking Budget
-- Lite 模型：不支援 thinking，傳空 config
-- 非 Lite 模型：`thinkingBudget(0)` 關閉 thinking（3 Flash Preview 無效）
-
-### 6. SDK 遷移
-- `com.google.ai.client.generativeai:generativeai:0.9.0` → `com.google.genai:google-genai:1.61.0`
-- `AiRepository.kt` 和 `ExtractLocalTagsUseCase.kt` 都使用新 `Client` API
-- `response.text()` 為 `String?`，需處理 null
-
-### 7. 打包衝突
-- `META-INF/INDEX.LIST` 和 `META-INF/DEPENDENCIES` 排除
-
-### 8. 全域代碼優化（第 2 輪）
-- **Modifier 參數順序**: 已檢查全部 21 個 Composable，符合慣例（required → modifier → 其他 optional）
-- **未使用資源**: 無 `colors.xml` 或 `backup_rules.xml`，所有現有資源皆在使用中
-- **依賴管理**: `libs.versions.toml` 已完善，`build.gradle.kts` 全部使用 `libs.*` 引用
-- **Lint**: 修復 `local.properties` PropertyEscape（`C:` → `C\:`），`lintDebug` ✅
-
-## 建構指令
-```powershell
-cd C:\Users\zx556\warmapp
-.\gradlew.bat assembleDebug --daemon --parallel
-# 快取過期時加 --no-configuration-cache
-```
-
-## 測試
-- 目前無整合測試流程，只能裝到裝置上手動測試
-
-## 已知待解決問題
-見 PROGRESS.md「未解決問題」
-
-## 強制規則
-- 任何技術/API/SDK 相關問題，回答前必須先查閱官方文件確認最新語法與參數，不可僅依賴訓練資料。
+## 🛠️ 開發與測試指令
+- **建構：** `.\gradlew.bat assembleDebug --daemon --parallel` (若快取過期加 `--no-configuration-cache`)
+- **測試：** 需安裝至實機測試。已知問題請查閱 `PROGRESS.md`。

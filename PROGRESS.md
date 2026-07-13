@@ -54,13 +54,14 @@
 
 6. **UiText annotation target 警告** — 已修復。
 
-7. **3.x thinkingLevel 用到 "off" 非法值** — `ExtractLocalTagsUseCase.kt:134` 目前寫 `ThinkingLevel("off")`，但 SDK 只接受 `MINIMAL`/`LOW`/`MEDIUM`/`HIGH`，需改回 `"minimal"`。
+7. ~~**3.x thinkingLevel 用到 "off" 非法值** — `ExtractLocalTagsUseCase.kt:134` 目前寫 `ThinkingLevel("off")`，但 SDK 只接受 `MINIMAL`/`LOW`/`MEDIUM`/`HIGH`，需改回 `"minimal"`。~~ ✅ 已修復
 
 ## 模型清單與配額
 
 | 模型 | RPM | RPD | 支援 Thinking |
 |------|-----|-----|---------------|
 | Gemini 3.1 Flash Lite | 15 | 500 | 否 |
-| Gemini 2.5 Flash Lite | 10 | 20 | 否 |
 | Gemini 3.5 Flash | 5 | 20 | 是（已關閉） |
+| Gemini 3 Flash Preview | 5 | 20 | 是（已關閉） |
 | Gemini 2.5 Flash | 5 | 20 | 是（已關閉） |
+| Gemini 2.5 Flash Lite | 10 | 20 | 否 |
