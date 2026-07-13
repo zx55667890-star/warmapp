@@ -37,6 +37,13 @@ object ExpertInputValidator {
         if (adjacentPairCount >= 3) {
             return "請輸入有意義的內容，避免過多重複的字元"
         }
+        if (adjacentPairCount >= 1 && trimmed.length >= 6) {
+            val charCounts = trimmed.groupingBy { it }.eachCount()
+            val singletons = charCounts.count { it.value == 1 }
+            if (singletons >= 4) {
+                return "請輸入有意義的內容，避免過多重複的字元"
+            }
+        }
 
         val isPureEnglish = trimmed.all { it.isLetter() && it.code < 128 }
         if (isPureEnglish && trimmed.length >= 6) {
