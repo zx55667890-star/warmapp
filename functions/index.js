@@ -1,134 +1,98 @@
-const { onCall, HttpsError } = require("firebase-functions/v2/https");
-const { onValueWritten } = require("firebase-functions/v2/database");
-const admin = require("firebase-admin");
-admin.initializeApp();
+const functions = require('firebase-functions');
+const admin = require('firebase-admin');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 
+admin.initializeApp();
 const db = admin.database();
 
-// ── Helper: send FCM notification to a user ──
-async function sendNotification(uid, title, body, data) {
-    if (!uid) return;
-    const tokenSnap = await db.ref(`users/${uid}/fcmToken`).once("value");
-    const token = tokenSnap.val();
-    if (!token) return;
-    const message = {
-        token,
-        notification: { title, body },
-        data: data || {},
-        android: { priority: "high" },
-    };
-    try {
-        await admin.messaging().send(message);
-    } catch (err) {
-        if (err.code === "messaging/registration-token-not-registered") {
-            await db.ref(`users/${uid}/fcmToken`).remove();
-        }
-    }
-}
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-exports.sendNotificationOnNewMessage = onValueWritten(
-    { ref: "/chatrooms/{chatroomId}/messages/{messageId}", region: "us-central1" },
-    async (event) => {
-        const { chatroomId, messageId } = event.params;
-        if (!event.data.after.exists()) return;
-        const msg = event.data.after.val();
-        if (msg.senderId === "system" || msg.sender === "ai") return;
-        const chatroomSnap = await db.ref(`chatrooms/${chatroomId}`).once("value");
-        const chatroom = chatroomSnap.val() || {};
-        const opponentId = chatroom.opponentId || "";
-        const senderId = msg.senderId || "";
-        if (!opponentId || opponentId === senderId) return;
-        const text = msg.text || (msg.voiceUrl ? "[語音訊息]" : msg.videoUrl ? "[影片]" : msg.imageUrls ? "[圖片]" : "新訊息");
-        const senderSnap = await db.ref(`users/${senderId}/nickname`).once("value");
-        const senderName = senderSnap.val() || "對方";
-        await sendNotification(opponentId, senderName, text, {
-            chatroomId,
-            myRole: chatroom.opponentRole || "user",
-            expertId: chatroom.expertId || "",
-            expertText: chatroom.expertText || "",
-            expertDate: chatroom.expertDate || "",
-        });
-    }
-);
+const BATCH_LIMIT = 20;
+const MODEL_NAME = 'gemini-3.1-flash-lite';
 
-exports.sendNotificationOnExpertAccept = onValueWritten(
-    { ref: "/questions/{questionId}/status", region: "us-central1" },
-    async (event) => {
-        const { questionId } = event.params;
-        const newStatus = event.data.after.val();
-        if (newStatus !== "expert_accepted" && newStatus !== "taken") return;
-        const questionSnap = await db.ref(`questions/${questionId}`).once("value");
-        const question = questionSnap.val() || {};
-        const authorId = question.authorId || "";
-        if (!authorId) return;
-        const expertId = question.expertId || "";
-        let expertName = "專家";
-        if (expertId) {
-            const nameSnap = await db.ref(`users/${expertId}/nickname`).once("value");
-            expertName = nameSnap.val() || "專家";
-        }
-        await sendNotification(authorId, "配對成功", `${expertName} 已接受您的問題`, {
-            chatroomId: questionId,
-            myRole: "user",
-            expertId,
-            expertText: question.text || "",
-            expertDate: "",
-        });
-    }
-);
+exports.batchProcessPendingSkills = functions.pubsub
+  .schedule('every 5 minutes')
+  .onRun(async () => {
+    const snapshot = await db
+      .ref('pending_skills')
+      .orderByChild('timestamp')
+      .limitToFirst(BATCH_LIMIT)
+      .once('value');
 
-// ── Reset Password ──
-exports.resetPassword = onCall({ invoker: 'public' }, async (request) => {
-    const data = request.data;
-    const email = data.email;
-    const newPassword = data.newPassword;
-    const code = data.code;
-    if (!email || !newPassword || !code) {
-        throw new HttpsError('invalid-argument', '缺少必要參數');
-    }
-    try {
-        const emailKey = "reset_" + email.replace(/\./g, ",").replace(/@/g, "~");
-        const snap = await db.ref(`email_verification/${emailKey}/code`).once('value');
-        const realCode = snap.val();
-        if (!realCode || String(realCode) !== String(code)) {
-            throw new HttpsError('permission-denied', '驗證碼錯誤或已過期');
-        }
-        let user;
-        try {
-            user = await admin.auth().getUserByEmail(email);
-        } catch (notFound) {
-            throw new HttpsError('not-found', '此 Email 尚未註冊');
-        }
-        await admin.auth().updateUser(user.uid, { password: newPassword });
-        await db.ref(`email_verification/${emailKey}`).remove().catch(() => {});
-        return { success: true };
-    } catch (err) {
-        if (err instanceof HttpsError) throw err;
-        throw new HttpsError('internal', '密碼重設失敗，請稍後再試');
-    }
-});
-
-// ── Send Verification Email ──
-exports.sendVerificationEmail = onCall({ invoker: 'public' }, async (request) => {
-    const data = request.data;
-    const email = data.email;
-    const code = data.code;
-    const type = data.type;
-    if (!email || !code || !type) {
-        throw new HttpsError('invalid-argument', '缺少必要參數');
-    }
-    const nodemailer = require("nodemailer");
-    const transporter = nodemailer.createTransport({
-        service: 'gmail',
-        auth: { user: 'zx55667890@gmail.com', pass: 'xyog vyzl anrb npth' }
+    const entries = [];
+    snapshot.forEach((child) => {
+      entries.push({ id: child.key, ...child.val() });
     });
-    const subject = type === 'reset' ? '密碼重設驗證碼' : '驗證您的信箱';
-    const text = type === 'reset' ? `您的密碼重設驗證碼是：${code}` : `您的驗證碼是：${code}`;
-    try {
-        await transporter.sendMail({ from: 'zx55667890@gmail.com', to: email, subject, text, headers: { 'Importance': 'high', 'X-Priority': '1' } });
-        return { success: true };
-    } catch (err) {
-        console.error("Email send failed:", err.message, err.code);
-        throw new HttpsError('internal', '寄信失敗，請稍後再試');
+
+    if (entries.length === 0) {
+      console.log('No pending skills to process');
+      return null;
     }
-});
+
+    console.log(`Processing ${entries.length} pending skills`);
+
+    const prompt = `請為以下每筆資料提取 4 個最核心的關鍵字標籤。
+遇到無意義的胡言亂語、鍵盤亂打、重複的符號、或完全無法對應到任何實際場景的內容，請將 tags 設為 ["REJECT"]。
+
+以 JSON Array 格式回傳，每個物件包含 id 和 tags 欄位。
+範例格式：
+[{"id": "-ABC123", "tags": ["Python", "資料分析", "機器學習", "爬蟲"]}]
+
+資料：${JSON.stringify(entries.map((e) => ({ id: e.id, text: e.text })))}`;
+
+    try {
+      const model = genAI.getGenerativeModel({
+        model: MODEL_NAME,
+      });
+
+      const result = await model.generateContent(prompt);
+      const text = result.response.text();
+
+      let parsed;
+      try {
+        parsed = JSON.parse(text);
+      } catch {
+        const jsonMatch = text.match(/\[[\s\S]*\]/);
+        if (jsonMatch) {
+          parsed = JSON.parse(jsonMatch[0]);
+        } else {
+          throw new Error('無法解析 AI 回應為 JSON');
+        }
+      }
+
+      const updates = {};
+      const batch = [];
+
+      for (const item of parsed) {
+        const entry = entries.find((e) => e.id === item.id);
+        if (!entry) continue;
+
+        const skillRef = `solutions/${entry.userId}/${item.id}`;
+        const isReject =
+          item.tags &&
+          Array.isArray(item.tags) &&
+          item.tags.includes('REJECT');
+
+        if (isReject) {
+          updates[`${skillRef}/status`] = 'REJECTED';
+          updates[`${skillRef}/tags`] = [];
+          updates[`tags_blacklist/${entry.text}`] = true;
+        } else {
+          const tags = Array.isArray(item.tags) ? item.tags.slice(0, 4) : [];
+          updates[`${skillRef}/status`] = 'ACTIVE';
+          updates[`${skillRef}/tags`] = tags;
+          updates[`tags_whitelist/${entry.text}/tags`] = tags;
+        }
+
+        updates[`pending_skills/${item.id}`] = null;
+        batch.push(item.id);
+      }
+
+      await db.ref().update(updates);
+      console.log(`Processed ${batch.length} skills successfully`);
+      return null;
+    } catch (err) {
+      console.error('Batch processing failed:', err);
+      return null;
+    }
+  });
