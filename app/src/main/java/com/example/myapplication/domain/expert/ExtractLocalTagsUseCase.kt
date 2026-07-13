@@ -28,10 +28,10 @@ class ExtractLocalTagsUseCase(
     private data class ModelEntry(val name: String, val rpmLimit: Int, val rpdLimit: Int, val supportsThinking: Boolean)
 
     private val models = listOf(
-        ModelEntry("gemini-3.1-flash-lite", 15, 500, false),
-        ModelEntry("gemini-2.5-flash-lite", 10, 20, false),
         ModelEntry("gemini-3.5-flash", 5, 20, true),
+        ModelEntry("gemini-3.1-flash-lite", 15, 500, false),
         ModelEntry("gemini-3-flash-preview", 5, 20, true),
+        ModelEntry("gemini-2.5-flash-lite", 10, 20, false),
         ModelEntry("gemini-2.5-flash", 5, 20, true),
     )
 
@@ -129,9 +129,9 @@ class ExtractLocalTagsUseCase(
 
     private fun buildConfig(entry: ModelEntry): GenerateContentConfig? {
         if (!entry.supportsThinking) return null
-        val thinkingConfig = if (entry.name.contains("3.")) {
+        val thinkingConfig = if (entry.name.contains("gemini-3")) {
             ThinkingConfig.builder()
-                .thinkingLevel(ThinkingLevel("off"))
+                .thinkingLevel(ThinkingLevel("minimal"))
                 .build()
         } else {
             ThinkingConfig.builder()
