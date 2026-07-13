@@ -29,8 +29,8 @@ object ExpertInputValidator {
                 currentConsecutive = 1
             }
         }
-        if (maxConsecutive >= 4) {
-            return "請輸入有意義的內容，避免連續重複的字元"
+        if (maxConsecutive >= 3) {
+            return "請輸入有意義的內容，避免過多重複的字元"
         }
 
         val isPureEnglish = trimmed.all { it.isLetter() && it.code < 128 }
