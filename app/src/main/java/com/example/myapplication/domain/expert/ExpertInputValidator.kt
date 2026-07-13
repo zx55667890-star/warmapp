@@ -19,17 +19,22 @@ object ExpertInputValidator {
 
         var maxConsecutive = 1
         var currentConsecutive = 1
+        var adjacentPairCount = 0
         for (i in 1 until trimmed.length) {
             if (trimmed[i] == trimmed[i - 1]) {
                 currentConsecutive++
                 if (currentConsecutive > maxConsecutive) {
                     maxConsecutive = currentConsecutive
                 }
+                if (currentConsecutive == 2) adjacentPairCount++
             } else {
                 currentConsecutive = 1
             }
         }
         if (maxConsecutive >= 3) {
+            return "請輸入有意義的內容，避免過多重複的字元"
+        }
+        if (adjacentPairCount >= 3) {
             return "請輸入有意義的內容，避免過多重複的字元"
         }
 
