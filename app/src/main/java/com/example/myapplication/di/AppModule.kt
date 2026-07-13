@@ -80,7 +80,7 @@ val appModule = module {
     factory { SendQuestionMediaUseCase(get()) }
 
     viewModel { AuthViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get()) }
-    viewModel { ExpertViewModel(get(), get()) }
+    viewModel { ExpertViewModel(get()) }
     viewModel { SeekerViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     viewModel { ChatViewModel(get(), get(), get(), get(), get()) }
 }

@@ -15,6 +15,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.myapplication.data.model.SkillStatus
 import com.example.myapplication.data.model.SolutionItem
 import com.example.myapplication.di.ExpertViewModel
 import com.example.myapplication.domain.expert.ExpertInputValidator
@@ -66,10 +67,8 @@ fun ExpertScreen(viewModel: ExpertViewModel, userId: String, onNavigateToInput: 
 
             item {
                 QuickLogCard(
-                    viewModel = viewModel,
-                    historyList = uiState.solutionHistory,
-                    onLog = { expertise, tags ->
-                        viewModel.submitSolution(userId, "Q_ID", expertise, tags)
+                    onPublish = { text ->
+                        viewModel.publishSkill(userId, text)
                     }
                 )
             }
@@ -121,26 +120,60 @@ fun KnowledgeItemCard(solution: SolutionItem, onEditClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 6.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        colors = CardDefaults.cardColors(
+            containerColor = when (solution.status) {
+                SkillStatus.PENDING.name -> MaterialTheme.colorScheme.surfaceVariant
+                SkillStatus.REJECTED.name -> MaterialTheme.colorScheme.errorContainer
+                else -> MaterialTheme.colorScheme.surface
+            }
+        ),
         shape = RoundedCornerShape(12.dp)
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = solution.expertise,
-                fontSize = 15.sp,
-                color = AppColors.TextWhite,
-                fontWeight = FontWeight.Medium,
-                modifier = Modifier.weight(1f)
-            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = solution.expertise,
+                    fontSize = 15.sp,
+                    color = if (solution.status == SkillStatus.REJECTED.name) AppColors.TextGray else AppColors.TextWhite,
+                    fontWeight = FontWeight.Medium
+                )
+
+                when (solution.status) {
+                    SkillStatus.PENDING.name -> {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(14.dp),
+                                strokeWidth = 2.dp,
+                                color = AppColors.AccentYellow
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                "AI 分析中...",
+                                fontSize = 12.sp,
+                                color = AppColors.AccentYellow
+                            )
+                        }
+                    }
+                    SkillStatus.REJECTED.name -> {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            "內容無法辨識",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
+            }
 
             IconButton(onClick = onEditClick) {
                 Icon(
                     imageVector = Icons.Default.Edit,
                     contentDescription = "編輯",
-                    tint = AppColors.TextGray
+                    tint = if (solution.status == SkillStatus.REJECTED.name) AppColors.TextGray else AppColors.TextGray
                 )
             }
         }
@@ -149,13 +182,10 @@ fun KnowledgeItemCard(solution: SolutionItem, onEditClick: () -> Unit) {
 
 @Composable
 fun QuickLogCard(
-    viewModel: ExpertViewModel,
-    historyList: List<SolutionItem>,
-    onLog: (expertise: String, tags: List<String>) -> Unit
+    onPublish: (text: String) -> Unit
 ) {
     var expertise by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf("") }
-    var isChecking by remember { mutableStateOf(false) }
 
     val maxCharLimit = 20
 
@@ -181,7 +211,6 @@ fun QuickLogCard(
                 placeholder = { Text("例如：淘寶退貨從台灣到大陸流程") },
                 singleLine = false,
                 minLines = 2,
-                enabled = !isChecking,
                 isError = errorMessage.isNotEmpty(),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedTextColor = AppColors.TextWhite,
@@ -214,49 +243,21 @@ fun QuickLogCard(
 
             Button(
                 onClick = {
-                    val text = expertise.trim()
-                    val isDuplicate = historyList.any { it.expertise == text }
-
-                    if (isDuplicate) {
-                        errorMessage = "您已經新增過這項技能囉！"
+                    val trimmed = expertise.trim()
+                    errorMessage = ""
+                    val validationError = ExpertInputValidator.validate(trimmed)
+                    if (validationError != null) {
+                        errorMessage = validationError
                     } else {
-                        val validationError = ExpertInputValidator.validate(text)
-                        if (validationError != null) {
-                            errorMessage = validationError
-                        } else {
-                            isChecking = true
-                            viewModel.fetchTagsFromAi(text) { tags ->
-                                isChecking = false
-                                when {
-                                    tags == null -> {
-                                        errorMessage = "系統服務繁忙，請稍後再試"
-                                    }
-                                    tags.isEmpty() -> {
-                                        errorMessage = "請輸入有意義的內容，避免輸入無效字詞"
-                                    }
-                                    else -> {
-                                        onLog(text, tags)
-                                        expertise = ""
-                                        errorMessage = ""
-                                    }
-                                }
-                            }
-                        }
+                        onPublish(trimmed)
+                        expertise = ""
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = expertise.isNotBlank() && !isChecking,
+                enabled = expertise.isNotBlank(),
                 colors = ButtonDefaults.buttonColors(containerColor = AppColors.AccentGreen)
             ) {
-                if (isChecking) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        color = Color.Black,
-                        strokeWidth = 2.dp
-                    )
-                } else {
-                    Text("發布技能", color = Color.Black, fontWeight = FontWeight.Bold)
-                }
+                Text("發布技能", color = Color.Black, fontWeight = FontWeight.Bold)
             }
         }
     }

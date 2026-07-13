@@ -1,12 +1,12 @@
 package com.example.myapplication.di
 
-import android.content.SharedPreferences
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.myapplication.data.model.SkillStatus
 import com.example.myapplication.data.model.SolutionItem
 import com.example.myapplication.data.repository.ExpertRepository
-import com.example.myapplication.domain.expert.ExtractLocalTagsUseCase
+import com.example.myapplication.domain.expert.ExpertInputValidator
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
@@ -23,7 +23,6 @@ import kotlinx.coroutines.launch
 data class ExpertUiState(
     val rating: Double = 5.0,
     val helpCount: Long = 0L,
-    // 新增：知識庫狀態
     val solutionHistory: List<SolutionItem> = emptyList(),
     val isSubmittingSolution: Boolean = false,
     val activeExperienceId: String = "",
@@ -48,10 +47,8 @@ sealed class ExpertUiEvent {
 
 class ExpertViewModel(
     private val firebaseDb: FirebaseDatabase,
-    private val sharedPrefs: SharedPreferences
 ) : ViewModel() {
     private val repository = ExpertRepository(firebaseDb)
-    private val extractLocalTagsUseCase = ExtractLocalTagsUseCase(sharedPrefs, firebaseDb)
 
     private val _uiState = MutableStateFlow(ExpertUiState())
     val uiState: StateFlow<ExpertUiState> = _uiState.asStateFlow()
@@ -69,32 +66,48 @@ class ExpertViewModel(
         }
     }
 
-    fun submitSolution(userId: String, questionId: String, expertise: String, tags: List<String>) {
-        _uiState.update { it.copy(isSubmittingSolution = true) }
+    fun publishSkill(userId: String, text: String) {
         viewModelScope.launch {
-            try {
-                repository.saveSolution(userId, questionId, expertise, tags)
-                _uiState.update { it.copy(isSubmittingSolution = false) }
-                sendEvent(ExpertUiEvent.ShowToast("已成功記錄到您的知識庫！"))
-            } catch (e: Exception) {
-                if (e is kotlinx.coroutines.CancellationException) throw e
-                _uiState.update { it.copy(isSubmittingSolution = false) }
-                sendEvent(ExpertUiEvent.ShowToast("記錄失敗：${e.message}"))
-            }
-        }
-    }
+            val trimmed = text.trim()
 
-    fun fetchTagsFromAi(text: String, onResult: (List<String>?) -> Unit) {
-        viewModelScope.launch {
-            Log.d("ExpertVM", "fetchTagsFromAi: text=$text")
+            val isDuplicate = _uiState.value.solutionHistory.any {
+                it.expertise == trimmed && it.status != SkillStatus.REJECTED.name
+            }
+            if (isDuplicate) {
+                sendEvent(ExpertUiEvent.ShowToast("您已經新增過這項技能囉！"))
+                return@launch
+            }
+
+            val validationError = ExpertInputValidator.validate(trimmed)
+            if (validationError != null) {
+                sendEvent(ExpertUiEvent.ShowToast(validationError))
+                return@launch
+            }
+
+            val isBlacklisted = repository.checkBlacklist(trimmed)
+            if (isBlacklisted) {
+                sendEvent(ExpertUiEvent.ShowToast("請輸入有意義的專業內容"))
+                return@launch
+            }
+
+            val cachedTags = repository.checkWhitelist(trimmed)
+            if (cachedTags != null) {
+                try {
+                    repository.saveSkill(userId, trimmed, cachedTags, SkillStatus.ACTIVE)
+                    sendEvent(ExpertUiEvent.ShowToast("已成功記錄到您的知識庫！"))
+                } catch (e: Exception) {
+                    if (e is kotlinx.coroutines.CancellationException) throw e
+                    sendEvent(ExpertUiEvent.ShowToast("記錄失敗：${e.message}"))
+                }
+                return@launch
+            }
+
             try {
-                val tags = extractLocalTagsUseCase(text)
-                onResult(tags)
+                repository.saveSkill(userId, trimmed, emptyList(), SkillStatus.PENDING)
+                sendEvent(ExpertUiEvent.ShowToast("技能已送出，AI 正在為您精準配對標籤..."))
             } catch (e: Exception) {
                 if (e is kotlinx.coroutines.CancellationException) throw e
-                Log.e("ExpertVM", "AI 標籤擷取失敗: ${e.message}")
-                sendEvent(ExpertUiEvent.ShowToast(e.message ?: "AI 標籤擷取失敗"))
-                onResult(null)
+                sendEvent(ExpertUiEvent.ShowToast("記錄失敗：${e.message}"))
             }
         }
     }

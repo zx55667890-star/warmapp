@@ -1,5 +1,6 @@
 package com.example.myapplication.data.repository
 
+import com.example.myapplication.data.model.SkillStatus
 import com.example.myapplication.data.model.SolutionItem
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
@@ -14,36 +15,65 @@ class ExpertRepository(private val db: FirebaseDatabase) {
     private var statusListener: ValueEventListener? = null
     private var currentUserId: String? = null
 
-    /** 儲存解法並更新 helpCount，失敗時拋出 Exception。 */
-    suspend fun saveSolution(
-        userId: String,
-        questionId: String,
-        expertise: String,
-        tags: List<String>
-    ) = suspendCancellableCoroutine<Unit> { cont ->
-        val solutionRef = db.getReference("solutions").child(userId).push()
-        val solutionId = solutionRef.key
-        if (solutionId == null) {
-            cont.resumeWithException(Exception("無法建立方案 ID"))
-            return@suspendCancellableCoroutine
-        }
-
-        val solutionData = mapOf(
-            "questionId" to questionId,
-            "expertise" to expertise,
-            "tags" to tags,
-            "timestamp" to System.currentTimeMillis()
-        )
-
-        val updates = mapOf(
-            "solutions/$userId/$solutionId" to solutionData,
-            "users/$userId/helpCount" to com.google.firebase.database.ServerValue.increment(1)
-        )
-
-        db.reference.updateChildren(updates)
-            .addOnSuccessListener { if (cont.isActive) cont.resume(Unit) }
-            .addOnFailureListener { if (cont.isActive) cont.resumeWithException(Exception(it.message ?: "儲存失敗")) }
+    suspend fun checkBlacklist(text: String): Boolean = suspendCancellableCoroutine { cont ->
+        db.getReference("tags_blacklist").child(text).get()
+            .addOnSuccessListener { snapshot ->
+                if (cont.isActive) cont.resume(snapshot.exists())
+            }
+            .addOnFailureListener {
+                if (cont.isActive) cont.resume(false)
+            }
     }
+
+    suspend fun checkWhitelist(text: String): List<String>? = suspendCancellableCoroutine { cont ->
+        db.getReference("tags_whitelist").child(text).get()
+            .addOnSuccessListener { snapshot ->
+                if (snapshot.exists()) {
+                    @Suppress("UNCHECKED_CAST")
+                    val tags = snapshot.child("tags").children.mapNotNull { it.getValue(String::class.java) }
+                    if (cont.isActive) cont.resume(if (tags.isEmpty()) null else tags)
+                } else {
+                    if (cont.isActive) cont.resume(null)
+                }
+            }
+            .addOnFailureListener {
+                if (cont.isActive) cont.resume(null)
+            }
+    }
+
+    suspend fun saveSkill(userId: String, expertise: String, tags: List<String>, status: SkillStatus): String =
+        suspendCancellableCoroutine { cont ->
+            val ref = db.getReference("solutions").child(userId).push()
+            val skillId = ref.key
+            if (skillId == null) {
+                cont.resumeWithException(Exception("無法建立技能 ID"))
+                return@suspendCancellableCoroutine
+            }
+
+            if (status == SkillStatus.PENDING) {
+                val queueRef = db.getReference("pending_skills").child(skillId)
+                val queueData = mapOf(
+                    "userId" to userId,
+                    "text" to expertise,
+                    "timestamp" to System.currentTimeMillis()
+                )
+                queueRef.setValue(queueData)
+            }
+
+            val data = mapOf<String, Any>(
+                "id" to skillId,
+                "expertise" to expertise,
+                "tags" to tags,
+                "timestamp" to System.currentTimeMillis(),
+                "status" to status.name
+            )
+
+            ref.setValue(data)
+                .addOnSuccessListener { if (cont.isActive) cont.resume(skillId) }
+                .addOnFailureListener {
+                    if (cont.isActive) cont.resumeWithException(Exception(it.message ?: "儲存失敗"))
+                }
+        }
 
     fun listenToSolutionHistory(userId: String, onHistoryUpdate: (List<SolutionItem>) -> Unit) {
         db.getReference("solutions").child(userId)
@@ -57,11 +87,13 @@ class ExpertRepository(private val db: FirebaseDatabase) {
                             questionId = child.child("questionId").getValue(String::class.java) ?: "",
                             expertise = expertise,
                             tags = child.child("tags").children.mapNotNull { it.getValue(String::class.java) },
-                            timestamp = child.child("timestamp").getValue(Long::class.java) ?: 0L
+                            timestamp = child.child("timestamp").getValue(Long::class.java) ?: 0L,
+                            status = child.child("status").getValue(String::class.java) ?: SkillStatus.ACTIVE.name
                         )
                     }
                     onHistoryUpdate(history)
                 }
+
                 override fun onCancelled(error: DatabaseError) {}
             })
     }
@@ -76,12 +108,12 @@ class ExpertRepository(private val db: FirebaseDatabase) {
                 val helpCount = snapshot.child("helpCount").getValue(Long::class.java) ?: 0L
                 onUpdate(rating, helpCount)
             }
+
             override fun onCancelled(error: DatabaseError) {}
         }
         userRef.addValueEventListener(statusListener!!)
     }
 
-    /** 發佈新的專家經驗，成功後回傳新建的 experienceId。 */
     suspend fun publishExperience(userId: String, text: String): String =
         suspendCancellableCoroutine { cont ->
             val expRef = db.getReference("active_experiences").push()
@@ -104,7 +136,6 @@ class ExpertRepository(private val db: FirebaseDatabase) {
                 .addOnFailureListener { if (cont.isActive) cont.resumeWithException(Exception(it.message ?: "發佈失敗")) }
         }
 
-    /** 編輯既有的專家經驗文字，失敗時拋出 Exception。 */
     suspend fun editExperience(experienceId: String, newText: String) {
         if (experienceId.isBlank()) throw IllegalArgumentException("無效的經驗 ID")
         suspendCancellableCoroutine<Unit> { cont ->
