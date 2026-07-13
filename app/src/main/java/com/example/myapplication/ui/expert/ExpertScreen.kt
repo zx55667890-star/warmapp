@@ -6,7 +6,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -21,11 +20,6 @@ import com.example.myapplication.di.ExpertViewModel
 import com.example.myapplication.domain.expert.ExpertInputValidator
 import com.example.myapplication.ui.theme.AppColors
 import kotlinx.coroutines.flow.collectLatest
-
-enum class CardStep {
-    INPUT,
-    CONFIRM
-}
 
 @Composable
 fun ExpertScreen(viewModel: ExpertViewModel, userId: String, onNavigateToInput: () -> Unit = {}) {
@@ -134,37 +128,13 @@ fun KnowledgeItemCard(solution: SolutionItem, onEditClick: () -> Unit) {
             modifier = Modifier.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = solution.expertise,
-                    fontSize = 15.sp,
-                    color = AppColors.TextWhite,
-                    fontWeight = FontWeight.Medium
-                )
-
-                if (solution.tags.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    @OptIn(ExperimentalLayoutApi::class)
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        solution.tags.forEach { tag ->
-                            Surface(
-                                shape = RoundedCornerShape(8.dp),
-                                color = AppColors.AccentBlue.copy(alpha = 0.2f),
-                            ) {
-                                Text(
-                                    text = "#$tag",
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                    fontSize = 12.sp,
-                                    color = AppColors.AccentBlue
-                                )
-                            }
-                        }
-                    }
-                }
-            }
+            Text(
+                text = solution.expertise,
+                fontSize = 15.sp,
+                color = AppColors.TextWhite,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier.weight(1f)
+            )
 
             IconButton(onClick = onEditClick) {
                 Icon(
@@ -184,260 +154,85 @@ fun QuickLogCard(
     onLog: (expertise: String, tags: List<String>) -> Unit
 ) {
     var expertise by remember { mutableStateOf("") }
-    var isGenerating by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf("") }
 
-    var step by remember { mutableStateOf(CardStep.INPUT) }
-    val tagsList = remember { mutableStateListOf<String>() }
-    var tagInputText by remember { mutableStateOf("") }
-
     val maxCharLimit = 20
-    val maxTagLimit = 5
-    val maxSingleTagCharLimit = 6
 
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
-            if (step == CardStep.INPUT) {
-                Text("✨ 分享您能幫忙解決的事", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text("越具體，越能配對到需要您的人！", fontSize = 12.sp, color = AppColors.TextGray, modifier = Modifier.padding(top = 4.dp))
+            Text("✨ 分享您能幫忙解決的事", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("越具體，越能配對到需要您的人！", fontSize = 12.sp, color = AppColors.TextGray, modifier = Modifier.padding(top = 4.dp))
 
-                Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-                OutlinedTextField(
-                    value = expertise,
-                    onValueChange = {
-                        if (it.length <= maxCharLimit && !isGenerating) {
-                            expertise = it
-                            errorMessage = ""
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    placeholder = { Text("例如：淘寶退貨從台灣到大陸流程") },
-                    singleLine = false,
-                    minLines = 2,
-                    enabled = !isGenerating,
-                    isError = errorMessage.isNotEmpty(),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = AppColors.TextWhite,
-                        unfocusedTextColor = AppColors.TextWhite,
-                        focusedBorderColor = AppColors.AccentBlue,
-                        unfocusedBorderColor = AppColors.BorderGray
-                    ),
-                    supportingText = {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(
-                                text = errorMessage,
-                                color = MaterialTheme.colorScheme.error,
-                                fontSize = 12.sp,
-                                modifier = Modifier.weight(1f)
-                            )
-                            Text(
-                                text = "${expertise.length} / $maxCharLimit",
-                                color = if (expertise.length == maxCharLimit) Color(0xFFEF5350) else AppColors.TextGray,
-                                textAlign = TextAlign.End,
-                                modifier = Modifier.padding(start = 8.dp)
-                            )
-                        }
+            OutlinedTextField(
+                value = expertise,
+                onValueChange = {
+                    if (it.length <= maxCharLimit) {
+                        expertise = it
+                        errorMessage = ""
                     }
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                    Button(
-                        onClick = {
-                            val text = expertise.trim()
-                            val isDuplicate = historyList.any { it.expertise == text }
-
-                            if (isDuplicate) {
-                                errorMessage = "您已經新增過這項技能囉！"
-                            } else {
-                                val validationError = ExpertInputValidator.validate(text)
-                                if (validationError != null) {
-                                    errorMessage = validationError
-                                } else {
-                                    isGenerating = true
-                                    viewModel.fetchTagsFromAi(text) { tags ->
-                                        isGenerating = false
-                                        if (tags == null) {
-                                            // 系統或配額故障：直接進入確認頁面，允許用戶手動新增標籤
-                                            tagsList.clear()
-                                            step = CardStep.CONFIRM
-                                        } else if (tags.isEmpty()) {
-                                            // AI 判定為無意義內容（垃圾過濾）：報錯並留在輸入頁面
-                                            errorMessage = "輸入的內容似乎不屬於合法的專業技能，請重新描述。"
-                                        } else {
-                                            // 正常生成標籤
-                                            tagsList.clear()
-                                            tagsList.addAll(tags)
-                                            step = CardStep.CONFIRM
-                                        }
-                                    }
-                                }
-                            }
-                        },
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = expertise.isNotBlank() && !isGenerating,
-                    colors = ButtonDefaults.buttonColors(containerColor = AppColors.AccentGreen)
-                ) {
-                    if (isGenerating) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(18.dp),
-                                strokeWidth = 2.dp,
-                                color = Color.Black
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("AI 關鍵字生成中...", color = Color.Black, fontWeight = FontWeight.Bold)
-                        }
-                    } else {
-                        Text("分析技能標籤", color = Color.Black, fontWeight = FontWeight.Bold)
-                    }
-                }
-            } else {
-                // CONFIRM Step
-                Text("🏷️ 確認您的技能標籤", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text("技能描述：" + expertise, fontSize = 14.sp, color = AppColors.TextLightGray, modifier = Modifier.padding(top = 4.dp, bottom = 12.dp))
-
-                if (tagsList.isEmpty()) {
+                },
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text("例如：淘寶退貨從台灣到大陸流程") },
+                singleLine = false,
+                minLines = 2,
+                isError = errorMessage.isNotEmpty(),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = AppColors.TextWhite,
+                    unfocusedTextColor = AppColors.TextWhite,
+                    focusedBorderColor = AppColors.AccentBlue,
+                    unfocusedBorderColor = AppColors.BorderGray
+                ),
+                supportingText = {
                     Row(
-                        modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            text = "⚠️ AI 服務目前無法使用，請手動新增標籤。",
-                            color = AppColors.AccentYellow,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Medium
+                            text = errorMessage,
+                            color = MaterialTheme.colorScheme.error,
+                            fontSize = 12.sp,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Text(
+                            text = "${expertise.length} / $maxCharLimit",
+                            color = if (expertise.length == maxCharLimit) Color(0xFFEF5350) else AppColors.TextGray,
+                            textAlign = TextAlign.End,
+                            modifier = Modifier.padding(start = 8.dp)
                         )
                     }
-                } else {
-                    Text(
-                        text = "已提取標籤 (最多 $maxTagLimit 個，點擊 × 移除)：",
-                        fontSize = 12.sp,
-                        color = AppColors.TextGray,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
                 }
+            )
 
-                @OptIn(ExperimentalLayoutApi::class)
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.padding(bottom = 16.dp)
-                ) {
-                    tagsList.forEach { tag ->
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = AppColors.AccentBlue.copy(alpha = 0.2f)
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                            ) {
-                                Text(
-                                    text = "#$tag",
-                                    fontSize = 12.sp,
-                                    color = AppColors.AccentBlue
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                IconButton(
-                                    onClick = { tagsList.remove(tag) },
-                                    modifier = Modifier.size(16.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Close,
-                                        contentDescription = "刪除標籤",
-                                        tint = AppColors.AccentBlue,
-                                        modifier = Modifier.size(12.dp)
-                                    )
-                                }
-                            }
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Button(
+                onClick = {
+                    val text = expertise.trim()
+                    val isDuplicate = historyList.any { it.expertise == text }
+
+                    if (isDuplicate) {
+                        errorMessage = "您已經新增過這項技能囉！"
+                    } else {
+                        val validationError = ExpertInputValidator.validate(text)
+                        if (validationError != null) {
+                            errorMessage = validationError
+                        } else {
+                            onLog(text, emptyList())
+                            expertise = ""
+                            errorMessage = ""
                         }
                     }
-                }
-
-                // 手動新增標籤
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    OutlinedTextField(
-                        value = tagInputText,
-                        onValueChange = {
-                            if (it.length <= maxSingleTagCharLimit) {
-                                tagInputText = it
-                            }
-                        },
-                        placeholder = { Text("手動新增標籤", fontSize = 14.sp) },
-                        modifier = Modifier.weight(1f),
-                        singleLine = true,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = AppColors.TextWhite,
-                            unfocusedTextColor = AppColors.TextWhite,
-                            focusedBorderColor = AppColors.AccentBlue,
-                            unfocusedBorderColor = AppColors.BorderGray
-                        ),
-                        supportingText = {
-                            Text(
-                                text = "${tagsList.size} / $maxTagLimit 標籤 (限 ${maxSingleTagCharLimit} 字)",
-                                color = AppColors.TextGray,
-                                fontSize = 11.sp
-                            )
-                        }
-                    )
-
-                    Button(
-                        onClick = {
-                            val cleaned = tagInputText.trim()
-                            if (cleaned.isNotEmpty()) {
-                                if (!tagsList.contains(cleaned) && tagsList.size < maxTagLimit) {
-                                    tagsList.add(cleaned)
-                                }
-                                tagInputText = ""
-                            }
-                        },
-                        enabled = tagInputText.trim().isNotEmpty() && tagsList.size < maxTagLimit,
-                        colors = ButtonDefaults.buttonColors(containerColor = AppColors.AccentBlue),
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
-                    ) {
-                        Text("新增", color = Color.Black, fontWeight = FontWeight.Bold)
-                    }
-                }
-
-                // 確認與返回按鈕
-                Button(
-                    onClick = {
-                        onLog(expertise.trim(), tagsList.toList())
-                        expertise = ""
-                        tagsList.clear()
-                        tagInputText = ""
-                        step = CardStep.INPUT
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = AppColors.AccentGreen)
-                ) {
-                    Text("確認發布此技能", color = Color.Black, fontWeight = FontWeight.Bold)
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                OutlinedButton(
-                    onClick = {
-                        step = CardStep.INPUT
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, AppColors.TextGray),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = AppColors.TextWhite)
-                ) {
-                    Text("返回修改描述", fontWeight = FontWeight.Bold)
-                }
+                },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = expertise.isNotBlank(),
+                colors = ButtonDefaults.buttonColors(containerColor = AppColors.AccentGreen)
+            ) {
+                Text("發布技能", color = Color.Black, fontWeight = FontWeight.Bold)
             }
         }
     }
