@@ -2,66 +2,51 @@
 
 ## 已完成
 
-### 基礎架構
+### 第 1、2 輪：客戶端 AI 基礎架構與優化
 - [x] SolutionItem data class（id, questionId, expertise, tags, timestamp）
 - [x] ExpertRepository.saveSolution() / listenToSolutionHistory()
 - [x] ExpertViewModel.submitSolution() + solutionHistory 型別更新
 - [x] KnowledgeItemCard 與 QuickLogCard 實作
 - [x] FlowRow 標籤晶片顯示
 - [x] QuickLogCard 重複檢測（expertise 比對）
-
-### Gemini API 整合與架構重構
-- [x] 5 模型輪換（已移除 3 Flash Preview，但代碼中保留作為備援）
-- [x] RPM 滑動 60 秒窗口（in-memory）
-- [x] RPD 太平洋午夜重置（SharedPreferences 持久化）
-- [x] **[NEW]** 修正 RPD 儲存漏洞：加上隨機後綴防止同毫秒請求被 `StringSet` 過濾
-- [x] **[NEW]** 優化亂碼拒絕邏輯：當模型識別胡言亂語回傳空字串時，視為「成功識別」並立即停止輪詢，節省配額
-- [x] **[NEW]** 增加詳細配額監控 Log：在 Logcat 顯示 RPD/RPM 即時計數與 Ban 狀態
-- [x] 伺服器時間校正（Firebase .info/serverTimeOffset）
-- [x] withTimeoutOrNull(3000) 防死鎖
-- [x] 配額封鎖（Quota exceeded / HTTP 429）
-- [x] 舊 ban 遷移（migrateOldBans）
-- [x] Non-Lite 模型 thinkingBudget(0)
+- [x] 5 模型輪換、RPM/RPD 配額管理、時間校正
 - [x] SDK 遷移至 google-genai:1.61.0
-- [x] 打包 META-INF 衝突排除
-- [x] 優化配額用盡處理，在 ExtractLocalTagsUseCase 中主動拋出 Exception，解決靜默失敗
-- [x] 優化 Token 耗費，在 checks 後才調用 API 避免浪費
-- [x] 重構移除 TagViewModel，將職責合併至 ExpertViewModel，清除了 dead code fetchTagsFromAi
-- [x] 實現 QuickLogCard 的兩步確認與手動新增/編輯標籤流程（UI 降級與微調機制）
+- [x] 重構移除 TagViewModel、dead code fetchTagsFromAi
+- [x] QuickLogCard 兩步確認與手動標籤編輯流程
+- [x] 全域代碼優化（Modifier 順序、依賴管理、lint/test/build）
+
+### 第 3 輪：AI 標籤提取遷移至 Backend Cloud Function（本次）
+- [x] **SolutionItem.kt** — 加入 `SkillStatus` 列舉（ACTIVE/PENDING/REJECTED）及 `status` 欄位
+- [x] **ExpertRepository.kt** — 加入 `checkBlacklist()` / `checkWhitelist()` / `saveSkill()`（pending queue 寫入）
+- [x] **ExpertViewModel.kt** — 移除 `SharedPreferences`、`fetchTagsFromAi()`、`submitSolution()`；加入 `publishSkill()` 完整流程
+- [x] **AppModule.kt** — Koin 註冊改為 `viewModel { ExpertViewModel(get()) }`
+- [x] **ExpertScreen.kt** — QuickLogCard 簡化為輸入+發布；KnowledgeItemCard 狀態顯示（PENDING spinner / REJECTED 紅字）
+- [x] **ExpertInputValidator.kt** — 強化重複檢測規則（連續字元、相鄰配對等）
+- [x] **functions/index.js** — 建立 `batchProcessPendingSkills` Cloud Function（每 5 分鐘批次處理，最多 20 筆）
+- [x] **functions/package.json** — Node 20 + `@google/generative-ai`
+- [x] **database.rules.json** — 新增 `pending_skills`、`tags_blacklist`、`tags_whitelist` 路徑規則與 `.indexOn`
+- [x] **Cloud Function 部署成功** — 已設定 Gemini API key，排程正常運作
 
 ### Git
-- [x] 約 28 次提交，已全部推送至 main
-
-### 全域代碼優化（第 2 輪）
-- [x] Modifier 參數順序檢查 — 全部 21 個 Composable 符合慣例，無需修改
-- [x] 未使用資源檢查 — 無 `colors.xml` / `backup_rules.xml`，所有資源皆在使用
-- [x] 依賴管理確認 — `libs.versions.toml` 完整，`build.gradle.kts` 全用 `libs.*`
-- [x] 修復 `local.properties` PropertyEscape lint error（`C:` → `C\:`）
-- [x] 更新 `.gitignore` 加入 `.kotlin/`，移除已追蹤的 compiler session 快取
-- [x] `lintDebug` ✅、`testDebugUnitTest` ✅、`assembleDebug` ✅
+- [x] 約 28+ 次提交，已全部推送至 main
 
 ## 未解決問題
 
 1. **無整合測試** — 只能靠單元測試與手動安裝 APK 測試。
 
-2. **3 Flash Preview 強制 thinking** — 已移除該模型。
+2. **PENDING 等待最長 5 分鐘** — Cloud Function 每 5 分鐘排程執行，使用者體驗上會有延遲。可考慮縮短排程間隔或改為 `onWrite` trigger。
 
-3. **AGP 棄用警告** — 已清理。
+3. **`tags_whitelist/{text}` 的讀取權限** — Android 客戶端在 `checkWhitelist()` 中讀取 `tags_whitelist/{text}`，需確保規則允許 authenticated user 讀取該路徑（已在規則中設定）。
 
-4. **Lint 棄用警告** — GoogleSignIn 尚待遷移，UI 部分已加上 @Suppress。
+4. **`pending_skills` 尚缺 `.indexOn`** — 已在 `database.rules.json` 中補上 `".indexOn": ["timestamp"]`，但現有資料需要手動建 index 或等 Firebaser 自動生成。Log 已無 warning。
 
-5. **未檢查的型別轉換** — 已修復。
+5. **`functions.config()` 棄用** — Firebase 將在 2027 年 3 月移除 Runtime Config 服務。需遷移至環境變數或 `firebase-functions/params` package。
 
-6. **UiText annotation target 警告** — 已修復。
+6. **`ExtractLocalTagsUseCase.kt` 仍存在但已為 dead code** — 舊客戶端 AI 標籤提取不再被呼叫，可考慮刪除。
 
-7. ~~**3.x thinkingLevel 用到 "off" 非法值** — `ExtractLocalTagsUseCase.kt:134` 目前寫 `ThinkingLevel("off")`，但 SDK 只接受 `MINIMAL`/`LOW`/`MEDIUM`/`HIGH`，需改回 `"minimal"`。~~ ✅ 已修復
+7. **KnowledgeItemCard 編輯按鈕無實際功能** — `onEditClick` 目前是 `// TODO: 觸發編輯 ViewModel 邏輯`，尚無實作。
 
-## 模型清單與配額
+8. **卡片編輯 TODO** — 缺少編輯已發布技能的流程（修改 expertise / tags / 重新提交 AI 分析）。
 
-| 模型 | RPM | RPD | 支援 Thinking |
-|------|-----|-----|---------------|
-| Gemini 3.1 Flash Lite | 15 | 500 | 否 |
-| Gemini 3.5 Flash | 5 | 20 | 是（已關閉） |
-| Gemini 3 Flash Preview | 5 | 20 | 是（已關閉） |
-| Gemini 2.5 Flash | 5 | 20 | 是（已關閉） |
-| Gemini 2.5 Flash Lite | 10 | 20 | 否 |
+## 模型清單（僅供 Cloud Function 參考）
+Cloud Function 目前固定使用 `gemini-3.1-flash-lite`，無模型輪換機制。

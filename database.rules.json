@@ -81,11 +81,38 @@
         ".read": "$uid === auth.uid",
         ".write": "$uid === auth.uid",
         "$pushId": {
-          "questionId": { ".validate": "newData.isString()" },
+          "id": { ".validate": "newData.isString()" },
           "expertise": { ".validate": "newData.isString()" },
-          "tags": { ".validate": "newData.hasChildren()" },
-          "timestamp": { ".validate": "newData.isNumber()" }
+          "tags": { ".validate": "true" },
+          "timestamp": { ".validate": "newData.isNumber()" },
+          "status": { ".validate": "newData.isString()" }
         }
+      }
+    },
+    "pending_skills": {
+      ".indexOn": ["timestamp"],
+      "$skillId": {
+        ".read": "auth.uid !== null",
+        ".write": "auth.uid !== null"
+      }
+    },
+    "tags_blacklist": {
+      "$text": {
+        ".read": "auth.uid !== null",
+        ".write": "auth.uid !== null"
+      }
+    },
+    "tags_whitelist": {
+      "$text": {
+        ".read": "auth.uid !== null",
+        ".write": "auth.uid !== null",
+        "tags": { ".validate": true }
+      }
+    },
+    "config": {
+      "$key": {
+        ".read": "auth.uid !== null",
+        ".write": "auth.uid !== null"
       }
     },
     "active_experiences": {
