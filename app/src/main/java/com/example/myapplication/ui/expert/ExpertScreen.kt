@@ -234,12 +234,14 @@ fun QuickLogCard(
                             Text(
                                 text = errorMessage,
                                 color = MaterialTheme.colorScheme.error,
-                                fontSize = 12.sp
+                                fontSize = 12.sp,
+                                modifier = Modifier.weight(1f)
                             )
                             Text(
                                 text = "${expertise.length} / $maxCharLimit",
                                 color = if (expertise.length == maxCharLimit) Color(0xFFEF5350) else AppColors.TextGray,
-                                textAlign = TextAlign.End
+                                textAlign = TextAlign.End,
+                                modifier = Modifier.padding(start = 8.dp)
                             )
                         }
                     }

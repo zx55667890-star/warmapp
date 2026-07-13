@@ -151,8 +151,8 @@ class ExtractLocalTagsUseCase(
             請從以下文字中提取 4 個最核心的關鍵字標籤。
 
             警告：
-            如果輸入的文字是無意義的胡言亂語、鍵盤亂打、重複的符號、生僻字亂堆、或是完全無法對應到任何實際生活、工作或專業技能場景的内容，
-            你必須「立刻拒絕生成」，且只回傳一個空字串，不要帶有任何標籤、字元、標點符號或解釋。
+            如果輸入的文字是無意義的胡言亂語、鍵盤亂打、重複的符號、生僻字亂堆、或是完全無法對應到任何實際生活、工作或專業技能場景的内容（例如：額科科、喔喔喔、或隨機文字），
+            你必須「立刻拒絕生成」，且只回傳關鍵字：REJECT，不要帶有任何其他標籤、字元、標點符號或解釋。
 
             一般提取要求：
             1. 只回傳標籤內容，用逗號分隔 (例如：台積電,股票,投資,理財)。
@@ -183,16 +183,20 @@ class ExtractLocalTagsUseCase(
                 val response = client.models.generateContent(entry.name, prompt, config)
                 val responseText = response.text()
                 
-                // 如果模型回傳 null 或空字串，代表它遵循指令「拒絕為胡言亂語生成標籤」
-                // 這屬於「成功識別」而非「執行失敗」，應直接結束並回傳空列表，不需輪詢下一個模型
-                if (responseText.isNullOrBlank()) {
-                    Log.d("TagExtract", "Model ${entry.name} identified gibberish or returned empty. Stopping.")
+                // 增加 REJECT 關鍵字處理，並移除可能的引號或符號
+                if (responseText.isNullOrBlank() || responseText.contains("REJECT", ignoreCase = true)) {
+                    Log.d("TagExtract", "Model ${entry.name} rejected content or returned empty.")
                     return@withContext emptyList<String>()
                 }
 
                 val currentRpd = rpdCounters[entry.name]?.size ?: 0
                 Log.d("TagExtract", "OK [${entry.name}] - Today's count: $currentRpd/${entry.rpdLimit}")
-                return@withContext responseText.split(",", "，").map { it.trim() }.filter { it.isNotEmpty() }.take(4)
+                
+                // 更嚴格地過濾回傳的標籤：移除前後引號、井字號，且長度至少要 2 (防止單個標點符號標籤)
+                return@withContext responseText.split(",", "，")
+                    .map { it.trim().replace(Regex("^[#\"'“”]+|[#\"'“”]+$"), "") }
+                    .filter { it.isNotBlank() && it.length >= 2 }
+                    .take(4)
             } catch (e: Exception) { if (e is kotlinx.coroutines.CancellationException) throw e;
                 Log.w("TagExtract", "model ${entry.name} failed: ${e.message}")
                 val errorMsg = e.message ?: ""
