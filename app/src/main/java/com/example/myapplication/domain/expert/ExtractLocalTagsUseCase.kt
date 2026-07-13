@@ -18,7 +18,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import java.time.Instant
 import java.time.ZoneId
-import java.util.concurrent.atomic.AtomicInteger
+
 
 class ExtractLocalTagsUseCase(
     private val sharedPrefs: SharedPreferences,
@@ -38,7 +38,6 @@ class ExtractLocalTagsUseCase(
     private val client = Client.builder().apiKey(BuildConfig.GEMINI_API_KEY).build()
     private val emptyConfig = GenerateContentConfig.builder().build()
 
-    private val roundRobin = AtomicInteger(0)
     private val counterLock = Any()
     private val rpmCounters = models.associate { it.name to mutableListOf<Long>() }
 
@@ -162,28 +161,18 @@ class ExtractLocalTagsUseCase(
             文字內容：$text
         """.trimIndent()
 
-        val hasAnyAvailableModel = models.any { canUseModel(it.name, it.rpmLimit, it.rpdLimit) }
-        if (!hasAnyAvailableModel) {
-            Log.w("TagExtract", "all models quota full, cannot request")
-            throw IllegalStateException("AI service quota full, please try later or enter tags manually")
-        }
-
-        val rawIndex = roundRobin.getAndIncrement()
-        val startIndex = (rawIndex and Int.MAX_VALUE) % models.size
-
-        for (i in models.indices) {
-            val entry = models[(startIndex + i) % models.size]
+        for (entry in models) {
             if (!canUseModel(entry.name, entry.rpmLimit, entry.rpdLimit)) {
                 continue
             }
 
-            recordRequest(entry.name)
             try {
                 val config = if (entry.supportsThinking) buildConfig(entry)!! else emptyConfig
                 val response = client.models.generateContent(entry.name, prompt, config)
+                recordRequest(entry.name)
+
                 val responseText = response.text()
-                
-                // 增加 REJECT 關鍵字處理，並移除可能的引號或符號
+
                 if (responseText.isNullOrBlank() || responseText.contains("REJECT", ignoreCase = true)) {
                     Log.d("TagExtract", "Model ${entry.name} rejected content or returned empty.")
                     return@withContext emptyList<String>()
@@ -191,24 +180,30 @@ class ExtractLocalTagsUseCase(
 
                 val currentRpd = rpdCounters[entry.name]?.size ?: 0
                 Log.d("TagExtract", "OK [${entry.name}] - Today's count: $currentRpd/${entry.rpdLimit}")
-                
-                // 更嚴格地過濾回傳的標籤：移除前後引號、井字號，且長度至少要 2 (防止單個標點符號標籤)
+
                 return@withContext responseText.split(",", "，")
                     .map { it.trim().replace(Regex("^[#\"'“”]+|[#\"'“”]+$"), "") }
                     .filter { it.isNotBlank() && it.length >= 2 }
                     .take(4)
-            } catch (e: Exception) { if (e is kotlinx.coroutines.CancellationException) throw e;
+            } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
                 Log.w("TagExtract", "model ${entry.name} failed: ${e.message}")
                 val errorMsg = e.message ?: ""
                 if (errorMsg.contains("Quota exceeded", ignoreCase = true) || errorMsg.contains("429")) {
-                    val banUntil = todayStartMs() + 86_400_000
-                    sharedPrefs.edit { putLong("quota_banned_${entry.name}", banUntil) }
-                    Log.d("TagExtract", "${entry.name} banned until Pacific midnight")
+                    val currentRpd = rpdCounters[entry.name]?.size ?: 0
+                    if (currentRpd >= entry.rpdLimit * 0.9) {
+                        val banUntil = todayStartMs() + 86_400_000
+                        sharedPrefs.edit { putLong("quota_banned_${entry.name}", banUntil) }
+                        Log.d("TagExtract", "${entry.name} daily quota exhausted, banned until midnight")
+                    } else {
+                        Log.d("TagExtract", "${entry.name} hit minute limit (RPM), skipping for now")
+                    }
                 }
             }
         }
+
         Log.e("TagExtract", "all models exhausted after retry")
-        throw IllegalStateException("AI tag extraction failed, please enter tags manually")
+        throw IllegalStateException("系統服務繁忙或額度已滿，請稍後再試")
     }
 }
 
