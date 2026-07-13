@@ -155,6 +155,7 @@ fun QuickLogCard(
 ) {
     var expertise by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf("") }
+    var isChecking by remember { mutableStateOf(false) }
 
     val maxCharLimit = 20
 
@@ -180,6 +181,7 @@ fun QuickLogCard(
                 placeholder = { Text("例如：淘寶退貨從台灣到大陸流程") },
                 singleLine = false,
                 minLines = 2,
+                enabled = !isChecking,
                 isError = errorMessage.isNotEmpty(),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedTextColor = AppColors.TextWhite,
@@ -222,17 +224,39 @@ fun QuickLogCard(
                         if (validationError != null) {
                             errorMessage = validationError
                         } else {
-                            onLog(text, emptyList())
-                            expertise = ""
-                            errorMessage = ""
+                            isChecking = true
+                            viewModel.fetchTagsFromAi(text) { tags ->
+                                isChecking = false
+                                when {
+                                    tags == null -> {
+                                        errorMessage = "系統服務繁忙，請稍後再試"
+                                    }
+                                    tags.isEmpty() -> {
+                                        errorMessage = "請輸入有意義的內容，避免輸入無效字詞"
+                                    }
+                                    else -> {
+                                        onLog(text, tags)
+                                        expertise = ""
+                                        errorMessage = ""
+                                    }
+                                }
+                            }
                         }
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = expertise.isNotBlank(),
+                enabled = expertise.isNotBlank() && !isChecking,
                 colors = ButtonDefaults.buttonColors(containerColor = AppColors.AccentGreen)
             ) {
-                Text("發布技能", color = Color.Black, fontWeight = FontWeight.Bold)
+                if (isChecking) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        color = Color.Black,
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Text("發布技能", color = Color.Black, fontWeight = FontWeight.Bold)
+                }
             }
         }
     }
