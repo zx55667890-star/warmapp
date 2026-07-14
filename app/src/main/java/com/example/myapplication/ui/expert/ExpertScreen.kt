@@ -122,6 +122,8 @@ fun ExpertScreenContent(
                 )
             }
 
+            val visibleHistory = uiState.solutionHistory.filter { it.status != SkillStatus.PENDING }
+
             item {
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
@@ -131,7 +133,6 @@ fun ExpertScreenContent(
                     color = AppColors.TextWhite
                 )
 
-                val visibleHistory = uiState.solutionHistory.filter { it.status != SkillStatus.PENDING }
                 if (visibleHistory.isEmpty()) {
                     Text(stringResource(R.string.expert_no_records), color = AppColors.TextGray, fontSize = 14.sp)
                 }
