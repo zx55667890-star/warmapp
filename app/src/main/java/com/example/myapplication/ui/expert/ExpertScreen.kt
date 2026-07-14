@@ -131,12 +131,13 @@ fun ExpertScreenContent(
                     color = AppColors.TextWhite
                 )
 
-                if (uiState.solutionHistory.isEmpty()) {
+                val visibleHistory = uiState.solutionHistory.filter { it.status != SkillStatus.PENDING }
+                if (visibleHistory.isEmpty()) {
                     Text(stringResource(R.string.expert_no_records), color = AppColors.TextGray, fontSize = 14.sp)
                 }
             }
 
-            items(uiState.solutionHistory) { solution ->
+            items(visibleHistory) { solution ->
                 KnowledgeItemCard(
                     solution = solution,
                     onEditClick = { onStartSkillEdit(solution) }
