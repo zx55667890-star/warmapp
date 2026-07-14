@@ -103,10 +103,12 @@ fun AppNavigation() {
 
     LaunchedEffect(Unit) { dataMigrator.migrateIfNeeded(userId) }
     LaunchedEffect(Unit) {
-        if (userId.isNotBlank()) authRepository.saveFcmToken()
+        if (userId.isNotBlank()) {
+            authRepository.saveFcmToken()
+            seekerViewModel.checkReconnection(userId)
+            expertViewModel.startGlobalAssignListener(userId)
+        }
         expertViewModel.initializeExpertStatus(userId)
-        seekerViewModel.checkReconnection(userId)
-        expertViewModel.startGlobalAssignListener(userId)
     }
 
     LaunchedEffect(seekerUiState.activeChatRoomId) {

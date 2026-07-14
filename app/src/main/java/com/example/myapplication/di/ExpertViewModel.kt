@@ -69,9 +69,14 @@ class ExpertViewModel(
     private var globalListener: ValueEventListener? = null
 
     fun listenToSolutions(userId: String) {
+        if (userId.isBlank()) return
         viewModelScope.launch {
-            repository.listenToSolutionHistory(userId).collect { history ->
-                _uiState.update { it.copy(solutionHistory = history) }
+            try {
+                repository.listenToSolutionHistory(userId).collect { history ->
+                    _uiState.update { it.copy(solutionHistory = history) }
+                }
+            } catch (_: Exception) {
+                _uiState.update { it.copy(solutionHistory = emptyList()) }
             }
         }
     }
@@ -105,9 +110,17 @@ class ExpertViewModel(
     }
 
     fun initializeExpertStatus(userId: String) {
+        if (userId.isBlank()) {
+            _uiState.update { it.copy(rating = 5.0, helpCount = 0L, solutionHistory = emptyList()) }
+            return
+        }
         viewModelScope.launch {
-            repository.observeExpertStatus(userId).collect { (rating, helpCount) ->
-                _uiState.update { it.copy(rating = rating, helpCount = helpCount) }
+            try {
+                repository.observeExpertStatus(userId).collect { (rating, helpCount) ->
+                    _uiState.update { it.copy(rating = rating, helpCount = helpCount) }
+                }
+            } catch (_: Exception) {
+                _uiState.update { it.copy(rating = 5.0, helpCount = 0L) }
             }
         }
         listenToSolutions(userId)
