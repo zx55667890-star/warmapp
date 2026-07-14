@@ -191,13 +191,76 @@
 | 項目 | 說明 |
 |------|------|
 | Repository 無狀態化 | callbackFlow 的 `awaitClose` 自動清除 listener，不需手動管理 |
-| 原子寫入 | `saveSkill()` 單一 `updateChildren()` 一次發布 solutions + pending_skills |
+| 原子寫入（第 7 輪） | `saveSkill()` 單一 `updateChildren()` 一次發布 solutions + pending_skills |
+| **個別 setValue（第 8 輪）** | **`updateChildren()` 與 `setPersistenceEnabled(true)` 衝突 → 回歸個別 `setValue()`，犧牲原子性換取穩定性** |
 | State Hoisting | ExpertScreenContent 可獨立 Preview/測試，ViewModel 只注入在 bridge 層 |
 | 字串外部化 | ShowToast 使用 `@StringRes` + `ShowToastRaw`，ViewModel 不再硬編碼 Toast |
 | Concurrency | processing timestamp 防止 1 分鐘排程重疊時重複處理同一筆資料 |
 | 移除 $other | 任何登入用戶不再能寫入未定義路徑（安全性） |
 
 ---
+
+## 第 8 輪：Crash 修復 + saveSkill 改寫 + 亂碼檢測強化 + Submission Lock
+
+### 問題描述
+1. **啟動閃退 crash** — `ExpertViewModel.initializeExpertStatus()` / `listenToSolutions()` 中 `userId` 空白時，`callbackFlow` 內 `close(error)` 導致未捕捉異常傳播，app 啟動即 crash
+2. **Permission denied on saveSkill** — `updateChildren()` 搭配 `setPersistenceEnabled(true)` 引發多路徑寫入本地快取衝突，即使規則正確仍觸發 permission denied
+3. **亂碼檢測不足** — 部分無意義中文句子（如「燒烤是黑子黑吃黑」）繞過前端驗證器
+4. **需 Submission Lock** — 惡意使用者連續發布被拒絕的無效技能，無任何阻擋機制
+
+### 修改檔案
+- **`di/ExpertViewModel.kt`**:
+  - `initializeExpertStatus()`: 加入 `userId.isBlank()` guard + try-catch
+  - `listenToSolutions()`: 加入 `userId.isBlank()` guard + try-catch
+  - `publishSkill()`: 加入 `userId.isBlank()` 及 `isSubmissionLocked` 檢查
+  - `publishExperience()`: 加入 `userId.isBlank()` 檢查
+  - 新增 `observeSubmissionLock()` — 監聽 `users/{uid}/submissionLock` 節點
+  - 新增 `isSubmissionLocked` 欄位於 `ExpertUiState`
+  - `cleanup()` 擴充清除 lock listener
+  - 錯誤日誌增加 exception type name
+
+- **`ui/navigation/AppNavigation.kt`**:
+  - `LaunchedEffect` 中加入 `userId.isNotBlank()` 條件，避免空白時觸發 Firebase 操作
+
+- **`data/repository/ExpertRepository.kt`**:
+  - `listenToSolutionHistory()`: 加入 `userId.isBlank()` guard（空白時 `SendResult()` + close）
+  - `observeExpertStatus()`: 加入 `userId.isBlank()` guard
+  - `saveSkill()`: `updateChildren()` → 兩個個別 `setValue()`（避免 persistence 衝突）
+  - `editSkill()`: `updateChildren()` → 兩個個別 `setValue()`
+
+- **`domain/expert/ExpertInputValidator.kt`**:
+  - 新增 `SKILL_UNLIKELY_CHARS`：哦呢嗎吧額喔誒欸啦嘛呀喲嘅誰該
+  - 新增二元組（bigram）重複檢測 `windowed(2)`，大於 1 次觸發
+
+- **`ui/expert/ExpertScreen.kt`**:
+  - KnowledgeItemCard：`SkillStatus.PENDING` 隱藏整張卡片（不顯示）
+  - KnowledgeItemCard：`SkillStatus.ACTIVE` 顯示 AI 標籤（`SuggestionChip`）
+  - KnowledgeItemCard：移除 PENDING 狀態 spinner +「AI 分析中...」文字
+  - 修正 `visibleHistory` 變數位置（out of `item {}` block）
+
+- **`res/values/strings.xml`**:
+  - 新增 `expert_toast_login_required`（「請先登入」）
+  - 新增 `expert_toast_submission_locked`（「您的技能多次無法通過驗證，請於24小時後再試」）
+
+- **`functions/index.js`**:
+  - 強化 AI prompt：明確要求 REJECT「看似有詞但整體無意義」內容，加入具體範例
+  - 新增 Submission Lock 機制：
+    - 使用者維度追蹤 rejectedCount
+    - 任一 ACTIVE → rejectedCount 歸零
+    - REJECTED → rejectedCount + 1
+    - 達 3 次 → `users/{uid}/submissionLock.lockedUntil = Date.now() + 86400000`
+
+### 關鍵發現
+| 項目 | 說明 |
+|------|------|
+| callbackFlow + isBlank crash | `close(error)` 在空白 userId 時觸發未處理的 exception，必須在 Repository 層就 guard |
+| updateChildren + persistence | `setPersistenceEnabled(true)` 下多路徑 updateChildren 會與本地快取衝突，無法通過規則驗證 |
+| Bigram repeat 檢查 | `windowed(2)` 搭配 `distinct().count() < bigrams.size` 可檢測「吃黑吃黑」型繞過 |
+| 前端仍無法完美檢測 | 部分正常中文字組合的無意義句子（「燒烤是黑子黑吃黑」）仍可能通過，依賴後端 AI 兜底 |
+| 同批次 edge case | 同一批次中若有 ACTIVE + REJECTED 混雜，`hasActive` 會使鎖定計數歸零而不觸發鎖 |
+
+---
+
 
 ## 主要相關檔案結構
 ```

@@ -86,9 +86,26 @@
 - [x] **Cloud Function 所有模型 EXHAUSTED 時 reset cooldown** — 10 分鐘冷卻防無限重試
 - [x] **Test 更新** — `Dispatchers.setMain(testDispatcher)` + `runTest` + `advanceUntilIdle()`
 
+### 第 8 輪：Crash 修復 + saveSkill 改寫 + 亂碼檢測強化 + Submission Lock
+- [x] **ExpertViewModel isBlank guard** — `initializeExpertStatus()` / `listenToSolutions()` 加入 `userId.isBlank()` 保護 + try/catch，防止未登入/空白時 crash
+- [x] **AppNavigation LaunchedEffect guard** — 加入 `userId.isNotBlank()` 條件避免空白觸發 Firebase 操作
+- [x] **Repository callbackFlow isBlank guard** — `listenToSolutionHistory()` / `observeExpertStatus()` 空白 userId 時直接發空結果並 close，避免 Firebase permission denied crash
+- [x] **publishSkill/publishExperience isBlank guard** — 加入 `userId.isBlank()` 提前 return 並 Toast「請先登入」
+- [x] **saveSkill/editSkill 改為個別 setValue** — 取代 multi-path `updateChildren()`，避免與 `setPersistenceEnabled(true)` 的本地快取衝突
+- [x] **新增 isLoading 防連點** — `publishSkill()` 中 `isLoading` 用 `_uiState.update` 非同步設為 true，發布完成後恢復 false
+- [x] **ExpertInputValidator bigram 重複檢查** — `windowed(2)` 檢測二元組重複，擋下「吃黑吃黑」型繞過
+- [x] **ExpertInputValidator SKILL_UNLIKELY_CHARS** — 新增 15 個不合理字元（哦呢嗎吧額喔誒欸啦嘛呀喲嘅誰該）
+- [x] **KnowledgeItemCard 隱藏 PENDING 卡片** — 不再顯示 spinner 與「AI 分析中...」
+- [x] **KnowledgeItemCard ACTIVE 標籤顯示** — 使用 `SuggestionChip` 展示 AI 產生的 tags
+- [x] **Submission Lock（後端）** — Cloud Function 追蹤使用者連續 REJECTED 次數，達 3 次寫入 `users/{uid}/submissionLock/lockedUntil = now + 24h`
+- [x] **Submission Lock（前端）** — `observeSubmissionLock()` 監聽鎖定狀態，`publishSkill()` 阻擋發布並 Toast
+- [x] **Cloud Function AI prompt 強化** — 明確要求 REJECT 無意義句子，加入具體範例（「燒烤是黑子黑吃黑」等）
+- [x] **函數部署 2 次成功** — revision 已更新（含 Node.js 24 runtime）
+
 ### Git
 - [x] 約 35+ 次提交，已全部推送至 main
-- [x] 本次變更 16 個 source 檔案（14 修改 + 1 新增 + 1 刪除）
+- [x] 第 7 輪變更：16 個 source 檔案（14 修改 + 1 新增 + 1 刪除）
+- [x] 第 8 輪變更：9 個 source 檔案修改
 
 ## 未解決問題
 
@@ -96,7 +113,7 @@
 
 2. **firebase-functions 倚賴 RC 版本** — `7.3.0-rc.0` 是 release candidate，因 v7.2.5 stable 的 peerDependencies 不包含 `firebase-admin@^14.0.0`。需定期檢查 npm 是否有 stable release（如 v7.3.0+）支援 admin v14 後升回穩定版。
 
-3. **Deploy 時出現 "outdated firebase-functions" warning** — 因使用 RC 版而非 latest stable，不影響功能但會有警告訊息。
+3. **Deploy 時出現 "outdated firebase-functions" warning** — 因使用 RC 版而非 latest stable，不影響功能但會有警告訊息。可執行 `npm install --save firebase-functions@latest` 查看是否有新版。
 
 4. **`@StringRes` annotation target 警告** — `ShowToast.resId: Int` 上的 `@StringRes` 在 Kotlin 2.x 編譯時觸發 KT-73255（future default 將同時 apply 到 field）。可加 `-Xannotation-default-target=param-property` 或改用 `@param:` target 消除。
 
@@ -107,6 +124,14 @@
 7. **Cloud Function reset cooldown 可能遺失模型狀態** — 若所有模型 EXHAUSTED，需等 10 分鐘 cooldown 才會重置。期間 PENDING skills 會累積不處理。可考慮加入手動觸發機制或逐步縮短 cooldown。
 
 8. **Constants.kt 負責路徑一致性的維護負擔** — 所有 Firebase 路徑/欄位/狀態值集中於一檔，修改時需注意不影響既有資料結構。未來可考慮加入 migration 版本控制。
+
+9. **無意義句子前端檢測仍有漏網之魚** — 部分使用普通中文字湊成的無意義句子（如「燒烤是黑子黑吃黑」）可通過前端 `ExpertInputValidator`，需依賴後端 AI 攔截。未來可考慮加入更多 `SKILL_UNLIKELY_CHARS`（如「是」、「讓」），但可能誤殺合法技能。
+
+10. **saveSkill 失去原子性** — `updateChildren()` 改回個別 `setValue()` 後，若 `solutions` 寫入成功但 `pending_skills` 失敗，會產生孤立 solution 狀態不一致。目前可接受（雲端函數排程處理時僅讀取 `pending_skills`），但建議實作清理機制。
+
+11. **Submission Lock 同批次邊界情況** — 若同一批次中同一使用者有多筆 entry，混雜 ACTIVE 與 REJECTED 時，`hasActive` 會將 rejectedCount 歸零而不觸發鎖。此為低機率場景（ACTIVE 與 REJECTED 同時出現才受影響）。
+
+12. **Cloud Function 仍需執行 `npm install --save firebase-functions@latest`** — 部署時出現 `package.json indicates an outdated version of firebase-functions` 警告，升級至 latest stable 可消除。
 
 ## 模型清單（Cloud Function fallback 順序）
 | 順序 | 模型 | 速度 (2026/7/14 benchmark, 5 entries) | 備註 |
