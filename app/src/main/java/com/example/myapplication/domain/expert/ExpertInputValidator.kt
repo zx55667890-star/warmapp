@@ -16,6 +16,7 @@ object ExpertInputValidator {
     private const val PURE_ENGLISH_MIN_LENGTH = 6
     private const val BIGRAM_REPEAT_THRESHOLD = 2
     private val VOWELS = setOf('a', 'e', 'i', 'o', 'u')
+    private val SKILL_UNLIKELY_CHARS = setOf('哦', '呢', '嗎', '吧', '額', '喔', '誒', '欸', '啦', '嘛', '呀', '喲', '嘅', '誰', '該')
 
     fun validate(text: String): ValidationError? {
         val trimmed = text.trim()
@@ -61,6 +62,10 @@ object ExpertInputValidator {
 
         val bigrams = trimmed.windowed(2).groupingBy { it }.eachCount()
         if (bigrams.any { it.value >= BIGRAM_REPEAT_THRESHOLD && trimmed.length >= 8 }) {
+            return ValidationError.GIBBERISH
+        }
+
+        if (trimmed.any { it in SKILL_UNLIKELY_CHARS }) {
             return ValidationError.GIBBERISH
         }
 
