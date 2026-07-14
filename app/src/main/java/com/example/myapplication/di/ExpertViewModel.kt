@@ -46,7 +46,8 @@ data class ExpertUiState(
     val globalAssignedQText: String = "",
     val activeChatRoomId: String = "",
     val activeChatQuestionText: String = "",
-    val myRole: String = ""
+    val myRole: String = "",
+    val isSubmissionLocked: Boolean = false
 )
 sealed class ExpertUiEvent {
     data class ShowToast(@StringRes val resId: Int) : ExpertUiEvent()
@@ -67,6 +68,8 @@ class ExpertViewModel(
 
     private var globalQuery: Query? = null
     private var globalListener: ValueEventListener? = null
+    private var lockRef: com.google.firebase.database.DatabaseReference? = null
+    private var lockListener: ValueEventListener? = null
 
     fun listenToSolutions(userId: String) {
         if (userId.isBlank()) return
@@ -84,6 +87,10 @@ class ExpertViewModel(
     fun publishSkill(userId: String, text: String) {
         if (userId.isBlank()) {
             sendEvent(ExpertUiEvent.ShowToast(R.string.expert_toast_login_required))
+            return
+        }
+        if (_uiState.value.isSubmissionLocked) {
+            sendEvent(ExpertUiEvent.ShowToast(R.string.expert_toast_submission_locked))
             return
         }
         viewModelScope.launch {
@@ -129,10 +136,25 @@ class ExpertViewModel(
             }
         }
         listenToSolutions(userId)
+        observeSubmissionLock(userId)
     }
 
     fun setExpertOnline(online: Boolean, userId: String) {
         repository.setExpertOnline(online, userId, _uiState.value.activeExperienceId)
+    }
+
+    private fun observeSubmissionLock(userId: String) {
+        lockRef?.removeEventListener(lockListener)
+        if (userId.isBlank()) return
+        lockRef = firebaseDb.getReference(FirebasePaths.USERS).child(userId).child("submissionLock")
+        lockListener = object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val lockedUntil = snapshot.child("lockedUntil").getValue(Long::class.java) ?: 0L
+                _uiState.update { it.copy(isSubmissionLocked = lockedUntil > System.currentTimeMillis()) }
+            }
+            override fun onCancelled(error: DatabaseError) { }
+        }
+        lockRef?.addValueEventListener(lockListener!!)
     }
 
     fun publishExperience(userId: String, text: String) {
@@ -404,7 +426,14 @@ class ExpertViewModel(
 
     fun cleanup() {
         cleanupGlobalListener()
+        cleanupLockListener()
         repository.cleanup(_uiState.value.activeExperienceId)
+    }
+
+    private fun cleanupLockListener() {
+        lockRef?.removeEventListener(lockListener)
+        lockRef = null
+        lockListener = null
     }
 
     override fun onCleared() {

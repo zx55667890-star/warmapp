@@ -108,11 +108,16 @@ exports.batchProcessPendingSkills = onSchedule(
     const updates = {};
     const aiEntries = [];
 
+    // Track consecutive rejection count per user for submission lock
+    const lockTrackers = {};
+
     for (const { entry, isBlacklisted } of blacklistResults) {
       if (isBlacklisted) {
         updates[`solutions/${entry.userId}/${entry.id}/status`] = 'REJECTED';
         updates[`solutions/${entry.userId}/${entry.id}/tags`] = [];
         updates[`pending_skills/${entry.id}`] = null;
+        const t = lockTrackers[entry.userId] || (lockTrackers[entry.userId] = { rejectedCount: 0, hasActive: false });
+        t.rejectedCount = (t.rejectedCount || 0) + 1;
       } else {
         aiEntries.push(entry);
       }
@@ -133,6 +138,8 @@ exports.batchProcessPendingSkills = onSchedule(
         updates[`solutions/${entry.userId}/${entry.id}/status`] = 'ACTIVE';
         updates[`solutions/${entry.userId}/${entry.id}/tags`] = cachedTags;
         updates[`pending_skills/${entry.id}`] = null;
+        const t = lockTrackers[entry.userId] || (lockTrackers[entry.userId] = { rejectedCount: 0, hasActive: false });
+        t.hasActive = true;
       } else {
         remainingEntries.push(entry);
       }
@@ -208,18 +215,32 @@ exports.batchProcessPendingSkills = onSchedule(
 
           const skillRef = `solutions/${entry.userId}/${item.id}`;
           const isReject = item.tags && Array.isArray(item.tags) && item.tags.includes('REJECT');
+          const t = lockTrackers[entry.userId] || (lockTrackers[entry.userId] = { rejectedCount: 0, hasActive: false });
 
           if (isReject) {
             updates[`${skillRef}/status`] = 'REJECTED';
             updates[`${skillRef}/tags`] = [];
             updates[`tags_blacklist/${entry.text}`] = true;
+            t.rejectedCount = (t.rejectedCount || 0) + 1;
           } else {
             const tags = Array.isArray(item.tags) ? item.tags.slice(0, 4) : [];
             updates[`${skillRef}/status`] = 'ACTIVE';
             updates[`${skillRef}/tags`] = tags;
             updates[`tags_whitelist/${entry.text}/tags`] = tags;
+            t.hasActive = true;
           }
           updates[`pending_skills/${entry.id}`] = null;
+        }
+
+        // Apply submission lock based on consecutive rejection count
+        for (const [uid, t] of Object.entries(lockTrackers)) {
+          const finalCount = t.hasActive ? 0 : (t.rejectedCount || 0);
+          updates[`users/${uid}/submissionLock/rejectedCount`] = finalCount;
+          if (finalCount >= 3) {
+            updates[`users/${uid}/submissionLock/lockedUntil`] = Date.now() + 86400000;
+          } else {
+            updates[`users/${uid}/submissionLock/lockedUntil`] = 0;
+          }
         }
 
         await db.ref().update(updates);
