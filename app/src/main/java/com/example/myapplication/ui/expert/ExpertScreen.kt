@@ -213,7 +213,26 @@ fun KnowledgeItemCard(solution: SolutionItem, onEditClick: () -> Unit) {
                             color = MaterialTheme.colorScheme.error
                         )
                     }
-                    SkillStatus.ACTIVE -> { }
+                    SkillStatus.ACTIVE -> {
+                        if (solution.tags.isNotEmpty()) {
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                solution.tags.take(5).forEach { tag ->
+                                    SuggestionChip(
+                                        onClick = {},
+                                        label = { Text(tag, fontSize = 11.sp) },
+                                        border = BorderStroke(1.dp, AppColors.AccentGreen.copy(alpha = 0.5f))
+                                    )
+                                }
+                                if (solution.tags.size > 5) {
+                                    Text("+${solution.tags.size - 5}", fontSize = 11.sp, color = AppColors.TextGray)
+                                }
+                            }
+                        }
+                    }
                 }
             }
 
