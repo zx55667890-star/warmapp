@@ -82,6 +82,10 @@ class ExpertViewModel(
     }
 
     fun publishSkill(userId: String, text: String) {
+        if (userId.isBlank()) {
+            sendEvent(ExpertUiEvent.ShowToast(R.string.expert_toast_login_required))
+            return
+        }
         viewModelScope.launch {
             val trimmed = text.trim()
 
@@ -132,6 +136,10 @@ class ExpertViewModel(
     }
 
     fun publishExperience(userId: String, text: String) {
+        if (userId.isBlank()) {
+            sendEvent(ExpertUiEvent.ShowToast(R.string.expert_toast_login_required))
+            return
+        }
         val trimmed = text.trim()
         if (trimmed.isBlank()) {
             sendEvent(ExpertUiEvent.ShowToast(R.string.expert_toast_experience_blank))
