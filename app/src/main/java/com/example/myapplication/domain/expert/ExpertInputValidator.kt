@@ -14,6 +14,7 @@ object ExpertInputValidator {
     private const val SINGLETONS_THRESHOLD = 3
     private const val ADJACENT_CHECK_MIN_LENGTH = 5
     private const val PURE_ENGLISH_MIN_LENGTH = 6
+    private const val BIGRAM_REPEAT_THRESHOLD = 2
     private val VOWELS = setOf('a', 'e', 'i', 'o', 'u')
 
     fun validate(text: String): ValidationError? {
@@ -56,6 +57,11 @@ object ExpertInputValidator {
             if (singletons >= SINGLETONS_THRESHOLD) {
                 return ValidationError.GIBBERISH
             }
+        }
+
+        val bigrams = trimmed.windowed(2).groupingBy { it }.eachCount()
+        if (bigrams.any { it.value >= BIGRAM_REPEAT_THRESHOLD && trimmed.length >= 8 }) {
+            return ValidationError.GIBBERISH
         }
 
         val isPureEnglish = trimmed.all { it.isLetter() && it.code < 128 }
