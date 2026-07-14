@@ -52,6 +52,11 @@ class ExpertRepository(private val db: FirebaseDatabase) {
     }
 
     fun listenToSolutionHistory(userId: String): Flow<List<SolutionItem>> = callbackFlow {
+        if (userId.isBlank()) {
+            trySend(emptyList())
+            close()
+            return@callbackFlow
+        }
         val listener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 val history = snapshot.children.mapNotNull { child ->
@@ -79,6 +84,11 @@ class ExpertRepository(private val db: FirebaseDatabase) {
     }
 
     fun observeExpertStatus(userId: String): Flow<Pair<Double, Long>> = callbackFlow {
+        if (userId.isBlank()) {
+            trySend(5.0 to 0L)
+            close()
+            return@callbackFlow
+        }
         val listener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 val rating = snapshot.child(FirebaseFields.RATING).getValue(Double::class.java) ?: 5.0
