@@ -168,8 +168,13 @@ exports.batchProcessPendingSkills = onSchedule(
     for (const model of candidates) {
       console.log(`Processing ${remainingEntries.length} skills with model: ${model.name} (${model.label})`);
 
-      const prompt = `請為以下每筆資料提取 4 個最核心的關鍵字標籤。
-遇到無意義的胡言亂語、鍵盤亂打、重複的符號、或完全無法對應到任何實際場景的內容，請將 tags 設為 ["REJECT"]。
+      const prompt = `請判斷以下每筆資料是否為真實、有意義的專業技能描述。
+
+判斷原則：
+- 如果內容是具體、可理解的專業技能（如「Python爬蟲開發」、「淘寶退貨流程」），請提取 4 個最核心的關鍵字標籤
+- 如果內容是無意義的胡言亂語、隨機湊字、看似有詞但組合後無實際意義、或無法對應到任何真實場景，請將 tags 設為 ["REJECT"]
+- 例如「車內適合吃新造型靠字」這類看似有詞但整體無意義的內容也應 REJECT
+- 遇到無法明確判斷時，寧可 REJECT 也不要勉強給標籤
 
 以 JSON Array 格式回傳，每個物件包含 id 和 tags 欄位。
 範例格式：
