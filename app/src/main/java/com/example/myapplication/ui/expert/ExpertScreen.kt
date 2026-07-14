@@ -188,6 +188,7 @@ fun KnowledgeItemCard(solution: SolutionItem, onEditClick: () -> Unit) {
                 )
 
                 when (solution.status) {
+                    SkillStatus.PENDING -> { }
                     SkillStatus.REJECTED -> {
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
