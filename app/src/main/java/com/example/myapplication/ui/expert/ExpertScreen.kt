@@ -169,7 +169,6 @@ fun KnowledgeItemCard(solution: SolutionItem, onEditClick: () -> Unit) {
             .padding(vertical = 6.dp),
         colors = CardDefaults.cardColors(
             containerColor = when (solution.status) {
-                SkillStatus.PENDING -> MaterialTheme.colorScheme.surfaceVariant
                 SkillStatus.REJECTED -> MaterialTheme.colorScheme.errorContainer
                 else -> MaterialTheme.colorScheme.surface
             }
@@ -189,22 +188,6 @@ fun KnowledgeItemCard(solution: SolutionItem, onEditClick: () -> Unit) {
                 )
 
                 when (solution.status) {
-                    SkillStatus.PENDING -> {
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(14.dp),
-                                strokeWidth = 2.dp,
-                                color = AppColors.AccentYellow
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                stringResource(R.string.expert_ai_analyzing),
-                                fontSize = 12.sp,
-                                color = AppColors.AccentYellow
-                            )
-                        }
-                    }
                     SkillStatus.REJECTED -> {
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
