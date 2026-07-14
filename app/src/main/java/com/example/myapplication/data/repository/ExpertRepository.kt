@@ -17,38 +17,43 @@ import kotlinx.coroutines.tasks.await
 class ExpertRepository(private val db: FirebaseDatabase) {
 
     suspend fun saveSkill(userId: String, expertise: String): String {
-        val ref = db.getReference(FirebasePaths.SOLUTIONS).child(userId).push()
-        val skillId = ref.key ?: throw Exception("無法建立技能 ID")
+        val solutionRef = db.getReference(FirebasePaths.SOLUTIONS).child(userId).push()
+        val skillId = solutionRef.key ?: throw Exception("無法建立技能 ID")
         val now = System.currentTimeMillis()
 
-        val updates = mapOf(
-            "${FirebasePaths.SOLUTIONS}/$userId/$skillId/${FirebaseFields.ID}" to skillId,
-            "${FirebasePaths.SOLUTIONS}/$userId/$skillId/${FirebaseFields.EXPERTISE}" to expertise,
-            "${FirebasePaths.SOLUTIONS}/$userId/$skillId/${FirebaseFields.TAGS}" to emptyList<String>(),
-            "${FirebasePaths.SOLUTIONS}/$userId/$skillId/${FirebaseFields.TIMESTAMP}" to now,
-            "${FirebasePaths.SOLUTIONS}/$userId/$skillId/${FirebaseFields.STATUS}" to SkillStatus.PENDING.name,
-            "${FirebasePaths.PENDING_SKILLS}/$skillId/${FirebaseFields.USER_ID}" to userId,
-            "${FirebasePaths.PENDING_SKILLS}/$skillId/${FirebaseFields.TEXT}" to expertise,
-            "${FirebasePaths.PENDING_SKILLS}/$skillId/${FirebaseFields.TIMESTAMP}" to now
+        val solutionData = mapOf(
+            FirebaseFields.ID to skillId,
+            FirebaseFields.EXPERTISE to expertise,
+            FirebaseFields.TAGS to emptyMap<String, String>(),
+            FirebaseFields.TIMESTAMP to now,
+            FirebaseFields.STATUS to SkillStatus.PENDING.name
         )
+        solutionRef.setValue(solutionData).await()
 
-        db.getReference().updateChildren(updates).await()
+        val pendingRef = db.getReference(FirebasePaths.PENDING_SKILLS).child(skillId)
+        val pendingData = mapOf(
+            FirebaseFields.USER_ID to userId,
+            FirebaseFields.TEXT to expertise,
+            FirebaseFields.TIMESTAMP to now
+        )
+        pendingRef.setValue(pendingData).await()
+
         return skillId
     }
 
     suspend fun editSkill(userId: String, skillId: String, newExpertise: String) {
-        val updates = mutableMapOf<String, Any>()
-        updates["${FirebasePaths.SOLUTIONS}/$userId/$skillId/${FirebaseFields.EXPERTISE}"] = newExpertise
-        updates["${FirebasePaths.SOLUTIONS}/$userId/$skillId/${FirebaseFields.STATUS}"] = SkillStatus.PENDING.name
+        val now = System.currentTimeMillis()
 
-        val queueData = mapOf(
+        val solutionRef = db.getReference(FirebasePaths.SOLUTIONS).child(userId).child(skillId)
+        solutionRef.child(FirebaseFields.EXPERTISE).setValue(newExpertise).await()
+        solutionRef.child(FirebaseFields.STATUS).setValue(SkillStatus.PENDING.name).await()
+
+        val pendingData = mapOf(
             FirebaseFields.USER_ID to userId,
             FirebaseFields.TEXT to newExpertise,
-            FirebaseFields.TIMESTAMP to System.currentTimeMillis()
+            FirebaseFields.TIMESTAMP to now
         )
-        updates["${FirebasePaths.PENDING_SKILLS}/$skillId"] = queueData
-
-        db.getReference().updateChildren(updates).await()
+        db.getReference(FirebasePaths.PENDING_SKILLS).child(skillId).setValue(pendingData).await()
     }
 
     fun listenToSolutionHistory(userId: String): Flow<List<SolutionItem>> = callbackFlow {
