@@ -1,8 +1,13 @@
 package com.example.myapplication.di
 
 import android.util.Log
+import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.myapplication.R
+import com.example.myapplication.data.FirebaseFields
+import com.example.myapplication.data.FirebasePaths
+import com.example.myapplication.data.StatusValues
 import com.example.myapplication.data.model.SkillStatus
 import com.example.myapplication.data.model.SolutionItem
 import com.example.myapplication.data.repository.ExpertRepository
@@ -30,8 +35,10 @@ data class ExpertUiState(
 
     val isEditing: Boolean = false,
     val editText: String = "",
-    val editError: String? = null,
+    @StringRes val editErrorRes: Int? = null,
     val isSubmitting: Boolean = false,
+
+    val skillEditTarget: SolutionItem? = null,
 
     val showGlobalAssignDialog: Boolean = false,
     val isExpertWaitingForSeeker: Boolean = false,
@@ -42,7 +49,8 @@ data class ExpertUiState(
     val myRole: String = ""
 )
 sealed class ExpertUiEvent {
-    data class ShowToast(val message: String) : ExpertUiEvent()
+    data class ShowToast(@StringRes val resId: Int) : ExpertUiEvent()
+    data class ShowToastRaw(val message: String) : ExpertUiEvent()
 }
 
 class ExpertViewModel(
@@ -54,15 +62,17 @@ class ExpertViewModel(
     val uiState: StateFlow<ExpertUiState> = _uiState.asStateFlow()
 
 
-    private val _uiEvent = Channel<ExpertUiEvent>()
+    private val _uiEvent = Channel<ExpertUiEvent>(Channel.BUFFERED)
     val uiEvent = _uiEvent.receiveAsFlow()
 
     private var globalQuery: Query? = null
     private var globalListener: ValueEventListener? = null
 
     fun listenToSolutions(userId: String) {
-        repository.listenToSolutionHistory(userId) { history ->
-            _uiState.update { it.copy(solutionHistory = history) }
+        viewModelScope.launch {
+            repository.listenToSolutionHistory(userId).collect { history ->
+                _uiState.update { it.copy(solutionHistory = history) }
+            }
         }
     }
 
@@ -71,62 +81,46 @@ class ExpertViewModel(
             val trimmed = text.trim()
 
             val isDuplicate = _uiState.value.solutionHistory.any {
-                it.expertise == trimmed && it.status != SkillStatus.REJECTED.name
+                it.expertise == trimmed && it.status != SkillStatus.REJECTED
             }
             if (isDuplicate) {
-                sendEvent(ExpertUiEvent.ShowToast("您已經新增過這項技能囉！"))
+                sendEvent(ExpertUiEvent.ShowToast(R.string.expert_toast_already_exists))
                 return@launch
             }
 
             val validationError = ExpertInputValidator.validate(trimmed)
             if (validationError != null) {
-                sendEvent(ExpertUiEvent.ShowToast(validationError))
-                return@launch
-            }
-
-            val isBlacklisted = repository.checkBlacklist(trimmed)
-            if (isBlacklisted) {
-                sendEvent(ExpertUiEvent.ShowToast("請輸入有意義的專業內容"))
-                return@launch
-            }
-
-            val cachedTags = repository.checkWhitelist(trimmed)
-            if (cachedTags != null) {
-                try {
-                    repository.saveSkill(userId, trimmed, cachedTags, SkillStatus.ACTIVE)
-                    sendEvent(ExpertUiEvent.ShowToast("已成功記錄到您的知識庫！"))
-                } catch (e: Exception) {
-                    if (e is kotlinx.coroutines.CancellationException) throw e
-                    sendEvent(ExpertUiEvent.ShowToast("記錄失敗：${e.message}"))
-                }
+                sendEvent(ExpertUiEvent.ShowToast(validationError.toResourceId()))
                 return@launch
             }
 
             try {
-                repository.saveSkill(userId, trimmed, emptyList(), SkillStatus.PENDING)
-                sendEvent(ExpertUiEvent.ShowToast("技能已送出，AI 正在為您精準配對標籤..."))
+                repository.saveSkill(userId, trimmed)
+                sendEvent(ExpertUiEvent.ShowToast(R.string.expert_toast_skill_submitted))
             } catch (e: Exception) {
                 if (e is kotlinx.coroutines.CancellationException) throw e
-                sendEvent(ExpertUiEvent.ShowToast("記錄失敗：${e.message}"))
+                sendEvent(ExpertUiEvent.ShowToastRaw("記錄失敗：${e.message}"))
             }
         }
     }
 
     fun initializeExpertStatus(userId: String) {
-        repository.initializeExpertStatus(userId) { rating, helpCount ->
-            _uiState.update { it.copy(rating = rating, helpCount = helpCount) }
+        viewModelScope.launch {
+            repository.observeExpertStatus(userId).collect { (rating, helpCount) ->
+                _uiState.update { it.copy(rating = rating, helpCount = helpCount) }
+            }
         }
         listenToSolutions(userId)
     }
 
-    fun setExpertOnline(online: Boolean) {
-        repository.setExpertOnline(online, _uiState.value.activeExperienceId)
+    fun setExpertOnline(online: Boolean, userId: String) {
+        repository.setExpertOnline(online, userId, _uiState.value.activeExperienceId)
     }
 
     fun publishExperience(userId: String, text: String) {
         val trimmed = text.trim()
         if (trimmed.isBlank()) {
-            sendEvent(ExpertUiEvent.ShowToast("請填寫您的經驗描述"))
+            sendEvent(ExpertUiEvent.ShowToast(R.string.expert_toast_experience_blank))
             return
         }
         viewModelScope.launch {
@@ -135,23 +129,23 @@ class ExpertViewModel(
                 _uiState.update { it.copy(activeExperienceId = experienceId, activeExperienceText = trimmed) }
             } catch (e: Exception) {
                 if (e is kotlinx.coroutines.CancellationException) throw e
-                sendEvent(ExpertUiEvent.ShowToast(e.message ?: "發佈失敗"))
+                sendEvent(ExpertUiEvent.ShowToast(R.string.expert_toast_publish_failed))
             }
         }
     }
 
     fun startEditing() {
         _uiState.update {
-            it.copy(isEditing = true, editText = it.activeExperienceText, editError = null)
+            it.copy(isEditing = true, editText = it.activeExperienceText, editErrorRes = null)
         }
     }
 
     fun cancelEditing() {
-        _uiState.update { it.copy(isEditing = false, editError = null) }
+        _uiState.update { it.copy(isEditing = false, editErrorRes = null) }
     }
 
     fun updateEditText(newText: String) {
-        _uiState.update { it.copy(editText = newText, editError = null) }
+        _uiState.update { it.copy(editText = newText, editErrorRes = null) }
     }
 
     fun submitEdit() {
@@ -159,11 +153,11 @@ class ExpertViewModel(
         val trimmed = currentState.editText.trim()
 
         if (trimmed.isBlank()) {
-            _uiState.update { it.copy(editError = "經驗描述不能為空白") }
+            _uiState.update { it.copy(editErrorRes = R.string.expert_error_experience_blank) }
             return
         }
         if (trimmed.length > 200) {
-            _uiState.update { it.copy(editError = "經驗描述不能超過 200 個字元（目前 ${trimmed.length} 字）") }
+            _uiState.update { it.copy(editErrorRes = R.string.expert_error_experience_too_long) }
             return
         }
 
@@ -179,12 +173,13 @@ class ExpertViewModel(
                         isSubmitting = false,
                         isEditing = false,
                         activeExperienceText = trimmed,
-                        editError = null
+                        editErrorRes = null
                     )
                 }
             } catch (e: Exception) {
                 if (e is kotlinx.coroutines.CancellationException) throw e
-                _uiState.update { it.copy(isSubmitting = false, editError = e.message) }
+                sendEvent(ExpertUiEvent.ShowToastRaw(e.message ?: "更新失敗"))
+                _uiState.update { it.copy(isSubmitting = false) }
             }
         }
     }
@@ -196,10 +191,73 @@ class ExpertViewModel(
         }
     }
 
+    fun startSkillEdit(solution: SolutionItem) {
+        _uiState.update {
+            it.copy(
+                skillEditTarget = solution,
+                editText = solution.expertise,
+                editErrorRes = null
+            )
+        }
+    }
+
+    fun cancelSkillEdit() {
+        _uiState.update { it.copy(skillEditTarget = null, editText = "", editErrorRes = null) }
+    }
+
+    fun updateSkillEditText(newText: String) {
+        _uiState.update { it.copy(editText = newText, editErrorRes = null) }
+    }
+
+    fun submitSkillEdit(userId: String) {
+        val currentState = _uiState.value
+        val target = currentState.skillEditTarget ?: return
+        val trimmed = currentState.editText.trim()
+
+        if (trimmed.isBlank()) {
+            _uiState.update { it.copy(editErrorRes = R.string.expert_error_skill_blank) }
+            return
+        }
+        if (trimmed.length < 4) {
+            _uiState.update { it.copy(editErrorRes = R.string.expert_error_skill_too_short) }
+            return
+        }
+        if (trimmed == target.expertise) {
+            _uiState.update { it.copy(skillEditTarget = null, editText = "", editErrorRes = null) }
+            return
+        }
+
+        val validationError = ExpertInputValidator.validate(trimmed)
+        if (validationError != null) {
+            _uiState.update { it.copy(editErrorRes = validationError.toResourceId()) }
+            return
+        }
+
+        _uiState.update { it.copy(isSubmitting = true) }
+        viewModelScope.launch {
+            try {
+                repository.editSkill(userId, target.id, trimmed)
+                _uiState.update {
+                    it.copy(
+                        isSubmitting = false,
+                        skillEditTarget = null,
+                        editText = "",
+                        editErrorRes = null
+                    )
+                }
+                sendEvent(ExpertUiEvent.ShowToast(R.string.expert_toast_skill_updated))
+            } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
+                sendEvent(ExpertUiEvent.ShowToastRaw(e.message ?: "更新失敗"))
+                _uiState.update { it.copy(isSubmitting = false) }
+            }
+        }
+    }
+
     fun startGlobalAssignListener(userId: String) {
-        if (globalListener != null) return
-        val query = firebaseDb.getReference("questions")
-            .orderByChild("expertId")
+        cleanupGlobalListener()
+        val query = firebaseDb.getReference(FirebasePaths.QUESTIONS)
+            .orderByChild(FirebaseFields.EXPERT_ID)
             .equalTo(userId)
         globalQuery = query
 
@@ -213,7 +271,7 @@ class ExpertViewModel(
                     val qId = child.key.orEmpty()
 
                     when (status) {
-                        "pending_acceptance" -> {
+                        StatusValues.PENDING_ACCEPTANCE -> {
                             _uiState.update {
                                 it.copy(
                                     globalAssignedQId = qId,
@@ -224,14 +282,14 @@ class ExpertViewModel(
                             foundActiveAssignment = true
                             return
                         }
-                        "expert_accepted" -> {
+                        StatusValues.EXPERT_ACCEPTED -> {
                             if (qId == currentState.globalAssignedQId || currentState.globalAssignedQId.isBlank()) {
                                 _uiState.update { it.copy(isExpertWaitingForSeeker = true, showGlobalAssignDialog = false) }
                                 foundActiveAssignment = true
                                 return
                             }
                         }
-                        "taken" -> {
+                        StatusValues.TAKEN -> {
                             if (qId == currentState.globalAssignedQId) {
                                 _uiState.update {
                                     it.copy(
@@ -251,7 +309,7 @@ class ExpertViewModel(
                 if (!foundActiveAssignment && currentState.globalAssignedQId.isNotBlank()) {
                     val currentChild = snapshot.children.firstOrNull { it.key == currentState.globalAssignedQId }
                     val currentStatus = currentChild?.child("status")?.value?.toString()
-                    if (currentStatus == null || currentStatus == "matching" || currentStatus == "cancelled") {
+                    if (currentStatus == null || currentStatus == StatusValues.MATCHING || currentStatus == StatusValues.CANCELLED) {
                         _uiState.update {
                             it.copy(
                                 globalAssignedQId = "",
@@ -274,7 +332,7 @@ class ExpertViewModel(
     fun acceptGlobalAssignment() {
         val qId = _uiState.value.globalAssignedQId
         if (qId.isNotBlank()) {
-            firebaseDb.getReference("questions").child(qId).child("status").setValue("expert_accepted")
+            firebaseDb.getReference(FirebasePaths.QUESTIONS).child(qId).child("status").setValue(StatusValues.EXPERT_ACCEPTED)
         }
         _uiState.update { it.copy(showGlobalAssignDialog = false) }
     }
@@ -291,11 +349,20 @@ class ExpertViewModel(
     private fun handleRejection(userId: String) {
         val qId = _uiState.value.globalAssignedQId
         if (qId.isNotBlank()) {
-            val qRef = firebaseDb.getReference("questions").child(qId)
+            val qRef = firebaseDb.getReference(FirebasePaths.QUESTIONS).child(qId)
             qRef.child("rejectedExperts").child(userId).setValue(true)
-            qRef.child("status").setValue("matching")
+            qRef.child("status").setValue(StatusValues.MATCHING)
         }
         _uiState.update { it.copy(showGlobalAssignDialog = false) }
+    }
+
+    private fun ExpertInputValidator.ValidationError.toResourceId(): Int = when (this) {
+        ExpertInputValidator.ValidationError.BLANK -> R.string.expert_input_blank
+        ExpertInputValidator.ValidationError.TOO_SHORT -> R.string.expert_input_too_short
+        ExpertInputValidator.ValidationError.NO_MEANINGFUL_CHAR -> R.string.expert_input_no_meaningful_char
+        ExpertInputValidator.ValidationError.HIGH_REPETITION -> R.string.expert_input_high_repetition
+        ExpertInputValidator.ValidationError.GIBBERISH -> R.string.expert_input_gibberish
+        ExpertInputValidator.ValidationError.INVALID_ENGLISH -> R.string.expert_input_invalid_english
     }
 
     private fun sendEvent(event: ExpertUiEvent) {
@@ -307,10 +374,14 @@ class ExpertViewModel(
         _uiState.value = ExpertUiState()
     }
 
-    fun cleanup() {
+    private fun cleanupGlobalListener() {
         globalListener?.let { globalQuery?.removeEventListener(it) }
         globalQuery = null
         globalListener = null
+    }
+
+    fun cleanup() {
+        cleanupGlobalListener()
         repository.cleanup(_uiState.value.activeExperienceId)
     }
 

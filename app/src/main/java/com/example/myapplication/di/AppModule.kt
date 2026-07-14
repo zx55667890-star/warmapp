@@ -1,6 +1,7 @@
 package com.example.myapplication.di
 
 import android.content.Context
+import com.example.myapplication.data.FirebasePaths
 import com.example.myapplication.data.repository.AiRepository
 import com.example.myapplication.data.repository.AuthRepository
 import com.example.myapplication.data.repository.DataMigrator
@@ -39,10 +40,10 @@ val appModule = module {
     single {
         FirebaseDatabase.getInstance().apply {
             setPersistenceEnabled(true)
-            getReference("questions").keepSynced(true)
+            getReference(FirebasePaths.QUESTIONS).keepSynced(true)
             getReference("experts").keepSynced(true)
             getReference("experiences").keepSynced(true)
-            getReference("users").keepSynced(true)
+            getReference(FirebasePaths.USERS).keepSynced(true)
         }
     }
     single { FirebaseStorage.getInstance() }

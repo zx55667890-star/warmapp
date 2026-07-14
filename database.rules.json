@@ -83,7 +83,11 @@
         "$pushId": {
           "id": { ".validate": "newData.isString()" },
           "expertise": { ".validate": "newData.isString()" },
-          "tags": { ".validate": "true" },
+          "tags": {
+            "$index": {
+              ".validate": "newData.isString() && newData.val().length <= 50"
+            }
+          },
           "timestamp": { ".validate": "newData.isNumber()" },
           "status": { ".validate": "newData.isString()" }
         }
@@ -93,19 +97,19 @@
       ".indexOn": ["timestamp"],
       "$skillId": {
         ".read": "auth.uid !== null",
-        ".write": "auth.uid !== null"
+        ".write": "auth.uid !== null && (!data.exists() || data.child('userId').val() === auth.uid) && (newData.child('userId').val() === auth.uid)"
       }
     },
     "tags_blacklist": {
       "$text": {
-        ".read": "auth.uid !== null",
-        ".write": "auth.uid !== null"
+        ".read": false,
+        ".write": false
       }
     },
     "tags_whitelist": {
       "$text": {
-        ".read": "auth.uid !== null",
-        ".write": "auth.uid !== null",
+        ".read": false,
+        ".write": false,
         "tags": { ".validate": true }
       }
     },
@@ -138,9 +142,5 @@
         "verified": { ".validate": "newData.isBoolean()" }
       }
     },
-    "$other": {
-      ".read": "auth.uid !== null",
-      ".write": "auth.uid !== null"
-    }
   }
 }

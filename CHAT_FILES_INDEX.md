@@ -1,6 +1,6 @@
 # CHAT_FILES_INDEX.md — 本次對話修改/參考的檔案索引
 
-## 第 3 輪：AI 標籤提取遷移至 Backend Cloud Function（本次）
+## 第 3 輪：AI 標籤提取遷移至 Backend Cloud Function
 
 ### 新增檔案
 - `functions/index.js` — Cloud Function `batchProcessPendingSkills`（每 5 分鐘排程批次處理）
@@ -19,24 +19,213 @@
 - `domain/expert/ExtractLocalTagsUseCase.kt` — dead code（舊客戶端 AI 標籤提取）
 - `di/TagViewModel.kt` — 已移除（職責合併至 ExpertViewModel）
 
+---
+
+## 第 4 輪：Cloud Function 優化（5 模型 fallback + 2nd Gen + SDK 遷移）
+
+### 修改檔案
+- `functions/index.js` — 全面改寫：
+  - 1st Gen → 2nd Gen (`firebase-functions/v2/scheduler`)
+  - `functions.config()` → `defineSecret('GEMINI_API_KEY')`
+  - `@google/generative-ai` (deprecated) → `@google/genai`
+  - 5 模型 fallback 鏈（model-specific thinkingConfig）
+  - 503 retry（2s / 4s backoff）
+  - `minInstances: 1`
+  - `config/model_status` 追蹤與重置
+- `functions/package.json` — `@google/generative-ai:^0.21.0` → `@google/genai:^2.10.0`
+- `database.rules.json` — 加入 `config/` 路徑規則
+- `AGENTS.md` — 更新技術棧、架構說明、開發指令
+
+### 效能測試結果
+| 模型 | 速度 | 備註 |
+|------|------|------|
+| `gemini-3.1-flash-lite` (PRIMARY) | **~0.7s** ✅ | 最快最穩 |
+| `gemini-2.5-flash` | ~2-5s | 穩定 |
+| `gemini-2.5-flash-lite` | ~4s | 偶發503 |
+| `gemini-3.5-flash` | 失敗 | 頻繁503 |
+| `gemini-3-flash-preview` | ~17s | 關thinking仍慢 |
+
+---
+
+## 第 5 輪：Cloud Function 依賴升級（Node 24 + firebase-admin v14 + firebase-functions v7 RC）
+
+### 修改檔案
+- `functions/package.json`:
+  - engines.node: `"20"` → `"24"`
+  - `firebase-admin: ^12.0.0` → `^14.0.0`
+  - `firebase-functions: ^5.0.0` → `7.3.0-rc.0`（RC 版本，因 v7.2.x stable 不支援 admin v14）
+- `functions/index.js` — `admin.database()` → `getDatabase()`（firebase-admin v14 移除 legacy namespace）
+- `AGENTS.md` — 更新技術棧版本、新增 firebase-admin v14 注意事項
+- `CHAT_FILES_INDEX.md` — 本次記錄
+- `PROGRESS.md` — 本次記錄
+
+### 關鍵發現
+| 項目 | 說明 |
+|------|------|
+| firebase-admin v14 強制 Node.js 22+ | 必須同步升級 engines.node |
+| `admin.database()` 移除 | 改用 `const { getDatabase } = require('firebase-admin/database')` |
+| firebase-functions v7.2.x 不支援 admin v14 | 需使用 `7.3.0-rc.0`（peer 含 `^14.0.0`） |
+| Cloud Functions 最高 runtime | Node.js 24（2026/7 為止尚無 Node.js 26） |
+| Firebase CLI 版本 | 15.23.0（與 runtime 無關） |
+
+### 部署結果
+- `batchProcessPendingSkills` 成功更新至 Node.js 24（revision 00015）
+- Runtime ID: `nodejs24`
+- 新 instance 啟動正常，HTTP 503 等錯誤觀察無異常
+
+---
+
+---
+
+## 第 6 輪：全面修復未解決問題（編輯流程、效能優化、排程縮短、dead code 清理、測試強化）
+
+### 修改檔案
+- `domain/expert/ExtractLocalTagsUseCase.kt` — **已刪除**（dead code，無任何依賴）
+- `data/repository/ExpertRepository.kt`:
+  - `suspendCancellableCoroutine` → `kotlinx.coroutines.tasks.await()`（checkBlacklist, checkWhitelist, saveSkill, publishExperience, editExperience）
+  - 新增 `editSkill()` — 更新 solutions + 重新寫入 pending_skills
+- `di/ExpertViewModel.kt`:
+  - `publishSkill()` 中的 blacklist/whitelist 查詢改為 `async {}` 並行執行
+  - 新增 `SkillEditDialog` 狀態（`skillEditTarget`, `editText`, `editError`）
+  - 新增 `startSkillEdit()`, `cancelSkillEdit()`, `updateSkillEditText()`, `submitSkillEdit()`
+- `ui/expert/ExpertScreen.kt`:
+  - `KnowledgeItemCard` 編輯按鈕改為 `viewModel.startSkillEdit(solution)`
+  - PENDING 狀態隱藏編輯按鈕
+  - 新增 `SkillEditDialog` composable
+- `functions/index.js` — `schedule: 'every 5 minutes'` → `'every 1 minutes'`
+- `app/src/test/.../di/ExpertViewModelTest.kt` — 修正建構子、新增 edit skill 測試案例
+- `PROGRESS.md` — 新增第 6 輪條目，更新未解決問題清單
+- `CHAT_FILES_INDEX.md` — 本次記錄
+
+---
+
+## 第 7 輪：大型重構 — callbackFlow、狀態提升、資安加固（2026/7/14 code review）
+
+### 修改檔案
+### 新增檔案
+- **`data/Constants.kt`** — 統一路徑/欄位/狀態值常數：`FirebasePaths`、`FirebaseFields`、`StatusValues`
+
+### 修改檔案
+- **`data/repository/ExpertRepository.kt`**:
+  - `listenToSolutionHistory()` → 回傳 `Flow<List<SolutionItem>>` via `callbackFlow`
+  - `initializeExpertStatus()` → `observeExpertStatus(userId)` 回傳 `Flow<Pair<Double, Long>>`
+  - 移除 `statusListener`、`currentUserId` 全域變數（Repository 變為無狀態）
+  - `saveSkill()` 改為 `updateChildren()` 原子寫入（取代兩個獨立 `setValue()`）
+  - `setExpertOnline()` 改為接收 `userId` 參數
+  - `cleanup()` 簡化（僅處理 experience）
+  - `suspendCancellableCoroutine` → `kotlinx.coroutines.tasks.await()`（全方法遷移）
+  - 移除 `checkBlacklist()` / `checkWhitelist()`（移至 Cloud Function 伺服端處理）
+  - 新增 `editSkill()` — 更新 solutions + 重新寫入 pending_skills
+  - 所有硬編碼路徑/欄位/狀態值替換為 `FirebasePaths`/`FirebaseFields`/`StatusValues` 常數
+
+- **`di/ExpertViewModel.kt`**:
+  - `listenToSolutions()` / `initializeExpertStatus()` 改用 `viewModelScope.launch { flow.collect }`
+  - `setExpertOnline(online, userId)` 改為接收 userId
+  - `ExpertUiEvent.ShowToast` 改用 `@StringRes resId: Int`（固定訊息）+ `ShowToastRaw`（動態訊息）
+  - 移除所有硬編碼 Toast 字串
+  - 新增 `startSkillEdit()` / `cancelSkillEdit()` / `updateSkillEditText()` / `submitSkillEdit()` 技能編輯流程
+  - `skillEditTarget` / `editErrorRes` 狀態欄位
+  - `ExpertInputValidator.ValidationError.toResourceId()` 映射 enum → string resource
+  - `_uiEvent` Channel 改為 `Channel.BUFFERED`
+
+- **`ui/expert/ExpertScreen.kt`**:
+  - 抽離 `ExpertScreenContent` — stateless composable，接收 `ExpertUiState` + 6 個 lambda
+  - `ExpertScreen` 作為 thin bridge（event 解析 + state/lambda 傳遞）
+  - `context.getString()` 在 `LaunchedEffect` 中解析資源 ID
+  - `contentDescription` 改為 `stringResource(R.string.expert_edit_content_desc)`
+  - `.collectAsState()` → `.collectAsStateWithLifecycle()`
+  - Event 收集改為 `lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED)`
+  - 新增 `SkillEditDialog` composable（技能編輯彈窗）
+  - PENDING 狀態隱藏編輯按鈕
+  - `SkillStatus` 枚舉直接比較（不再用 `.name`）
+  - 所有硬編碼中文字串替換為 `stringResource()`
+
+- **`domain/expert/ExpertInputValidator.kt`**:
+  - 回傳值從 `String?` 改為 `ValidationError?` 列舉
+  - 魔法數字常數化：`MIN_SKILL_LENGTH(4)`, `UNIQUE_CHAR_RATIO_THRESHOLD(0.4)`, `MAX_CONSECUTIVE_DUPLICATES(3)`, `MAX_ADJACENT_PAIRS(3)`, `SINGLETONS_THRESHOLD(3)`, `PURE_ENGLISH_MIN_LENGTH(6)`
+  - 中文字元範圍改為 `0x4E00..0x9FFF`（取代 regex）
+  - 疊代改為 `zipWithNext()`（取代 indexed for-loop）
+  - 公開 `MAX_CHAR_LIMIT` 供 UI 端使用
+
+- **`res/values/strings.xml`** — 新增 33 條字串資源（toast、error、ui 文字、contentDescription、expert_input_* 驗證錯誤）
+
+- **`ui/navigation/AppNavigation.kt`** — `expertViewModel.setExpertOnline(true)` → `setExpertOnline(true, userId)`
+
+- **`app/build.gradle.kts`** + **`gradle/libs.versions.toml`** — 新增 `lifecycle-runtime-compose` 依賴
+
+- **`data/model/SolutionItem.kt`** — `SkillStatus.fromName()` 工廠方法；`status` 欄位從 `String` 改為 `SkillStatus`
+
+- **`di/AppModule.kt`** — `getReference` 路徑字串改為 `FirebasePaths` 常數
+
+- **`di/SeekerViewModel.kt`** — 狀態字串改為 `StatusValues` 常數；路徑改為 `FirebasePaths` 常數
+
+- **`database.rules.json`**:
+  - 移除 `$other` 萬用字元規則
+  - `tags` 驗證從 `".validate": "true"` 改為逐項字串 + 50 字限制
+  - `pending_skills` 寫入權限收緊至僅限資料擁有者
+  - `tags_blacklist` / `tags_whitelist` 設為 admin-only（read/write = false）
+  - 新增 `config/` 路徑規則
+
+- **`functions/index.js`**:
+  - 1st Gen (`firebase-functions`) → 2nd Gen (`firebase-functions/v2/scheduler`)
+  - `functions.config()` → `defineSecret('GEMINI_API_KEY')`
+  - `@google/generative-ai` (SDK) → `@google/genai`
+  - `admin.database()` → `getDatabase()`（firebase-admin v14）
+  - 5 模型 fallback 鏈及 model-specific `thinkingConfig`
+  - 503 自動 retry（與 429 相同 backoff）
+  - `minInstances: 1`
+  - `responseMimeType: 'application/json'` 強制 JSON 輸出
+  - `processing` flag 併發保護機制（atomic transaction claim，5 分鐘 timeout）
+  - 伺服端 blacklist → whitelist → AI 三步驟處理
+  - 全數模型 EXHAUSTED 時加入 reset cooldown（10 分鐘）
+
+- **`functions/package.json`**:
+  - engines.node: `"20"` → `"24"`
+  - `firebase-admin: ^12.0.0` → `^14.0.0`
+  - `firebase-functions: ^5.0.0` → `7.3.0-rc.0`
+  - `@google/generative-ai: ^0.21.0` → `@google/genai: ^2.10.0`
+
+- **`app/src/test/.../di/ExpertViewModelTest.kt`** — `Dispatchers.setMain(testDispatcher)` + `runTest` + `advanceUntilIdle()`（支援 Flow-based API）。新增多個測試案例（initial state、listenToSolutions、publishSkill 驗證）
+
+### 關鍵決策
+| 項目 | 說明 |
+|------|------|
+| Repository 無狀態化 | callbackFlow 的 `awaitClose` 自動清除 listener，不需手動管理 |
+| 原子寫入 | `saveSkill()` 單一 `updateChildren()` 一次發布 solutions + pending_skills |
+| State Hoisting | ExpertScreenContent 可獨立 Preview/測試，ViewModel 只注入在 bridge 層 |
+| 字串外部化 | ShowToast 使用 `@StringRes` + `ShowToastRaw`，ViewModel 不再硬編碼 Toast |
+| Concurrency | processing timestamp 防止 1 分鐘排程重疊時重複處理同一筆資料 |
+| 移除 $other | 任何登入用戶不再能寫入未定義路徑（安全性） |
+
+---
+
 ## 主要相關檔案結構
 ```
 warmapp/
-├── app/src/main/java/com/example/myapplication/
-│   ├── data/
-│   │   ├── model/SolutionItem.kt
-│   │   └── repository/ExpertRepository.kt
-│   ├── di/
-│   │   ├── AppModule.kt
-│   │   └── ExpertViewModel.kt
-│   ├── domain/expert/
-│   │   ├── ExpertInputValidator.kt
-│   │   └── ExtractLocalTagsUseCase.kt  (dead)
-│   └── ui/expert/
-│       └── ExpertScreen.kt
+├── app/
+│   ├── build.gradle.kts
+│   ├── src/main/java/com/example/myapplication/
+│   │   ├── data/
+│   │   │   ├── Constants.kt
+│   │   │   ├── model/SolutionItem.kt
+│   │   │   └── repository/ExpertRepository.kt
+│   │   ├── di/
+│   │   │   ├── AppModule.kt
+│   │   │   ├── ExpertViewModel.kt
+│   │   │   └── SeekerViewModel.kt
+│   │   ├── domain/expert/
+│   │   │   └── ExpertInputValidator.kt
+│   │   └── ui/expert/
+│   │       └── ExpertScreen.kt
+│   ├── src/main/res/values/
+│   │   └── strings.xml
+│   └── src/test/java/.../di/
+│       └── ExpertViewModelTest.kt
 ├── functions/
 │   ├── index.js
 │   └── package.json
+├── gradle/
+│   └── libs.versions.toml
 ├── database.rules.json
 ├── AGENTS.md
 ├── CHAT_FILES_INDEX.md

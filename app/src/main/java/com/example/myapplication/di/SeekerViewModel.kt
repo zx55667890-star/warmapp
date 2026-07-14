@@ -4,6 +4,8 @@ import android.content.SharedPreferences
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.myapplication.data.FirebasePaths
+import com.example.myapplication.data.StatusValues
 import com.example.myapplication.data.repository.AiRepository
 import com.example.myapplication.data.repository.MatchingRepositoryInterface
 import com.example.myapplication.data.repository.MediaUploader
@@ -301,12 +303,12 @@ class SeekerViewModel(
     private fun checkUserReconnection() {
         val lastQuestionId = prefs.getString("lastQuestionId", "") ?: ""
         if (lastQuestionId.isBlank()) return
-        val ref = firebaseDb.getReference("questions").child(lastQuestionId)
+        val ref = firebaseDb.getReference(FirebasePaths.QUESTIONS).child(lastQuestionId)
         ref.addListenerForSingleValueEvent(object : com.google.firebase.database.ValueEventListener {
             override fun onDataChange(snapshot: com.google.firebase.database.DataSnapshot) {
                 if (!snapshot.exists()) return
                 val status = snapshot.child("status").value?.toString()
-                if (status == "taken") {
+                if (status == StatusValues.TAKEN) {
                     _uiState.update { it.copy(
                         activeChatRoomId = lastQuestionId,
                         myRole = "user",
