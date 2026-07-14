@@ -15,38 +15,104 @@
 - [x] QuickLogCard 兩步確認與手動標籤編輯流程
 - [x] 全域代碼優化（Modifier 順序、依賴管理、lint/test/build）
 
-### 第 3 輪：AI 標籤提取遷移至 Backend Cloud Function（本次）
+### 第 3 輪：AI 標籤提取遷移至 Backend Cloud Function
 - [x] **SolutionItem.kt** — 加入 `SkillStatus` 列舉（ACTIVE/PENDING/REJECTED）及 `status` 欄位
 - [x] **ExpertRepository.kt** — 加入 `checkBlacklist()` / `checkWhitelist()` / `saveSkill()`（pending queue 寫入）
 - [x] **ExpertViewModel.kt** — 移除 `SharedPreferences`、`fetchTagsFromAi()`、`submitSolution()`；加入 `publishSkill()` 完整流程
 - [x] **AppModule.kt** — Koin 註冊改為 `viewModel { ExpertViewModel(get()) }`
 - [x] **ExpertScreen.kt** — QuickLogCard 簡化為輸入+發布；KnowledgeItemCard 狀態顯示（PENDING spinner / REJECTED 紅字）
 - [x] **ExpertInputValidator.kt** — 強化重複檢測規則（連續字元、相鄰配對等）
-- [x] **functions/index.js** — 建立 `batchProcessPendingSkills` Cloud Function（每 5 分鐘批次處理，最多 20 筆）
+- [x] **functions/index.js** — 建立 `batchProcessPendingSkills` Cloud Function
 - [x] **functions/package.json** — Node 20 + `@google/generative-ai`
 - [x] **database.rules.json** — 新增 `pending_skills`、`tags_blacklist`、`tags_whitelist` 路徑規則與 `.indexOn`
 - [x] **Cloud Function 部署成功** — 已設定 Gemini API key，排程正常運作
 
+### 第 4 輪：Cloud Function 優化（5 模型 fallback + 2nd Gen + SDK 遷移）
+- [x] **遷移至 2nd Gen + Secret Manager** — `firebase-functions/v2/scheduler` + `defineSecret('GEMINI_API_KEY')`，取代 `functions.config()`
+- [x] **5 模型 fallback 鏈** — primary → fallback_1 → ... → fallback_4，同一次執行內依序嘗試
+- [x] **Model-specific thinkingConfig** — Gen3 用 `thinkingLevel: 'minimal'`，Gen2.5 用 `thinkingBudget: 0`
+- [x] **503 retry** — `generateContentWithRetry`，最多 3 次 (2s/4s backoff)
+- [x] **`config/model_status`** — 429/RESOURCE_EXHAUSTED 才標記 EXHAUSTED，全數耗盡時自動重置
+- [x] **`minInstances: 1`** — 減少冷啟動延遲
+- [x] **SDK 遷移 `@google/generative-ai` → `@google/genai`** — 舊 SDK 已 EOL（2025/8/31），不支援 `thinkingConfig`
+- [x] **`database.rules.json`** — 新增 `config/` 路徑規則
+- [x] **5 模型速度測試完成** — `gemini-3.1-flash-lite` 為 PRIMARY（~0.7s），`gemini-3-flash-preview` 最慢（~17s）
+
+### 第 5 輪：Cloud Function 依賴升級（Node 24 + firebase-admin v14 + firebase-functions v7 RC）
+- [x] **engines.node 20 → 24** — 原生 runtime 升級至 Node.js 24
+- [x] **firebase-admin ^12.0.0 → ^14.0.0** — 跳兩大版，移除 legacy namespace
+- [x] **firebase-functions ^5.0.0 → 7.3.0-rc.0** — v7.2.x 不支援 admin v14，需用 RC
+- [x] **`admin.database()` → `getDatabase()`** — 修復 firebase-admin v14 breaking change
+- [x] **部署成功** — Runtime ID `nodejs24`，function state ACTIVE
+
+### 第 6 輪：全面修復未解決問題（編輯流程、效能優化、排程縮短、dead code 清理、測試強化）
+- [x] **新增 `Constants.kt`** — 統一路徑(`FirebasePaths`)、欄位(`FirebaseFields`)、狀態值(`StatusValues`)常數物件
+- [x] **刪除 `ExtractLocalTagsUseCase.kt` dead code** — 已確認無任何程式碼或 DI 註冊依賴此檔案
+- [x] **Cloud Function 排程 5 → 1 分鐘** — 最大等待時間從 5 分鐘縮短至 1 分鐘
+- [x] **檢查 firebase-functions 版本狀態** — v7.2.5 仍不支援 firebase-admin v14，`7.3.0-rc.0` 仍為唯一選擇
+- [x] **ExpertRepository 重構為 `.await()` 寫法** — 移除 `suspendCancellableCoroutine`，改用 `kotlinx.coroutines.tasks.await()`
+- [x] **新增 `editSkill()` 方法** — 更新 solutions 資料 + 重新寫入 pending_skills 佇列觸發 AI 重新分析
+- [x] **KnowledgeItemCard 編輯按鈕實作** — 點擊後彈出 `SkillEditDialog`，可修改技能描述後重新提交 AI 分析
+- [x] **PENDING 狀態隱藏編輯按鈕** — 避免在 AI 分析中編輯
+- [x] **修正並擴充單元測試** — `ExpertViewModelTest.kt` 修正建構子、新增 edit skill 測試案例
+- [x] **移除客戶端 blocking 讀取** — 刪除 `checkBlacklist()` / `checkWhitelist()`，publish 直接寫 PENDING，不再卡轉圈
+- [x] **Cloud Function 伺服端處理黑/白名單** — 批次讀取後先檢查 blacklist（→REJECTED）→ whitelist（→ACTIVE）→ 僅剩餘項目送 AI
+- [x] **database.rules.json 收緊權限** — `tags_blacklist` / `tags_whitelist` 設為 admin-only（`false`）
+- [x] **All 硬編碼路徑/欄位/狀態替換為常數** — `FirebasePaths`、`FirebaseFields`、`StatusValues` 物件統整
+- [x] **所有 5 模型速度測試** — 2026/7/14 隔離實測結果：
+  - PRIMARY (`gemini-3.1-flash-lite`): **1083ms** ✅（5 entries baseline）
+  - FALLBACK_1 (`gemini-2.5-flash`): **1247ms** ✅
+  - FALLBACK_2 (`gemini-2.5-flash-lite`): **980ms** ✅（含一次 503 retry）
+  - FALLBACK_3 (`gemini-3.5-flash`): **26632ms** ❌（26.6s，極慢）
+  - FALLBACK_4 (`gemini-3-flash-preview`): **19551ms** ❌（19.6s，慢）
+  - 結論：PRIMARY 的 `gemini-3.1-flash-lite` 仍是速度/準確度平衡最佳選擇
+
+### 第 7 輪：大型重構 — callbackFlow、狀態提升、資安加固（根據 code review）
+- [x] **ExpertRepository 改為 callbackFlow** — `listenToSolutionHistory()` / `observeExpertStatus()` 回傳 `Flow`，Repository 真正無狀態（移除 `statusListener`、`currentUserId`）
+- [x] **ExpertViewModel 改用 Flow collect** — `viewModelScope.launch { flow.collect { ... } }`，自動管理 listener 生命週期
+- [x] **ExpertScreen 狀態提升** — 抽離 `ExpertScreenContent` 純展示層 stateless composable（接收 `ExpertUiState` + 6 個 lambda）
+- [x] **`saveSkill()` 原子寫入** — 兩個獨立 `setValue()` 改為單一 `updateChildren()`（避免部分失敗髒資料）
+- [x] **`ExpertInputValidator` 常數化** — 6 個魔法數字改為具名 private const val（`MIN_SKILL_LENGTH`、`UNIQUE_CHAR_RATIO_THRESHOLD` 等）
+- [x] **`setExpertOnline()` 改為接收 userId** — 不再依賴 Repository 內部儲存的 `currentUserId`
+- [x] **database.rules.json 移除 `$other` 萬用字元** — 不再允許已驗證用戶任意寫入未定義路徑
+- [x] **database.rules.json 強化 `tags` 驗證** — 從 `".validate": "true"` 改為逐項字串型態 + 50 字限制
+- [x] **strings.xml 補齊 21 條字串資源** — 所有 Toast、錯誤提示、UI 文字外部化
+- [x] **`ExpertUiEvent.ShowToast` 使用 `@StringRes`** — 固定訊息用資源 ID，動態訊息用 `ShowToastRaw`
+- [x] **Cloud Function `responseMimeType: 'application/json'`** — 強制 Gemini 回傳 JSON，減少解析異常
+- [x] **Cloud Function 遷移 2nd Gen** — `firebase-functions/v2/scheduler` + `defineSecret('GEMINI_API_KEY')` + `minInstances: 1`
+- [x] **Cloud Function SDK 遷移** — `@google/generative-ai` → `@google/genai`（支援 thinkingConfig）
+- [x] **Cloud Function `responseMimeType: 'application/json'`** — 強制 Gemini 回傳 JSON
+- [x] **Cloud Function processing flag 併發控制** — atomic transaction claim + 5 分鐘 timeout，重疊排程時跳過正在處理的 entries
+- [x] **Cloud Function 所有模型 EXHAUSTED 時 reset cooldown** — 10 分鐘冷卻防無限重試
+- [x] **Test 更新** — `Dispatchers.setMain(testDispatcher)` + `runTest` + `advanceUntilIdle()`
+
 ### Git
-- [x] 約 28+ 次提交，已全部推送至 main
+- [x] 約 35+ 次提交，已全部推送至 main
+- [x] 本次變更 16 個 source 檔案（14 修改 + 1 新增 + 1 刪除）
 
 ## 未解決問題
 
-1. **無整合測試** — 只能靠單元測試與手動安裝 APK 測試。
+1. **`pending_skills` `.indexOn`** — 已在 `database.rules.json` 補上，Log 已無 warning。現有資料待 Firebase 自動生成索引。
 
-2. **PENDING 等待最長 5 分鐘** — Cloud Function 每 5 分鐘排程執行，使用者體驗上會有延遲。可考慮縮短排程間隔或改為 `onWrite` trigger。
+2. **firebase-functions 倚賴 RC 版本** — `7.3.0-rc.0` 是 release candidate，因 v7.2.5 stable 的 peerDependencies 不包含 `firebase-admin@^14.0.0`。需定期檢查 npm 是否有 stable release（如 v7.3.0+）支援 admin v14 後升回穩定版。
 
-3. **`tags_whitelist/{text}` 的讀取權限** — Android 客戶端在 `checkWhitelist()` 中讀取 `tags_whitelist/{text}`，需確保規則允許 authenticated user 讀取該路徑（已在規則中設定）。
+3. **Deploy 時出現 "outdated firebase-functions" warning** — 因使用 RC 版而非 latest stable，不影響功能但會有警告訊息。
 
-4. **`pending_skills` 尚缺 `.indexOn`** — 已在 `database.rules.json` 中補上 `".indexOn": ["timestamp"]`，但現有資料需要手動建 index 或等 Firebaser 自動生成。Log 已無 warning。
+4. **`@StringRes` annotation target 警告** — `ShowToast.resId: Int` 上的 `@StringRes` 在 Kotlin 2.x 編譯時觸發 KT-73255（future default 將同時 apply 到 field）。可加 `-Xannotation-default-target=param-property` 或改用 `@param:` target 消除。
 
-5. **`functions.config()` 棄用** — Firebase 將在 2027 年 3 月移除 Runtime Config 服務。需遷移至環境變數或 `firebase-functions/params` package。
+5. **Cloud Function processing entry 卡住風險** — 若 function crash 在 claim 之後、寫回結果之前，entry 會被標記 `processing` 而擱置最多 5 分鐘（`PROCESSING_TIMEOUT_MS`）。可考慮實作異常情況下的 cleanup 邏輯。
 
-6. **`ExtractLocalTagsUseCase.kt` 仍存在但已為 dead code** — 舊客戶端 AI 標籤提取不再被呼叫，可考慮刪除。
+6. **ExpertInputValidator 錯誤訊息外部化** — ✅ 已解決：`validate()` 改回傳 `ValidationError` 列舉，ViewModel 透過 `toResourceId()` 映射為 `@StringRes`（無 Context 問題）。
 
-7. **KnowledgeItemCard 編輯按鈕無實際功能** — `onEditClick` 目前是 `// TODO: 觸發編輯 ViewModel 邏輯`，尚無實作。
+7. **Cloud Function reset cooldown 可能遺失模型狀態** — 若所有模型 EXHAUSTED，需等 10 分鐘 cooldown 才會重置。期間 PENDING skills 會累積不處理。可考慮加入手動觸發機制或逐步縮短 cooldown。
 
-8. **卡片編輯 TODO** — 缺少編輯已發布技能的流程（修改 expertise / tags / 重新提交 AI 分析）。
+8. **Constants.kt 負責路徑一致性的維護負擔** — 所有 Firebase 路徑/欄位/狀態值集中於一檔，修改時需注意不影響既有資料結構。未來可考慮加入 migration 版本控制。
 
-## 模型清單（僅供 Cloud Function 參考）
-Cloud Function 目前固定使用 `gemini-3.1-flash-lite`，無模型輪換機制。
+## 模型清單（Cloud Function fallback 順序）
+| 順序 | 模型 | 速度 (2026/7/14 benchmark, 5 entries) | 備註 |
+|------|------|------|------|
+| PRIMARY | `gemini-3.1-flash-lite` | **1083ms** | ~1s/5筆，最快且穩定 |
+| FALLBACK_1 | `gemini-2.5-flash` | **1247ms** | thinkingBudget: 0，穩定 |
+| FALLBACK_2 | `gemini-2.5-flash-lite` | **980ms** | 偶發503但限流快滿 |
+| FALLBACK_3 | `gemini-3.5-flash` | **26632ms** | 26.6s，極慢，考慮降級或移除 |
+| FALLBACK_4 | `gemini-3-flash-preview` | **19551ms** | 19.6s，關thinking仍慢 |

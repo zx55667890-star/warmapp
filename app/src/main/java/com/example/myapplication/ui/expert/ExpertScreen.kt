@@ -1,5 +1,6 @@
 package com.example.myapplication.ui.expert
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
@@ -11,12 +12,21 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.myapplication.R
 import com.example.myapplication.data.model.SkillStatus
 import com.example.myapplication.data.model.SolutionItem
+import com.example.myapplication.di.ExpertUiEvent
+import com.example.myapplication.di.ExpertUiState
 import com.example.myapplication.di.ExpertViewModel
 import com.example.myapplication.domain.expert.ExpertInputValidator
 import com.example.myapplication.ui.theme.AppColors
@@ -24,17 +34,58 @@ import kotlinx.coroutines.flow.collectLatest
 
 @Composable
 fun ExpertScreen(viewModel: ExpertViewModel, userId: String, onNavigateToInput: () -> Unit = {}) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+    val context = LocalContext.current
 
-    LaunchedEffect(Unit) {
-        viewModel.uiEvent.collectLatest { event ->
-            when (event) {
-                is com.example.myapplication.di.ExpertUiEvent.ShowToast -> {
-                    snackbarHostState.showSnackbar(event.message)
+    val lifecycleOwner = LocalLifecycleOwner.current
+    LaunchedEffect(lifecycleOwner) {
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            viewModel.uiEvent.collectLatest { event ->
+                when (event) {
+                    is ExpertUiEvent.ShowToast -> {
+                        snackbarHostState.showSnackbar(context.getString(event.resId))
+                    }
+                    is ExpertUiEvent.ShowToastRaw -> {
+                        snackbarHostState.showSnackbar(event.message)
+                    }
                 }
             }
         }
+    }
+
+    ExpertScreenContent(
+        uiState = uiState,
+        snackbarHostState = snackbarHostState,
+        onPublishSkill = { viewModel.publishSkill(userId, it) },
+        onStartSkillEdit = { viewModel.startSkillEdit(it) },
+        onEditSkillConfirm = { viewModel.submitSkillEdit(userId) },
+        onEditSkillTextChange = { viewModel.updateSkillEditText(it) },
+        onEditSkillDismiss = { viewModel.cancelSkillEdit() },
+        onNavigateToInput = onNavigateToInput
+    )
+}
+
+@Composable
+fun ExpertScreenContent(
+    uiState: ExpertUiState,
+    snackbarHostState: SnackbarHostState,
+    onPublishSkill: (String) -> Unit,
+    onStartSkillEdit: (SolutionItem) -> Unit,
+    onEditSkillConfirm: () -> Unit,
+    onEditSkillTextChange: (String) -> Unit,
+    onEditSkillDismiss: () -> Unit,
+    onNavigateToInput: () -> Unit
+) {
+    if (uiState.skillEditTarget != null) {
+        SkillEditDialog(
+            currentText = uiState.editText,
+            errorMessage = uiState.editErrorRes?.let { stringResource(it) },
+            isSubmitting = uiState.isSubmitting,
+            onTextChange = onEditSkillTextChange,
+            onConfirm = onEditSkillConfirm,
+            onDismiss = onEditSkillDismiss
+        )
     }
 
     Scaffold(
@@ -55,9 +106,9 @@ fun ExpertScreen(viewModel: ExpertViewModel, userId: String, onNavigateToInput: 
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        Text("我的專業影響力", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(stringResource(R.string.expert_title), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text(
-                            "已解決問題: ${uiState.helpCount}  |  評分: ${"%.1f".format(uiState.rating)}",
+                            "${stringResource(R.string.expert_help_count)}: ${uiState.helpCount}  |  ${stringResource(R.string.expert_rating)}: ${"%.1f".format(uiState.rating)}",
                             style = MaterialTheme.typography.headlineSmall,
                             color = MaterialTheme.colorScheme.primary
                         )
@@ -67,47 +118,43 @@ fun ExpertScreen(viewModel: ExpertViewModel, userId: String, onNavigateToInput: 
 
             item {
                 QuickLogCard(
-                    onPublish = { text ->
-                        viewModel.publishSkill(userId, text)
-                    }
+                    onPublish = onPublishSkill
                 )
             }
 
             item {
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
-                    "📜 我的知識庫 (已轉化為配對技能)",
+                    stringResource(R.string.expert_knowledge_title),
                     modifier = Modifier.padding(vertical = 16.dp),
                     fontWeight = FontWeight.Bold,
                     color = AppColors.TextWhite
                 )
 
                 if (uiState.solutionHistory.isEmpty()) {
-                    Text("尚無知識紀錄", color = AppColors.TextGray, fontSize = 14.sp)
+                    Text(stringResource(R.string.expert_no_records), color = AppColors.TextGray, fontSize = 14.sp)
                 }
             }
 
             items(uiState.solutionHistory) { solution ->
                 KnowledgeItemCard(
                     solution = solution,
-                    onEditClick = {
-                        // TODO: 觸發編輯 ViewModel 邏輯
-                    }
+                    onEditClick = { onStartSkillEdit(solution) }
                 )
             }
 
             item {
                 Spacer(modifier = Modifier.height(24.dp))
                 OutlinedButton(
-                    onClick = { onNavigateToInput() },
+                    onClick = onNavigateToInput,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(48.dp),
                     shape = RoundedCornerShape(24.dp),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, AppColors.AccentBlue),
+                    border = BorderStroke(1.dp, AppColors.AccentBlue),
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = AppColors.AccentBlue)
                 ) {
-                    Text("返回", fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.expert_back_button), fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -122,8 +169,8 @@ fun KnowledgeItemCard(solution: SolutionItem, onEditClick: () -> Unit) {
             .padding(vertical = 6.dp),
         colors = CardDefaults.cardColors(
             containerColor = when (solution.status) {
-                SkillStatus.PENDING.name -> MaterialTheme.colorScheme.surfaceVariant
-                SkillStatus.REJECTED.name -> MaterialTheme.colorScheme.errorContainer
+                SkillStatus.PENDING -> MaterialTheme.colorScheme.surfaceVariant
+                SkillStatus.REJECTED -> MaterialTheme.colorScheme.errorContainer
                 else -> MaterialTheme.colorScheme.surface
             }
         ),
@@ -137,12 +184,12 @@ fun KnowledgeItemCard(solution: SolutionItem, onEditClick: () -> Unit) {
                 Text(
                     text = solution.expertise,
                     fontSize = 15.sp,
-                    color = if (solution.status == SkillStatus.REJECTED.name) AppColors.TextGray else AppColors.TextWhite,
+                    color = if (solution.status == SkillStatus.REJECTED) AppColors.TextGray else AppColors.TextWhite,
                     fontWeight = FontWeight.Medium
                 )
 
                 when (solution.status) {
-                    SkillStatus.PENDING.name -> {
+                    SkillStatus.PENDING -> {
                         Spacer(modifier = Modifier.height(4.dp))
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             CircularProgressIndicator(
@@ -152,32 +199,85 @@ fun KnowledgeItemCard(solution: SolutionItem, onEditClick: () -> Unit) {
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                "AI 分析中...",
+                                stringResource(R.string.expert_ai_analyzing),
                                 fontSize = 12.sp,
                                 color = AppColors.AccentYellow
                             )
                         }
                     }
-                    SkillStatus.REJECTED.name -> {
+                    SkillStatus.REJECTED -> {
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            "內容無法辨識",
+                            stringResource(R.string.expert_content_unrecognized),
                             fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.error
                         )
                     }
+                    SkillStatus.ACTIVE -> { }
                 }
             }
 
-            IconButton(onClick = onEditClick) {
-                Icon(
-                    imageVector = Icons.Default.Edit,
-                    contentDescription = "編輯",
-                    tint = if (solution.status == SkillStatus.REJECTED.name) AppColors.TextGray else AppColors.TextGray
-                )
+            if (solution.status != SkillStatus.PENDING) {
+                IconButton(onClick = onEditClick) {
+                    Icon(
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = stringResource(R.string.expert_edit_content_desc),
+                        tint = AppColors.TextGray
+                    )
+                }
             }
         }
     }
+}
+
+@Composable
+fun SkillEditDialog(
+    currentText: String,
+    errorMessage: String?,
+    isSubmitting: Boolean,
+    onTextChange: (String) -> Unit,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = { if (!isSubmitting) onDismiss() },
+        title = { Text(stringResource(R.string.expert_edit_dialog_title)) },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = currentText,
+                    onValueChange = onTextChange,
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !isSubmitting,
+                    label = { Text(stringResource(R.string.expert_edit_label)) },
+                    singleLine = false,
+                    minLines = 2,
+                    isError = errorMessage != null,
+                    supportingText = if (errorMessage != null) {
+                        { Text(errorMessage, color = MaterialTheme.colorScheme.error) }
+                    } else null
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onConfirm,
+                enabled = currentText.isNotBlank() && !isSubmitting
+            ) {
+                if (isSubmitting) {
+                    CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                } else {
+                    Text(stringResource(R.string.expert_edit_dialog_confirm))
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = onDismiss,
+                enabled = !isSubmitting
+            ) { Text(stringResource(R.string.expert_edit_dialog_cancel)) }
+        }
+    )
 }
 
 @Composable
@@ -187,15 +287,15 @@ fun QuickLogCard(
     var expertise by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf("") }
 
-    val maxCharLimit = 20
+    val maxCharLimit = ExpertInputValidator.MAX_CHAR_LIMIT
 
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
-            Text("✨ 分享您能幫忙解決的事", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text("越具體，越能配對到需要您的人！", fontSize = 12.sp, color = AppColors.TextGray, modifier = Modifier.padding(top = 4.dp))
+            Text(stringResource(R.string.expert_quick_log_title), fontWeight = FontWeight.Bold, fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(stringResource(R.string.expert_quick_log_hint), fontSize = 12.sp, color = AppColors.TextGray, modifier = Modifier.padding(top = 4.dp))
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -208,7 +308,7 @@ fun QuickLogCard(
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("例如：淘寶退貨從台灣到大陸流程") },
+                placeholder = { Text(stringResource(R.string.expert_quick_log_placeholder)) },
                 singleLine = false,
                 minLines = 2,
                 isError = errorMessage.isNotEmpty(),
@@ -245,19 +345,14 @@ fun QuickLogCard(
                 onClick = {
                     val trimmed = expertise.trim()
                     errorMessage = ""
-                    val validationError = ExpertInputValidator.validate(trimmed)
-                    if (validationError != null) {
-                        errorMessage = validationError
-                    } else {
-                        onPublish(trimmed)
-                        expertise = ""
-                    }
+                    onPublish(trimmed)
+                    expertise = ""
                 },
                 modifier = Modifier.fillMaxWidth(),
                 enabled = expertise.isNotBlank(),
                 colors = ButtonDefaults.buttonColors(containerColor = AppColors.AccentGreen)
             ) {
-                Text("發布技能", color = Color.Black, fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.expert_publish_button), color = Color.Black, fontWeight = FontWeight.Bold)
             }
         }
     }

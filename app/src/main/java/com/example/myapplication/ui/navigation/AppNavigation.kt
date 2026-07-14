@@ -179,7 +179,7 @@ fun AppNavigation() {
                         avatarUrl = photoUrl,
                         onAskQuestion = { navController.navigate(Routes.ASK) { launchSingleTop = true } },
                         onExpertMode = {
-                            expertViewModel.setExpertOnline(true)
+                            expertViewModel.setExpertOnline(true, userId)
                             navController.navigate(Routes.EXPERT) {
                                 popUpTo(navController.graph.startDestinationId) { saveState = true }
                                 launchSingleTop = true; restoreState = true
