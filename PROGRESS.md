@@ -54,7 +54,7 @@
 ### 第 6 輪：全面修復未解決問題（編輯流程、效能優化、排程縮短、dead code 清理、測試強化）
 - [x] **新增 `Constants.kt`** — 統一路徑(`FirebasePaths`)、欄位(`FirebaseFields`)、狀態值(`StatusValues`)常數物件
 - [x] **刪除 `ExtractLocalTagsUseCase.kt` dead code** — 已確認無任何程式碼或 DI 註冊依賴此檔案
-- [x] **Cloud Function 排程 5 → 1 分鐘** — 最大等待時間從 5 分鐘縮短至 1 分鐘
+- [x] **Cloud Function 排程 5 → 1 → 5 分鐘** — 考量 cooldown 10 分鐘，恢復 5 分鐘排程減少空轉
 - [x] **檢查 firebase-functions 版本狀態** — v7.2.5 仍不支援 firebase-admin v14，`7.3.0-rc.0` 仍為唯一選擇
 - [x] **ExpertRepository 重構為 `.await()` 寫法** — 移除 `suspendCancellableCoroutine`，改用 `kotlinx.coroutines.tasks.await()`
 - [x] **新增 `editSkill()` 方法** — 更新 solutions 資料 + 重新寫入 pending_skills 佇列觸發 AI 重新分析
