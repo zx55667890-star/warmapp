@@ -202,8 +202,9 @@ fun KnowledgeItemCard(solution: SolutionItem, onEditClick: () -> Unit) {
                     SkillStatus.ACTIVE -> {
                         if (solution.tags.isNotEmpty()) {
                             Spacer(modifier = Modifier.height(6.dp))
-                            Row(
+                            FlowRow(
                                 horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 solution.tags.take(5).forEach { tag ->

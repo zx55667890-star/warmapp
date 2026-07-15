@@ -28,12 +28,13 @@
     <string name="expert_toast_publish_failed">發佈失敗</string>
     <string name="expert_toast_skill_updated">技能已更新，AI 正在重新分析標籤…</string>
     <string name="expert_toast_login_required">請先登入才能使用此功能</string>
+    <string name="expert_toast_submission_locked">您的技能多次無法通過驗證，請於24小時後再試</string>
     <string name="expert_error_experience_blank">經驗描述不能為空白</string>
     <string name="expert_error_experience_too_long">經驗描述不能超過 200 個字元（目前 %1$d 字）</string>
     <string name="expert_error_skill_blank">技能描述不能為空白</string>
-    <string name="expert_error_skill_too_short">描述太短囉，請輸入至少 4 個字</string>
+    <string name="expert_error_skill_too_short">描述太短囉，請輸入至少 10 個字</string>
     <string name="expert_input_blank">輸入內容不能為空</string>
-    <string name="expert_input_too_short">描述太短囉，請輸入至少 %1$d 個字讓 AI 更好理解</string>
+    <string name="expert_input_too_short">描述太短囉，請輸入至少 10 個字讓 AI 更好理解</string>
     <string name="expert_input_no_meaningful_char">請輸入有效的中文或英文專業技能描述</string>
     <string name="expert_input_high_repetition">文字重複率過高，請輸入更具體的技能描述</string>
     <string name="expert_input_gibberish">請輸入有意義的內容，避免過多重複的字元</string>

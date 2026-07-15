@@ -14,16 +14,17 @@
 - **核心技術：** Kotlin, Jetpack Compose, Material3, Koin (DI), Coil, Media3, CameraX.
 - **Firebase：** Realtime Database, Auth, Storage, Functions, Messaging.
 - **Cloud Functions Runtime：** Node.js 24
-- **Backend Dependencies：** `firebase-admin@^14.0.0`、`firebase-functions@7.3.0-rc.0`、`@google/genai@^2.10.0`、`nodemailer@^6.9.0`
+- **Backend Dependencies：** `firebase-admin@^13.0.0`、`firebase-functions@7.2.5`、`@google/genai@^2.10.0`、`nodemailer@^6.9.0`
 - **Android GenAI SDK：** `com.google.genai:google-genai:1.61.0`（注意：`response.text()` 為 `String?`，需處理 null）。
 - **Backend GenAI SDK：** `@google/genai:^2.10.0`（注意：`response.text` 為 property，非 method）。
+- **Lifecycle 版本：** `2.10.0`（`lifecycle-runtime-compose` 需與 `lifecycle-runtime-ktx` 一致，否則啟動閃退）
 
 ## 🏗️ 核心架構與現有運作機制 (Context)
 1. **AI 標籤提取（Backend Cloud Function）：**
    - 專家發布技能 → 前端驗證 → 直接 PENDING 寫入 `pending_skills`（無 blocking 讀取，~1s 內完成）
    - Cloud Function `batchProcessPendingSkills` 每 1 分鐘批次處理（最多 20 筆），2nd Gen (`firebase-functions/v2/scheduler`)
    - 使用 `@google/genai` SDK，Secret via `defineSecret('GEMINI_API_KEY')`
-   - **重要：** firebase-admin v14 移除 `admin.database()`，改用 `getDatabase()` from `firebase-admin/database`
+   - **注意：** `getDatabase()` from `firebase-admin/database`（firebase-admin v11+ 皆支援，非 v14 only）
    - 5 模型 fallback 鏈（primary → fallback_1 → ...），含 model-specific thinkingConfig（Gen3 → `thinkingLevel: 'minimal'`，Gen2.5 → `thinkingBudget: 0`）
    - 503 自動 retry（2s / 4s backoff），429/RESOURCE_EXHAUSTED 才標記 EXHAUSTED
    - `minInstances: 1` 保持 warm instance
@@ -31,29 +32,34 @@
    - **強制 JSON 輸出**：`responseMimeType: 'application/json'` 確保 Gemini 回傳結構化資料
    - 結果寫回 `solutions/{userId}/{skillId}`（status: ACTIVE / REJECTED + tags）
    - 白名單快取存入 `tags_whitelist/{text}/tags`，黑名單存入 `tags_blacklist/{text}`
+   - **Submission Lock**：連續 3 次 REJECTED → 寫入 `users/{uid}/submissionLock/lockedUntil = now + 24h`，前端自動擋下發布
 2. **資料庫路徑：**
    - `solutions/{userId}/{skillId}` — 技能記錄（含 status 欄位）
    - `pending_skills/{skillId}` — 排隊等待 AI 處理（含 `processing` 時間戳記防重複）
    - `config/model_status` — 各模型配額狀態（EXHAUSTED）
    - `tags_blacklist/{text}` — 被拒絕的文字黑名單
    - `tags_whitelist/{text}/tags` — 已被 AI 認證的標籤快取
+   - `users/{uid}/submissionLock` — 提交鎖定狀態（`rejectedCount`、`lockedUntil`）
 3. **Repository 設計：**
    - `ExpertRepository` 為**無狀態（Stateless）**
-   - `listenToSolutionHistory()` 與 `observeExpertStatus()` 使用 `callbackFlow` 回傳 `Flow`，ViewModel 透過 `viewModelScope.launch { collect }` 自動管理 listener 生命週期
-   - `saveSkill()` 使用 `updateChildren()` 原子寫入 solutions + pending_skills
+   - `listenToSolutionHistory()` 與 `observeExpertStatus()` 使用 `callbackFlow` 回傳 `Flow`，ViewModel 透過 `viewModelScope.launch { collect }` 自動管理 listener 生命週期。兩者皆有 `userId.isBlank()` guard，空白時直接發空結果並 close，避免 Firebase 無權限 crash。
+   - `saveSkill()` 使用個別 `setValue()` 寫入 solutions + pending_skills（避免 `updateChildren()` 搭配 `setPersistenceEnabled(true)` 的衝突）
    - `cleanup()` 僅處理 experience cleanup（listener 由 callbackFlow 的 `awaitClose` 自行清除）
    - 路徑/欄位/狀態值使用 `Constants.kt` 中的 `FirebasePaths` / `FirebaseFields` / `StatusValues` 常數
 4. **前端流程（publishSkill）：**
    - local 驗證（`ExpertInputValidator.validate()` → ViewModel 內部驗證，QuickLogCard 不再自行驗證）
    - duplicate 檢查
+   - `userId.isBlank()` guard（未登入提示）
+   - `isSubmissionLocked` 檢查（被鎖提示：「您的技能多次無法通過驗證，請於24小時後再試」）
    - 直接 PENDING 寫入（無 blocking 讀取）
    - Cloud Function server 端依序：blacklist 檢查 → whitelist 檢查 → AI 分析（僅通過前兩關的資料）
 5. **UI 架構（State Hoisting）：**
    - `ExpertScreen`（stateful bridge）：注入 ViewModel，解析 event，將 state + lambda 傳給 content
    - `ExpertScreenContent`（stateless）：純展示層，接收 `ExpertUiState` + 6 個 callback lambda，可獨立 Preview/測試
    - `KnowledgeItemCard`、`SkillEditDialog`、`QuickLogCard` 皆為 stateless composable
+   - **PENDING 技能卡片完全隱藏**（不顯示在列表中），ACTIVE 才顯示 AI 標籤，REJECTED 才顯示「內容無法辨識」
 6. **字串管理：**
-   - UI 文字全數存放於 `strings.xml`（21 條 resource）
+   - UI 文字全數存放於 `strings.xml`（35+ 條 resource）
    - `ExpertUiEvent.ShowToast` 使用 `@StringRes Int`（固定訊息），`ShowToastRaw` 處理動態錯誤訊息
    - ViewModel 中不再有硬編碼 Toast 字串
 7. **排程限制：**
@@ -61,10 +67,24 @@
 8. **廢棄的客戶端 AI：**
    - `ExtractLocalTagsUseCase.kt` 已刪除（dead code）
    - 舊的 `submitSolution()` 已被移除
-9. **專案規範：**
-   - **Compose Modifier：** 遵守慣例順序 (required → modifier → optional)。
-   - **資源檔：** 無 `colors.xml` 或 `backup_rules.xml`。
-   - **依賴管理：** 統一使用 `libs.versions.toml`。
+9. **亂碼偵測（前端 + 後端雙層）：**
+   - **前端 `ExpertInputValidator`：**
+     - 唯一字元比 < 0.4（`UNIQUE_CHAR_RATIO_THRESHOLD`）
+     - 連續重複字元 ≥ 3（`MAX_CONSECUTIVE_DUPLICATES`）
+     - 相鄰重複配對 ≥ 3（`MAX_ADJACENT_PAIRS`）
+     - 二元組（bigram）重複出現 ≥ 2 次（`BIGRAM_REPEAT_THRESHOLD`）
+     - 技能不應出現字元（`SKILL_UNLIKELY_CHARS`）：哦呢嗎吧額喔誒欸啦嘛呀喲嘅誰該
+   - **後端 AI Prompt：** 明確要求 REJECT「看似有詞但整體無意義」的內容，包含具體範例
+10. **Submission Lock 機制：**
+    - 後端 Cloud Function 處理時追蹤每位使用者的連續 REJECTED 次數
+    - 任一技能 ACTIVE → 歸零
+    - REJECTED → +1
+    - 達 3 次 → 寫入 `users/{uid}/submissionLock/lockedUntil = now + 24h`
+    - 前端 `ExpertViewModel.observeSubmissionLock()` 監聽鎖定狀態，`publishSkill()` 自動擋下
+11. **專案規範：**
+    - **Compose Modifier：** 遵守慣例順序 (required → modifier → optional)。
+    - **資源檔：** 無 `colors.xml` 或 `backup_rules.xml`。
+    - **依賴管理：** 統一使用 `libs.versions.toml`。
 
 ## 🛠️ 開發與測試指令
 - **建構：** `.\gradlew.bat assembleDebug --daemon --parallel` (若快取過期加 `--no-configuration-cache`)
