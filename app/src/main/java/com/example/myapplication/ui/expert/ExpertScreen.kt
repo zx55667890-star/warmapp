@@ -86,6 +86,7 @@ fun ExpertScreenContent(
     onNavigateToInput: () -> Unit
 ) {
     var buttonCoords by remember { mutableStateOf<LayoutCoordinates?>(null) }
+    var outerBoxLayout by remember { mutableStateOf<LayoutCoordinates?>(null) }
     val feedbackMsg = uiState.publishFeedbackRes?.let { stringResource(it) }
 
     if (uiState.skillEditTarget != null) {
@@ -103,7 +104,7 @@ fun ExpertScreenContent(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         containerColor = AppColors.DarkBackground
     ) { innerPadding ->
-        Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
+        Box(modifier = Modifier.fillMaxSize().padding(innerPadding).onGloballyPositioned { outerBoxLayout = it }) {
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -174,17 +175,11 @@ fun ExpertScreenContent(
             }
         }
 
-        if (feedbackMsg != null && buttonCoords != null) {
-            var outerBoxLayout by remember { mutableStateOf<LayoutCoordinates?>(null) }
+        if (feedbackMsg != null && buttonCoords != null && outerBoxLayout != null) {
             val density = LocalDensity.current
-
-            Box(modifier = Modifier.fillMaxSize().onGloballyPositioned { outerBoxLayout = it })
-
-            val anchorY = outerBoxLayout?.let { outer ->
-                val buttonRoot = buttonCoords!!.localToRoot(Offset.Zero).y + buttonCoords!!.size.height
-                val outerRoot = outer.localToRoot(Offset.Zero).y
-                with(density) { (buttonRoot - outerRoot + 8.dp.toPx()).roundToInt() }
-            } ?: 0
+            val buttonRoot = buttonCoords!!.localToRoot(Offset.Zero).y + buttonCoords!!.size.height
+            val outerRoot = outerBoxLayout!!.localToRoot(Offset.Zero).y
+            val anchorY = with(density) { (buttonRoot - outerRoot + 8.dp.toPx()).roundToInt() }
 
             Card(
                 modifier = Modifier
