@@ -121,7 +121,7 @@ class ExpertViewModel(
                     publishFeedbackRes = R.string.expert_toast_skill_submitted,
                     publishFeedbackIsError = false
                 ) }
-                sendEvent(ExpertUiEvent.ShowToast(R.string.expert_toast_skill_submitted))
+                
             } catch (e: Exception) {
                 if (e is kotlinx.coroutines.CancellationException) throw e
                 Log.e("ExpertVM", "saveSkill failed", e)
