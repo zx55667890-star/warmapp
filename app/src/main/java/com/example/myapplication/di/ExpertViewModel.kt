@@ -47,7 +47,8 @@ data class ExpertUiState(
     val activeChatRoomId: String = "",
     val activeChatQuestionText: String = "",
     val myRole: String = "",
-    val isSubmissionLocked: Boolean = false
+    val isSubmissionLocked: Boolean = false,
+    @StringRes val publishErrorRes: Int? = null
 )
 sealed class ExpertUiEvent {
     data class ShowToast(@StringRes val resId: Int) : ExpertUiEvent()
@@ -106,7 +107,7 @@ class ExpertViewModel(
 
             val validationError = ExpertInputValidator.validate(trimmed)
             if (validationError != null) {
-                sendEvent(ExpertUiEvent.ShowToast(validationError.toResourceId()))
+                _uiState.update { it.copy(publishErrorRes = validationError.toResourceId()) }
                 return@launch
             }
 
@@ -119,6 +120,10 @@ class ExpertViewModel(
                 sendEvent(ExpertUiEvent.ShowToastRaw("記錄失敗：${e.javaClass.simpleName}: ${e.message}"))
             }
         }
+    }
+
+    fun clearPublishError() {
+        _uiState.update { it.copy(publishErrorRes = null) }
     }
 
     fun initializeExpertStatus(userId: String) {
