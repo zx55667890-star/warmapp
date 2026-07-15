@@ -33,9 +33,8 @@ async function generateContentWithRetry(modelConfig, prompt, retries = 3) {
   for (let i = 0; i < retries; i++) {
     try {
       const startTime = Date.now();
-      const config = {
-        responseMimeType: 'application/json',
-      };
+      const config = {};
+      if (!modelConfig.useSearch) config.responseMimeType = 'application/json';
       if (modelConfig.thinkingConfig) config.thinkingConfig = modelConfig.thinkingConfig;
       if (modelConfig.useSearch) config.tools = [{ googleSearch: {} }];
       const response = await ai.models.generateContent({
