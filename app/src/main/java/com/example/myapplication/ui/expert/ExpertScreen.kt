@@ -119,9 +119,13 @@ fun ExpertScreenContent(
             }
 
             item {
+                val feedbackText = uiState.publishFeedbackRes?.let { stringResource(it) }
+
                 QuickLogCard(
                     onPublish = onPublishSkill,
-                    onClearFeedback = onClearPublishFeedback
+                    onClearFeedback = onClearPublishFeedback,
+                    publishFeedbackText = feedbackText,
+                    publishFeedbackIsError = uiState.publishFeedbackIsError
                 )
             }
 
@@ -161,34 +165,6 @@ fun ExpertScreenContent(
                 ) {
                     Text(stringResource(R.string.expert_back_button), fontWeight = FontWeight.Bold)
                 }
-            }
-        }
-
-        val feedbackText = uiState.publishFeedbackRes?.let { stringResource(it) }
-        if (feedbackText != null) {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-                    .padding(top = innerPadding.calculateTopPadding() + 8.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = if (uiState.publishFeedbackIsError)
-                        MaterialTheme.colorScheme.errorContainer
-                    else
-                        AppColors.AccentGreen.copy(alpha = 0.15f)
-                ),
-                elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
-            ) {
-                Text(
-                    text = feedbackText,
-                    color = if (uiState.publishFeedbackIsError)
-                        MaterialTheme.colorScheme.error
-                    else
-                        AppColors.AccentGreen,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Medium,
-                    modifier = Modifier.padding(12.dp)
-                )
             }
         }
 
@@ -322,7 +298,9 @@ fun SkillEditDialog(
 @Composable
 fun QuickLogCard(
     onPublish: (text: String) -> Unit,
-    onClearFeedback: () -> Unit = {}
+    onClearFeedback: () -> Unit = {},
+    publishFeedbackText: String? = null,
+    publishFeedbackIsError: Boolean = true
 ) {
     var expertise by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf("") }
@@ -395,6 +373,31 @@ fun QuickLogCard(
                 colors = ButtonDefaults.buttonColors(containerColor = AppColors.AccentGreen)
             ) {
                 Text(stringResource(R.string.expert_publish_button), color = Color.Black, fontWeight = FontWeight.Bold)
+            }
+
+            if (publishFeedbackText != null) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (publishFeedbackIsError)
+                            MaterialTheme.colorScheme.errorContainer
+                        else
+                            AppColors.AccentGreen.copy(alpha = 0.15f)
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                ) {
+                    Text(
+                        text = publishFeedbackText,
+                        color = if (publishFeedbackIsError)
+                            MaterialTheme.colorScheme.error
+                        else
+                            AppColors.AccentGreen,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.padding(12.dp)
+                    )
+                }
             }
         }
     }
