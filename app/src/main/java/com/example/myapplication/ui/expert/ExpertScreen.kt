@@ -20,8 +20,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import kotlin.math.roundToInt
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.geometry.Offset
 import com.example.myapplication.R
 import com.example.myapplication.data.model.SkillStatus
 import com.example.myapplication.data.model.SolutionItem
@@ -307,85 +311,98 @@ fun QuickLogCard(
 
     val maxCharLimit = ExpertInputValidator.MAX_CHAR_LIMIT
 
+    var buttonBottomPx by remember { mutableIntStateOf(0) }
+    var boxTopPx by remember { mutableIntStateOf(0) }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
-        Column(modifier = Modifier.padding(20.dp)) {
-            Text(stringResource(R.string.expert_quick_log_title), fontWeight = FontWeight.Bold, fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text(stringResource(R.string.expert_quick_log_hint), fontSize = 12.sp, color = AppColors.TextGray, modifier = Modifier.padding(top = 4.dp))
+        Box(modifier = Modifier.fillMaxWidth().onGloballyPositioned { coords ->
+            boxTopPx = coords.localToRoot(Offset.Zero).y.toInt()
+        }) {
+            Column(modifier = Modifier.padding(20.dp).fillMaxWidth()) {
+                Text(stringResource(R.string.expert_quick_log_title), fontWeight = FontWeight.Bold, fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(stringResource(R.string.expert_quick_log_hint), fontSize = 12.sp, color = AppColors.TextGray, modifier = Modifier.padding(top = 4.dp))
 
-            Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
-            OutlinedTextField(
-                value = expertise,
-                onValueChange = {
-                    if (it.length <= maxCharLimit) {
-                        expertise = it
+                OutlinedTextField(
+                    value = expertise,
+                    onValueChange = {
+                        if (it.length <= maxCharLimit) {
+                            expertise = it
+                            errorMessage = ""
+                            onClearFeedback()
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = { Text(stringResource(R.string.expert_quick_log_placeholder)) },
+                    singleLine = false,
+                    minLines = 2,
+                    isError = errorMessage.isNotEmpty(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = AppColors.TextWhite,
+                        unfocusedTextColor = AppColors.TextWhite,
+                        focusedBorderColor = AppColors.AccentBlue,
+                        unfocusedBorderColor = AppColors.BorderGray
+                    ),
+                    supportingText = {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = errorMessage,
+                                color = MaterialTheme.colorScheme.error,
+                                fontSize = 12.sp,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Text(
+                                text = "${expertise.length} / $maxCharLimit",
+                                color = if (expertise.length == maxCharLimit) Color(0xFFEF5350) else AppColors.TextGray,
+                                textAlign = TextAlign.End,
+                                modifier = Modifier.padding(start = 8.dp)
+                            )
+                        }
+                    }
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Button(
+                    onClick = {
+                        val trimmed = expertise.trim()
                         errorMessage = ""
                         onClearFeedback()
-                    }
-                },
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text(stringResource(R.string.expert_quick_log_placeholder)) },
-                singleLine = false,
-                minLines = 2,
-                isError = errorMessage.isNotEmpty(),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedTextColor = AppColors.TextWhite,
-                    unfocusedTextColor = AppColors.TextWhite,
-                    focusedBorderColor = AppColors.AccentBlue,
-                    unfocusedBorderColor = AppColors.BorderGray
-                ),
-                supportingText = {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = errorMessage,
-                            color = MaterialTheme.colorScheme.error,
-                            fontSize = 12.sp,
-                            modifier = Modifier.weight(1f)
-                        )
-                        Text(
-                            text = "${expertise.length} / $maxCharLimit",
-                            color = if (expertise.length == maxCharLimit) Color(0xFFEF5350) else AppColors.TextGray,
-                            textAlign = TextAlign.End,
-                            modifier = Modifier.padding(start = 8.dp)
-                        )
-                    }
+                        onPublish(trimmed)
+                        expertise = ""
+                    },
+                    modifier = Modifier.fillMaxWidth().onGloballyPositioned { coords ->
+                        buttonBottomPx = coords.localToRoot(Offset.Zero).y.toInt() + coords.size.height
+                    },
+                    enabled = expertise.isNotBlank(),
+                    colors = ButtonDefaults.buttonColors(containerColor = AppColors.AccentGreen)
+                ) {
+                    Text(stringResource(R.string.expert_publish_button), color = Color.Black, fontWeight = FontWeight.Bold)
                 }
-            )
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Button(
-                onClick = {
-                    val trimmed = expertise.trim()
-                    errorMessage = ""
-                    onClearFeedback()
-                    onPublish(trimmed)
-                    expertise = ""
-                },
-                modifier = Modifier.fillMaxWidth(),
-                enabled = expertise.isNotBlank(),
-                colors = ButtonDefaults.buttonColors(containerColor = AppColors.AccentGreen)
-            ) {
-                Text(stringResource(R.string.expert_publish_button), color = Color.Black, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(24.dp))
             }
 
             if (publishFeedbackText != null) {
-                Spacer(modifier = Modifier.height(8.dp))
                 Card(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp)
+                        .offset { IntOffset(0, buttonBottomPx - boxTopPx + (8.dp).toPx().roundToInt()) },
                     colors = CardDefaults.cardColors(
                         containerColor = if (publishFeedbackIsError)
                             MaterialTheme.colorScheme.errorContainer
                         else
                             AppColors.AccentGreen.copy(alpha = 0.15f)
                     ),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                    elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
                 ) {
                     Text(
                         text = publishFeedbackText,

@@ -125,6 +125,7 @@ class ExpertViewModel(
             } catch (e: Exception) {
                 if (e is kotlinx.coroutines.CancellationException) throw e
                 Log.e("ExpertVM", "saveSkill failed", e)
+                _uiState.update { it.copy(publishFeedbackRes = null, publishFeedbackIsError = true) }
                 sendEvent(ExpertUiEvent.ShowToastRaw("記錄失敗：${e.javaClass.simpleName}: ${e.message}"))
             }
         }
