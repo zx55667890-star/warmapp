@@ -17,6 +17,7 @@ import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.Query
 import com.google.firebase.database.ValueEventListener
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -122,6 +123,8 @@ class ExpertViewModel(
                     publishFeedbackIsError = false
                 ) }
                 sendEvent(ExpertUiEvent.ShowToast(R.string.expert_toast_skill_submitted))
+                delay(3000)
+                _uiState.update { it.copy(publishFeedbackRes = null, publishFeedbackIsError = false) }
             } catch (e: Exception) {
                 if (e is kotlinx.coroutines.CancellationException) throw e
                 Log.e("ExpertVM", "saveSkill failed", e)

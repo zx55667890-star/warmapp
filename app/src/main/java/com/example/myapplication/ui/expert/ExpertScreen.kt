@@ -87,7 +87,14 @@ fun ExpertScreenContent(
 ) {
     var buttonCoords by remember { mutableStateOf<LayoutCoordinates?>(null) }
     var outerBoxLayout by remember { mutableStateOf<LayoutCoordinates?>(null) }
+    var successVersion by remember { mutableIntStateOf(0) }
     val feedbackMsg = uiState.publishFeedbackRes?.let { stringResource(it) }
+
+    LaunchedEffect(uiState.publishFeedbackRes, uiState.publishFeedbackIsError) {
+        if (uiState.publishFeedbackRes != null && !uiState.publishFeedbackIsError) {
+            successVersion++
+        }
+    }
 
     if (uiState.skillEditTarget != null) {
         SkillEditDialog(
@@ -132,7 +139,8 @@ fun ExpertScreenContent(
                 QuickLogCard(
                     onPublish = onPublishSkill,
                     onClearFeedback = onClearPublishFeedback,
-                    onButtonLayoutChanged = { coords -> buttonCoords = coords }
+                    onButtonLayoutChanged = { coords -> buttonCoords = coords },
+                    clearInputSignal = successVersion
                 )
             }
 
@@ -337,12 +345,20 @@ fun SkillEditDialog(
 fun QuickLogCard(
     onPublish: (text: String) -> Unit,
     onClearFeedback: () -> Unit = {},
-    onButtonLayoutChanged: (LayoutCoordinates) -> Unit = {}
+    onButtonLayoutChanged: (LayoutCoordinates) -> Unit = {},
+    clearInputSignal: Int = 0
 ) {
     var expertise by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf("") }
 
     val maxCharLimit = ExpertInputValidator.MAX_CHAR_LIMIT
+
+    LaunchedEffect(clearInputSignal) {
+        if (clearInputSignal > 0) {
+            expertise = ""
+            errorMessage = ""
+        }
+    }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -403,7 +419,6 @@ fun QuickLogCard(
                     errorMessage = ""
                     onClearFeedback()
                     onPublish(trimmed)
-                    expertise = ""
                 },
                 modifier = Modifier.fillMaxWidth().onGloballyPositioned { coords ->
                     onButtonLayoutChanged(coords)
