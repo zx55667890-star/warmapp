@@ -6,7 +6,7 @@ object ExpertInputValidator {
     }
 
     const val MAX_CHAR_LIMIT = 20
-    private const val MIN_SKILL_LENGTH = 4
+    const val MIN_SKILL_LENGTH = 10
     private const val UNIQUE_CHAR_RATIO_THRESHOLD = 0.4
     private const val RATIO_CHECK_MIN_LENGTH = 6
     private const val MAX_CONSECUTIVE_DUPLICATES = 3

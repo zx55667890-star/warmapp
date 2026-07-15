@@ -13,8 +13,8 @@ const BATCH_LIMIT = 20;
 const PROCESSING_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
 
 const MODELS = [
-  { name: 'gemini-3.1-flash-lite', label: 'PRIMARY', thinkingConfig: { thinkingLevel: 'minimal' } },
-  { name: 'gemini-2.5-flash', label: 'FALLBACK_1', thinkingConfig: { thinkingBudget: 0 } },
+  { name: 'gemini-2.5-flash', label: 'PRIMARY', thinkingConfig: { thinkingBudget: 0 } },
+  { name: 'gemini-3.1-flash-lite', label: 'FALLBACK_1', thinkingConfig: { thinkingLevel: 'minimal' } },
   { name: 'gemini-2.5-flash-lite', label: 'FALLBACK_2', thinkingConfig: { thinkingBudget: 0 } },
   { name: 'gemini-3.5-flash', label: 'FALLBACK_3', thinkingConfig: { thinkingLevel: 'minimal' } },
   { name: 'gemini-3-flash-preview', label: 'FALLBACK_4', thinkingConfig: { thinkingLevel: 'minimal' } },

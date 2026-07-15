@@ -14,7 +14,7 @@
 - **核心技術：** Kotlin, Jetpack Compose, Material3, Koin (DI), Coil, Media3, CameraX.
 - **Firebase：** Realtime Database, Auth, Storage, Functions, Messaging.
 - **Cloud Functions Runtime：** Node.js 24
-- **Backend Dependencies：** `firebase-admin@^14.0.0`、`firebase-functions@7.3.0-rc.0`、`@google/genai@^2.10.0`、`nodemailer@^6.9.0`
+- **Backend Dependencies：** `firebase-admin@^13.0.0`、`firebase-functions@7.2.5`、`@google/genai@^2.10.0`、`nodemailer@^6.9.0`
 - **Android GenAI SDK：** `com.google.genai:google-genai:1.61.0`（注意：`response.text()` 為 `String?`，需處理 null）。
 - **Backend GenAI SDK：** `@google/genai:^2.10.0`（注意：`response.text` 為 property，非 method）。
 - **Lifecycle 版本：** `2.10.0`（`lifecycle-runtime-compose` 需與 `lifecycle-runtime-ktx` 一致，否則啟動閃退）
@@ -24,7 +24,7 @@
    - 專家發布技能 → 前端驗證 → 直接 PENDING 寫入 `pending_skills`（無 blocking 讀取，~1s 內完成）
    - Cloud Function `batchProcessPendingSkills` 每 1 分鐘批次處理（最多 20 筆），2nd Gen (`firebase-functions/v2/scheduler`)
    - 使用 `@google/genai` SDK，Secret via `defineSecret('GEMINI_API_KEY')`
-   - **重要：** firebase-admin v14 移除 `admin.database()`，改用 `getDatabase()` from `firebase-admin/database`
+   - **注意：** `getDatabase()` from `firebase-admin/database`（firebase-admin v11+ 皆支援，非 v14 only）
    - 5 模型 fallback 鏈（primary → fallback_1 → ...），含 model-specific thinkingConfig（Gen3 → `thinkingLevel: 'minimal'`，Gen2.5 → `thinkingBudget: 0`）
    - 503 自動 retry（2s / 4s backoff），429/RESOURCE_EXHAUSTED 才標記 EXHAUSTED
    - `minInstances: 1` 保持 warm instance

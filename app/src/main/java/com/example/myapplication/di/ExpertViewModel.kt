@@ -144,7 +144,7 @@ class ExpertViewModel(
     }
 
     private fun observeSubmissionLock(userId: String) {
-        lockRef?.removeEventListener(lockListener)
+        lockListener?.let { lockRef?.removeEventListener(it) }
         if (userId.isBlank()) return
         lockRef = firebaseDb.getReference(FirebasePaths.USERS).child(userId).child("submissionLock")
         lockListener = object : ValueEventListener {
@@ -262,7 +262,7 @@ class ExpertViewModel(
             _uiState.update { it.copy(editErrorRes = R.string.expert_error_skill_blank) }
             return
         }
-        if (trimmed.length < 4) {
+        if (trimmed.length < ExpertInputValidator.MIN_SKILL_LENGTH) {
             _uiState.update { it.copy(editErrorRes = R.string.expert_error_skill_too_short) }
             return
         }
@@ -431,7 +431,7 @@ class ExpertViewModel(
     }
 
     private fun cleanupLockListener() {
-        lockRef?.removeEventListener(lockListener)
+        lockListener?.let { lockRef?.removeEventListener(it) }
         lockRef = null
         lockListener = null
     }
