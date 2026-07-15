@@ -48,7 +48,8 @@ data class ExpertUiState(
     val activeChatQuestionText: String = "",
     val myRole: String = "",
     val isSubmissionLocked: Boolean = false,
-    @StringRes val publishErrorRes: Int? = null
+    @StringRes val publishFeedbackRes: Int? = null,
+    val publishFeedbackIsError: Boolean = false
 )
 sealed class ExpertUiEvent {
     data class ShowToast(@StringRes val resId: Int) : ExpertUiEvent()
@@ -107,12 +108,19 @@ class ExpertViewModel(
 
             val validationError = ExpertInputValidator.validate(trimmed)
             if (validationError != null) {
-                _uiState.update { it.copy(publishErrorRes = validationError.toResourceId()) }
+                _uiState.update { it.copy(
+                    publishFeedbackRes = validationError.toResourceId(),
+                    publishFeedbackIsError = true
+                ) }
                 return@launch
             }
 
             try {
                 repository.saveSkill(userId, trimmed)
+                _uiState.update { it.copy(
+                    publishFeedbackRes = R.string.expert_toast_skill_submitted,
+                    publishFeedbackIsError = false
+                ) }
                 sendEvent(ExpertUiEvent.ShowToast(R.string.expert_toast_skill_submitted))
             } catch (e: Exception) {
                 if (e is kotlinx.coroutines.CancellationException) throw e
@@ -122,8 +130,8 @@ class ExpertViewModel(
         }
     }
 
-    fun clearPublishError() {
-        _uiState.update { it.copy(publishErrorRes = null) }
+    fun clearPublishFeedback() {
+        _uiState.update { it.copy(publishFeedbackRes = null, publishFeedbackIsError = false) }
     }
 
     fun initializeExpertStatus(userId: String) {
