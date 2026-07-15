@@ -58,7 +58,7 @@ fun ExpertScreen(viewModel: ExpertViewModel, userId: String, onNavigateToInput: 
         uiState = uiState,
         snackbarHostState = snackbarHostState,
         onPublishSkill = { viewModel.publishSkill(userId, it) },
-        onClearPublishError = { viewModel.clearPublishError() },
+        onClearPublishFeedback = { viewModel.clearPublishFeedback() },
         onStartSkillEdit = { viewModel.startSkillEdit(it) },
         onEditSkillConfirm = { viewModel.submitSkillEdit(userId) },
         onEditSkillTextChange = { viewModel.updateSkillEditText(it) },
@@ -72,7 +72,7 @@ fun ExpertScreenContent(
     uiState: ExpertUiState,
     snackbarHostState: SnackbarHostState,
     onPublishSkill: (String) -> Unit,
-    onClearPublishError: () -> Unit,
+    onClearPublishFeedback: () -> Unit,
     onStartSkillEdit: (SolutionItem) -> Unit,
     onEditSkillConfirm: () -> Unit,
     onEditSkillTextChange: (String) -> Unit,
@@ -94,10 +94,10 @@ fun ExpertScreenContent(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         containerColor = AppColors.DarkBackground
     ) { innerPadding ->
+        Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
                 .padding(16.dp)
         ) {
             item {
@@ -121,8 +121,7 @@ fun ExpertScreenContent(
             item {
                 QuickLogCard(
                     onPublish = onPublishSkill,
-                    publishError = uiState.publishErrorRes?.let { stringResource(it) },
-                    onClearError = onClearPublishError
+                    onClearFeedback = onClearPublishFeedback
                 )
             }
 
@@ -163,6 +162,36 @@ fun ExpertScreenContent(
                     Text(stringResource(R.string.expert_back_button), fontWeight = FontWeight.Bold)
                 }
             }
+        }
+
+        val feedbackText = uiState.publishFeedbackRes?.let { stringResource(it) }
+        if (feedbackText != null) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .padding(top = innerPadding.calculateTopPadding() + 8.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = if (uiState.publishFeedbackIsError)
+                        MaterialTheme.colorScheme.errorContainer
+                    else
+                        AppColors.AccentGreen.copy(alpha = 0.15f)
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+            ) {
+                Text(
+                    text = feedbackText,
+                    color = if (uiState.publishFeedbackIsError)
+                        MaterialTheme.colorScheme.error
+                    else
+                        AppColors.AccentGreen,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.padding(12.dp)
+                )
+            }
+        }
+
         }
     }
 }
@@ -293,8 +322,7 @@ fun SkillEditDialog(
 @Composable
 fun QuickLogCard(
     onPublish: (text: String) -> Unit,
-    publishError: String? = null,
-    onClearError: () -> Unit = {}
+    onClearFeedback: () -> Unit = {}
 ) {
     var expertise by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf("") }
@@ -317,7 +345,7 @@ fun QuickLogCard(
                     if (it.length <= maxCharLimit) {
                         expertise = it
                         errorMessage = ""
-                        if (publishError != null) onClearError()
+                        onClearFeedback()
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
@@ -358,7 +386,7 @@ fun QuickLogCard(
                 onClick = {
                     val trimmed = expertise.trim()
                     errorMessage = ""
-                    onClearError()
+                    onClearFeedback()
                     onPublish(trimmed)
                     expertise = ""
                 },
@@ -367,15 +395,6 @@ fun QuickLogCard(
                 colors = ButtonDefaults.buttonColors(containerColor = AppColors.AccentGreen)
             ) {
                 Text(stringResource(R.string.expert_publish_button), color = Color.Black, fontWeight = FontWeight.Bold)
-            }
-
-            if (publishError != null) {
-                Text(
-                    text = publishError,
-                    color = MaterialTheme.colorScheme.error,
-                    fontSize = 12.sp,
-                    modifier = Modifier.padding(top = 8.dp)
-                )
             }
         }
     }
