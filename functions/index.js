@@ -31,6 +31,7 @@ async function generateContentWithRetry(modelName, prompt, thinkingConfig, retri
         config: {
           thinkingConfig,
           responseMimeType: 'application/json',
+          tools: [{ googleSearch: {} }],
         },
       });
       return { response, elapsed: Date.now() - startTime };
