@@ -9,6 +9,10 @@ const db = getDatabase();
 
 const geminiApiKey = defineSecret('GEMINI_API_KEY');
 
+function encodePath(text) {
+  return Buffer.from(text, 'utf8').toString('base64url');
+}
+
 const BATCH_LIMIT = 20;
 const PROCESSING_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
 
@@ -101,7 +105,7 @@ exports.batchProcessPendingSkills = onSchedule(
 
     // Step 1: Check blacklist for each entry in parallel
     const blacklistChecks = processableEntries.map(async (entry) => {
-      const blSnapshot = await db.ref(`tags_blacklist/${entry.text}`).once('value');
+      const blSnapshot = await db.ref(`tags_blacklist/${encodePath(entry.text)}`).once('value');
       return { entry, isBlacklisted: blSnapshot.exists() };
     });
     const blacklistResults = await Promise.all(blacklistChecks);
@@ -126,7 +130,7 @@ exports.batchProcessPendingSkills = onSchedule(
 
     // Step 2: Check whitelist for remaining entries in parallel
     const whitelistChecks = aiEntries.map(async (entry) => {
-      const wlSnapshot = await db.ref(`tags_whitelist/${entry.text}/tags`).once('value');
+      const wlSnapshot = await db.ref(`tags_whitelist/${encodePath(entry.text)}/tags`).once('value');
       const tags = wlSnapshot.val();
       return { entry, cachedTags: Array.isArray(tags) && tags.length > 0 ? tags : null };
     });
@@ -221,13 +225,13 @@ exports.batchProcessPendingSkills = onSchedule(
           if (isReject) {
             updates[`${skillRef}/status`] = 'REJECTED';
             updates[`${skillRef}/tags`] = [];
-            updates[`tags_blacklist/${entry.text}`] = true;
+            updates[`tags_blacklist/${encodePath(entry.text)}`] = true;
             t.rejectedCount = (t.rejectedCount || 0) + 1;
           } else {
             const tags = Array.isArray(item.tags) ? item.tags.slice(0, 4) : [];
             updates[`${skillRef}/status`] = 'ACTIVE';
             updates[`${skillRef}/tags`] = tags;
-            updates[`tags_whitelist/${entry.text}/tags`] = tags;
+            updates[`tags_whitelist/${encodePath(entry.text)}/tags`] = tags;
             t.hasActive = true;
           }
           updates[`pending_skills/${entry.id}`] = null;
