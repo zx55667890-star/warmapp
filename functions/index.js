@@ -21,10 +21,11 @@ const MODELS = [
   { name: 'gemini-3.1-flash-lite', label: 'PRIMARY', useSearch: false },
 
   // FALLBACK：開啟搜尋，需要保留思考能力
-  { name: 'gemini-3.5-flash',       label: 'FALLBACK_1', thinkingConfig: { thinkingLevel: 'minimal' }, useSearch: true },
-  { name: 'gemini-3-flash-preview', label: 'FALLBACK_2', thinkingConfig: { thinkingLevel: 'minimal' }, useSearch: true },
-  { name: 'gemini-2.5-flash',       label: 'FALLBACK_3', thinkingConfig: { thinkingBudget: 0 },       useSearch: true },
-  { name: 'gemini-2.5-flash-lite',  label: 'FALLBACK_4', thinkingConfig: { thinkingBudget: 0 },       useSearch: true },
+  // 順序依速度/可用性排列，429 高的放最後
+  { name: 'gemini-2.5-flash',       label: 'FALLBACK_1', thinkingConfig: { thinkingBudget: 0 },       useSearch: true },
+  { name: 'gemini-2.5-flash-lite',  label: 'FALLBACK_2', thinkingConfig: { thinkingBudget: 0 },       useSearch: true },
+  { name: 'gemini-3-flash-preview', label: 'FALLBACK_3', thinkingConfig: { thinkingLevel: 'minimal' }, useSearch: true },
+  { name: 'gemini-3.5-flash',       label: 'FALLBACK_4', thinkingConfig: { thinkingLevel: 'minimal' }, useSearch: true },
 ];
 
 async function generateContentWithRetry(modelConfig, prompt, retries = 3) {
@@ -164,7 +165,7 @@ exports.batchProcessPendingSkills = onSchedule(
     const statusSnapshot = await db.ref('config/model_status').once('value');
     const modelStatus = statusSnapshot.val() || {};
 
-    let candidates = MODELS.filter(m => modelStatus[m.name] !== 'EXHAUSTED');
+    let candidates = MODELS.filter(m => modelStatus[encodePath(m.name)] !== 'EXHAUSTED');
     if (candidates.length === 0) {
       console.warn('All models EXHAUSTED');
       const resetSnapshot = await db.ref('config/last_reset').once('value');
@@ -241,7 +242,11 @@ exports.batchProcessPendingSkills = onSchedule(
         console.error(`Model ${model.name} (${model.label}) failed:`, err);
         lastError = err;
         if (err.status === 429 || (err.message && err.message.includes('RESOURCE_EXHAUSTED'))) {
-          await db.ref(`config/model_status/${model.name}`).set('EXHAUSTED');
+          try {
+            await db.ref(`config/model_status/${encodePath(model.name)}`).set('EXHAUSTED');
+          } catch (pathErr) {
+            console.error(`Failed to mark ${model.name} as EXHAUSTED:`, pathErr);
+          }
         }
       }
     }
