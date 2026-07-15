@@ -36,6 +36,7 @@ import com.example.myapplication.di.ExpertUiState
 import com.example.myapplication.di.ExpertViewModel
 import com.example.myapplication.domain.expert.ExpertInputValidator
 import com.example.myapplication.ui.theme.AppColors
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 
 @Composable
@@ -93,6 +94,13 @@ fun ExpertScreenContent(
     LaunchedEffect(uiState.publishFeedbackRes, uiState.publishFeedbackIsError) {
         if (uiState.publishFeedbackRes != null && !uiState.publishFeedbackIsError) {
             successVersion++
+        }
+    }
+
+    LaunchedEffect(feedbackMsg) {
+        if (feedbackMsg != null) {
+            delay(3000)
+            onClearPublishFeedback()
         }
     }
 
