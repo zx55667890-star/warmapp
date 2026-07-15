@@ -50,7 +50,7 @@ async function generateContentWithRetry(modelName, prompt, thinkingConfig, retri
 
 exports.batchProcessPendingSkills = onSchedule(
   {
-    schedule: 'every 1 minutes',
+    schedule: 'every 5 minutes',
     secrets: [geminiApiKey],
     minInstances: 1,
   },
