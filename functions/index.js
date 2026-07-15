@@ -17,26 +17,30 @@ const BATCH_LIMIT = 20;
 const PROCESSING_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
 
 const MODELS = [
-  { name: 'gemini-2.5-flash', label: 'PRIMARY', thinkingConfig: { thinkingBudget: 0 } },
-  { name: 'gemini-3.1-flash-lite', label: 'FALLBACK_1', thinkingConfig: { thinkingLevel: 'minimal' } },
-  { name: 'gemini-2.5-flash-lite', label: 'FALLBACK_2', thinkingConfig: { thinkingBudget: 0 } },
-  { name: 'gemini-3.5-flash', label: 'FALLBACK_3', thinkingConfig: { thinkingLevel: 'minimal' } },
-  { name: 'gemini-3-flash-preview', label: 'FALLBACK_4', thinkingConfig: { thinkingLevel: 'minimal' } },
+  // PRIMARY：最高 RPD 主力，default minimal thinking，不搜尋
+  { name: 'gemini-3.1-flash-lite', label: 'PRIMARY', useSearch: false },
+
+  // FALLBACK：開啟搜尋，需要保留思考能力
+  { name: 'gemini-3.5-flash',       label: 'FALLBACK_1', thinkingConfig: { thinkingLevel: 'minimal' }, useSearch: true },
+  { name: 'gemini-3-flash-preview', label: 'FALLBACK_2', thinkingConfig: { thinkingLevel: 'minimal' }, useSearch: true },
+  { name: 'gemini-2.5-flash',       label: 'FALLBACK_3', thinkingConfig: { thinkingBudget: 0 },       useSearch: true },
+  { name: 'gemini-2.5-flash-lite',  label: 'FALLBACK_4', thinkingConfig: { thinkingBudget: 0 },       useSearch: true },
 ];
 
-async function generateContentWithRetry(modelName, prompt, thinkingConfig, retries = 3) {
+async function generateContentWithRetry(modelConfig, prompt, retries = 3) {
   const ai = new GoogleGenAI({ apiKey: geminiApiKey.value() });
   for (let i = 0; i < retries; i++) {
     try {
       const startTime = Date.now();
+      const config = {
+        responseMimeType: 'application/json',
+      };
+      if (modelConfig.thinkingConfig) config.thinkingConfig = modelConfig.thinkingConfig;
+      if (modelConfig.useSearch) config.tools = [{ googleSearch: {} }];
       const response = await ai.models.generateContent({
-        model: modelName,
+        model: modelConfig.name,
         contents: prompt,
-        config: {
-          thinkingConfig,
-          responseMimeType: 'application/json',
-          tools: [{ googleSearch: {} }],
-        },
+        config: config,
       });
       return { response, elapsed: Date.now() - startTime };
     } catch (err) {
@@ -44,7 +48,7 @@ async function generateContentWithRetry(modelName, prompt, thinkingConfig, retri
                           (err.message && err.message.includes('RESOURCE_EXHAUSTED'));
       if (isRetryable && i < retries - 1) {
         const delay = Math.pow(2, i) * 2000;
-        console.warn(`Retryable error (${err.status}) for ${modelName}, retrying in ${delay}ms... (attempt ${i + 1})`);
+        console.warn(`Retryable error (${err.status}) for ${modelConfig.name}, retrying in ${delay}ms...`);
         await new Promise(resolve => setTimeout(resolve, delay));
         continue;
       }
@@ -136,7 +140,7 @@ exports.batchProcessPendingSkills = onSchedule(
     });
     const whitelistResults = await Promise.all(whitelistChecks);
 
-    const remainingEntries = [];
+    let remainingEntries = [];
 
     for (const { entry, cachedTags } of whitelistResults) {
       if (cachedTags) {
@@ -177,92 +181,96 @@ exports.batchProcessPendingSkills = onSchedule(
     }
 
     let lastError = null;
+
     for (const model of candidates) {
+      if (remainingEntries.length === 0) break;
+
       console.log(`Processing ${remainingEntries.length} skills with model: ${model.name} (${model.label})`);
 
       const prompt = `請判斷以下每筆資料是否為真實、有意義的專業技能描述。
-
 判斷原則：
-- 如果內容是具體、可理解的專業技能（如「Python爬蟲開發」、「淘寶退貨流程」），請提取 4 個最核心的關鍵字標籤
-- 如果內容是無意義的胡言亂語、隨機湊字、看似有詞但組合後無實際意義、或無法對應到任何真實場景，請將 tags 設為 ["REJECT"]
-- 例如「車內適合吃新造型靠字」或「愛台破土問題該顧問」這類看似有詞但整體無意義的內容也應 REJECT
+- 如果內容是具體、可理解的專業技能，請提取 4 個最核心的關鍵字標籤
+- 如果內容是無意義的胡言亂語或無法對應到真實場景，請將 tags 設為 ["REJECT"]
+- 如果你對該技能描述感到猶豫，或者該名詞看起來很新但不確定是否真實，請回傳 REJECT，交由後續的系統進行查證
 - 遇到無法明確判斷時，寧可 REJECT 也不要勉強給標籤
 
 以 JSON Array 格式回傳，每個物件包含 id 和 tags 欄位。
-範例格式：
-[{"id": "-ABC123", "tags": ["Python", "資料分析", "機器學習", "爬蟲"]}]
-
 資料：${JSON.stringify(remainingEntries.map((e) => ({ id: e.id, text: e.text })))}`;
 
       try {
-        const { response, elapsed } = await generateContentWithRetry(model.name, prompt, model.thinkingConfig);
+        const { response, elapsed } = await generateContentWithRetry(model, prompt);
         console.log(`Model ${model.name} responded in ${elapsed}ms`);
         const text = response.text || '';
-        if (!text) {
-          throw new Error('AI 回傳空內容');
-        }
+        if (!text) throw new Error('AI 回傳空內容');
 
         let parsed;
         try {
           parsed = JSON.parse(text);
         } catch {
           const jsonMatch = text.match(/\[[\s\S]*\]/);
-          if (jsonMatch) {
-            parsed = JSON.parse(jsonMatch[0]);
-          } else {
-            throw new Error('無法解析 AI 回應為 JSON');
-          }
+          if (jsonMatch) parsed = JSON.parse(jsonMatch[0]);
+          else throw new Error('無法解析 AI 回應為 JSON');
         }
+
+        const newlyRejectedEntries = [];
 
         for (const item of parsed) {
           const entry = remainingEntries.find((e) => e.id === item.id);
           if (!entry) continue;
 
-          const skillRef = `solutions/${entry.userId}/${item.id}`;
           const isReject = item.tags && Array.isArray(item.tags) && item.tags.includes('REJECT');
-          const t = lockTrackers[entry.userId] || (lockTrackers[entry.userId] = { rejectedCount: 0, hasActive: false });
 
           if (isReject) {
-            updates[`${skillRef}/status`] = 'REJECTED';
-            updates[`${skillRef}/tags`] = [];
-            updates[`tags_blacklist/${encodePath(entry.text)}`] = true;
-            t.rejectedCount = (t.rejectedCount || 0) + 1;
+            newlyRejectedEntries.push(entry);
           } else {
+            const skillRef = `solutions/${entry.userId}/${item.id}`;
             const tags = Array.isArray(item.tags) ? item.tags.slice(0, 4) : [];
+            const t = lockTrackers[entry.userId] || (lockTrackers[entry.userId] = { rejectedCount: 0, hasActive: false });
+
             updates[`${skillRef}/status`] = 'ACTIVE';
             updates[`${skillRef}/tags`] = tags;
             updates[`tags_whitelist/${encodePath(entry.text)}/tags`] = tags;
+            updates[`pending_skills/${entry.id}`] = null;
             t.hasActive = true;
           }
-          updates[`pending_skills/${entry.id}`] = null;
         }
 
-        // Apply submission lock based on consecutive rejection count
-        for (const [uid, t] of Object.entries(lockTrackers)) {
-          const finalCount = t.hasActive ? 0 : (t.rejectedCount || 0);
-          updates[`users/${uid}/submissionLock/rejectedCount`] = finalCount;
-          if (finalCount >= 3) {
-            updates[`users/${uid}/submissionLock/lockedUntil`] = Date.now() + 86400000;
-          } else {
-            updates[`users/${uid}/submissionLock/lockedUntil`] = 0;
-          }
-        }
-
-        await db.ref().update(updates);
-        console.log(`Successfully processed batch using ${model.name} (${elapsed}ms)`);
-        return;
+        remainingEntries = newlyRejectedEntries;
 
       } catch (err) {
         console.error(`Model ${model.name} (${model.label}) failed:`, err);
         lastError = err;
-
         if (err.status === 429 || (err.message && err.message.includes('RESOURCE_EXHAUSTED'))) {
           await db.ref(`config/model_status/${model.name}`).set('EXHAUSTED');
-          console.warn(`Model ${model.name} marked as EXHAUSTED`);
         }
       }
     }
 
-    console.error('All models exhausted. Last error:', lastError);
+    if (remainingEntries.length > 0) {
+      console.log(`Final reject for ${remainingEntries.length} items after trying all models.`);
+      for (const entry of remainingEntries) {
+        const skillRef = `solutions/${entry.userId}/${entry.id}`;
+        const t = lockTrackers[entry.userId] || (lockTrackers[entry.userId] = { rejectedCount: 0, hasActive: false });
+
+        updates[`${skillRef}/status`] = 'REJECTED';
+        updates[`${skillRef}/tags`] = [];
+        updates[`tags_blacklist/${encodePath(entry.text)}`] = true;
+        updates[`pending_skills/${entry.id}`] = null;
+        t.rejectedCount = (t.rejectedCount || 0) + 1;
+      }
+    }
+
+    for (const [uid, t] of Object.entries(lockTrackers)) {
+      const finalCount = t.hasActive ? 0 : (t.rejectedCount || 0);
+      updates[`users/${uid}/submissionLock/rejectedCount`] = finalCount;
+      if (finalCount >= 3) {
+        updates[`users/${uid}/submissionLock/lockedUntil`] = Date.now() + 86400000;
+      } else {
+        updates[`users/${uid}/submissionLock/lockedUntil`] = 0;
+      }
+    }
+
+    await db.ref().update(updates);
+    console.log('Batch process complete. Updated database.');
   }
 );
