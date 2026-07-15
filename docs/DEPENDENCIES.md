@@ -75,7 +75,7 @@
 | 順位 | 模型 | 思考 | 搜尋 |
 |------|------|------|------|
 | PRIMARY | gemini-3.1-flash-lite | default minimal | ❌ |
-| FALLBACK_1 | gemini-3.5-flash | minimal | ✅ |
-| FALLBACK_2 | gemini-3-flash-preview | minimal | ✅ |
-| FALLBACK_3 | gemini-2.5-flash | budget:0 | ✅ |
-| FALLBACK_4 | gemini-2.5-flash-lite | budget:0 | ✅ |
+| FALLBACK_1 | gemini-2.5-flash | budget:0 | ✅ |
+| FALLBACK_2 | gemini-2.5-flash-lite | budget:0 | ✅ |
+| FALLBACK_3 | gemini-3-flash-preview | minimal | ✅ |
+| FALLBACK_4 | gemini-3.5-flash | minimal | ✅ |

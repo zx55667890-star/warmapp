@@ -54,7 +54,7 @@
 - ✅ 5 模型 fallback 鏈（PRIMARY + 4 FALLBACK）
 - ✅ 503 retry（2s / 4s backoff）
 - ✅ 429/RESOURCE_EXHAUSTED → EXHAUSTED
-- ✅ `responseMimeType: 'application/json'`
+- ✅ 有搜尋的模型不使用 `responseMimeType: 'application/json'`（Gemini 2.5 不支援同時使用 tools + JSON mode）
 
 ### 測試
 - ✅ ViewModel 測試用 `Dispatchers.setMain(testDispatcher)` + `runTest`

@@ -1,5 +1,17 @@
 # CHANGELOG.md — 更新紀錄
 
+## 2026-07-15
+### 修正
+- `functions/index.js` `model_status` 路徑編碼 — 模型名含 `.` 導致 RTDB crash，讀寫改為 `encodePath(model.name)`
+- `functions/index.js` Gemini 2.5 系列不支援 `responseMimeType: 'application/json'` + `tools: [googleSearch]` 並用，有搜尋的模型不再設定 JSON mode
+- FALLBACK 順序重排：`gemini-3.5-flash`（高 429）移至 FALLBACK_4，`gemini-2.5-flash` 改為 FALLBACK_1
+- 已部署新版 function（hash: `1a05abccc9b987b06ea94d86e246d880f0e99ec9`）
+
+### 文件
+- 3 份 MD 搬入 `docs/` 並刪除重複內容
+- 新增 11 份專案文件（架構、依賴、已知問題、風格規範等）
+- 啟用 GitHub Pages
+
 ## 2026-07-16
 ### 新增
 - `docs/` 文件目錄（PROJECT_STRUCTURE, ARCHITECTURE, MODULE_MAP, etc.）
