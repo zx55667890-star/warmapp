@@ -16,3 +16,5 @@
 | [CHANGELOG.md](CHANGELOG.md) | 更新紀錄 |
 | [PROGRESS.md](PROGRESS.md) | 開發進度 |
 | [CHAT_FILES_INDEX.md](CHAT_FILES_INDEX.md) | 每次對話修改檔案索引 |
+| [CHANGELOG_OLD.md](CHANGELOG_OLD.md) | 初期開發紀錄封存 (#1~#50) |
+| [get_sha1.md](get_sha1.md) | 取得 debug SHA-1 fingerprint |

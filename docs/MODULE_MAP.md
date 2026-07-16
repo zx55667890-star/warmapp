@@ -188,3 +188,5 @@
 | `ROADMAP.md` | 開發藍圖 |
 | `FILE_RELATION.md` | 檔案依賴關係 |
 | `CHANGELOG.md` | 更新紀錄 |
+| `CHANGELOG_OLD.md` | 初期開發紀錄封存 (#1~#50) |
+| `get_sha1.md` | 取得 debug SHA-1 fingerprint |
