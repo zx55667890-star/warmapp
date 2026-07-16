@@ -53,6 +53,7 @@
 | `data/repository/MessageRepositoryInterface.kt` | 訊息 repository interface |
 | `data/repository/MessageRepositoryFactory.kt` | 訊息 repository factory |
 | `data/repository/FcmService.kt` | Firebase Cloud Messaging |
+| `data/model/ChatMessage.kt` | 聊天訊息資料模型 |
 
 ## 專家模式 (skill 技能發布)
 | 檔案 | 角色 |
@@ -65,6 +66,7 @@
 | `ui/expert/ExpertViewModel.kt` | 專家 ViewModel（publish/edit/listen） |
 | `data/repository/ExpertRepository.kt` | 技能資料 CRUD（Firebase RTDB） |
 | `data/model/SolutionItem.kt` | 技能資料模型 + SkillStatus enum |
+| `data/model/Experience.kt` | 專家上線經驗資料模型 |
 | `domain/expert/ExpertInputValidator.kt` | 前端輸入驗證邏輯 |
 | `domain/expert/PublishSkillUseCase.kt` | 發布技能 UseCase |
 | `domain/expert/ObserveSolutionsUseCase.kt` | 監聽技能歷史 UseCase |
