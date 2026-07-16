@@ -70,11 +70,12 @@ ExpertViewModel.publishSkill(userId, text)
                       ├─ 2. Whitelist 檢查 (tags_whitelist/{base64(text)}/tags)
                       │     └─ 命中 → ACTIVE + 快取標籤
                       │
-                      ├─ 3. AI 分析 (5 模型接力)
-                      │     PRIMARY: gemini-3.1-flash-lite (無搜尋)
-                      │       → REJECT 才丟給下一棒
-                      │     FALLBACK_1~4: 有 Google Search 能力
-                      │       → 最終 REJECT 才寫入黑名單
+              ├─ 3. AI 分析 (4 模型接力)
+              │     PRIMARY: gemini-3.1-flash-lite (無搜尋)
+              │       → REJECT 才丟給下一棒
+              │     FALLBACK_1: Serper 外部搜尋 (`useWebFetch`，避開 Gen3 429)
+              │     FALLBACK_2~3: 內建 Google Search 能力
+              │       → 最終 REJECT 才寫入黑名單
                       │
                       └─ 結果寫回：
                             solutions/{uid}/{id}/status = ACTIVE/REJECTED

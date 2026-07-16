@@ -12,6 +12,33 @@
 - 新增 11 份專案文件（架構、依賴、已知問題、風格規範等）
 - 啟用 GitHub Pages
 
+## 2026-07-17
+### 新增
+- `searchOnSerper()` 函式 — 調用 `https://google.serper.dev/search`（取前 3 筆 organic），取代內建 googleSearch
+- `useWebFetch` 自訂旗標 — 控制是否先 Serper 搜尋再送模型（繞過 Gen3 Free Tier 429 限制）
+- `SERPER_API_KEY` Firebase secret（deployed + pushed）
+- Gen3 thinking 語法支援 — `thinkingLevel`（minimal/low/medium/high）透過 `thinkingConfig` 傳遞
+- 批次測試按鈕 — ExpertScreen 底部橘色按鈕，20 筆冷門技能
+- Per-skill logging — 每個 model log 哪些 accepted/rejected
+
+### 變更
+- PRIMARY 維持 `gemini-3.1-flash-lite`（無搜尋）
+- Model 陣列縮減為 4 個：PRIMARY + FALLBACK_1 (Serper) + FALLBACK_2~3 (內建 googleSearch)
+- `slimmedEntries`/`localMapping` 移至 model loop 內建（不重送全部 entry）
+- Prompt 增強 — 加入參考網路搜尋指示 + 標籤語言同源規則
+- 自癒掃描 try-catch 包覆，不中斷主流程
+
+### 測試
+- `gemini-3.1-flash-lite` + Serper：731ms，2/2 接受 ✅
+- `gemini-3-flash-preview` + Serper (thinking high)：24s，2/2 拒 ❌
+- `gemini-3-flash-preview` + Serper (thinking minimal)：10.6s，1/2 接受 ⚠️
+- `gemini-3.5-flash` + Serper (thinking minimal)：6.1s，2/2 接受 ✅
+- 當前：`gemini-3-flash-preview` + thinkingLevel `low` + Serper（待測試）
+
+### 修正
+- 解決 Gen3 Free Tier 無法使用內建 `googleSearch`（429/RESOURCE_EXHAUSTED）
+- 重疊排程併發控制透過 atomic transaction claim + 5 分鐘 timeout
+
 ## 2026-07-16
 ### 新增
 - `docs/` 文件目錄（PROJECT_STRUCTURE, ARCHITECTURE, MODULE_MAP, etc.）

@@ -28,6 +28,11 @@ Kotlin 2.x 編譯時觸發 KT-73255。
 同一批次中同一使用者有多筆 entry，混雜 ACTIVE 與 REJECTED 時，`hasActive` 會將 rejectedCount 歸零。
 - **影響**：低機率場景（ACTIVE 與 REJECTED 同時出現才受影響）
 
+### 11. Gen3 Free Tier 不支援內建 `googleSearch`（429 / RESOURCE_EXHAUSTED）
+Free Tier Gen3 模型（如 `gemini-3-flash-preview`）無法搭配 `tools: [{ googleSearch: {} }]`，會回傳 429。
+- **解法**：透過 `useWebFetch` 旗標改用 Serper 外部搜尋 API，將搜尋結果注入 prompt 後再送模型
+- **現狀**：FALLBACK_1 使用 Serper，FALLBACK_2~3 使用內建 googleSearch（僅 Gen2 模型）
+
 ## 🟢 Low
 
 ### 6. 前端亂碼檢測無法完美

@@ -35,7 +35,11 @@ observeExpertStatus()      → callbackFlow
 - 排程固定 `every 5 minutes`
 - `minInstances: 1`（避免冷啟動）
 - 2nd Gen (`firebase-functions/v2/scheduler`)
-- Secret via `defineSecret('GEMINI_API_KEY')`
+- Secret via `defineSecret('GEMINI_API_KEY')` + `defineSecret('SERPER_API_KEY')`
+- Model 陣列：PRIMARY（無搜尋）+ FALLBACK_1（Serper 外部搜尋）+ FALLBACK_2~3（內建 googleSearch）
+- `useWebFetch` 旗標：先 `searchOnSerper()` 取搜尋結果注入 prompt，再送模型（無 `tools: [googleSearch]`）
+- `thinkingConfig`：Gen3 模型支援 `{ thinkingLevel: 'minimal' | 'low' | 'medium' | 'high' }`
+- `searchOnSerper()` 調用 `https://google.serper.dev/search`，前 3 筆 organic，5s timeout
 
 ### SkillStatus 列舉
 - `SolutionItem.status` 是 `SkillStatus` 型別（ACTIVE / PENDING / REJECTED）

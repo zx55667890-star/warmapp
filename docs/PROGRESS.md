@@ -127,3 +127,27 @@
 - [x] 第 9 輪變更：1 個檔案修改
 - [x] 第 10 輪變更：2 個檔案修改（`gradle/libs.versions.toml` + `ExpertViewModel.kt`）
 
+### 第 11 輪：Serper 外部搜尋取代內建 googleSearch（避開 Gen3 Free Tier 限制）
+- [x] **批次測試按鈕** — ExpertScreen.kt 底部橘色按鈕，20 筆冷門技能
+- [x] **`searchOnSerper()` 函式** — 調用 `https://google.serper.dev/search`，取前 3 筆 organic 結果，5s timeout
+- [x] **`useWebFetch` 自訂旗標** — 新增於 MODELS 物件，控制是否先做 Serper 搜尋再餵給模型
+- [x] **`SERPER_API_KEY` Firebase secret** — 設為 `7c8de270780a9fe51442063fa25e3894ab6fa838`，deploy 成功
+- [x] **Gen3 thinking 語法支援** — `thinkingLevel`（minimal/low/medium/high），透過 `thinkingConfig` 傳遞
+- [x] **Prompt 增強** — 加入「請仔細參考上述網路搜尋結果」指示 + 標籤語言同源規則
+- [x] **`slimmedEntries`/`localMapping` 移至 model loop 內建** — 不再重送全部 entry，每個 fallback 只送剩餘項目
+- [x] **Per-skill logging** — 每個 model 結束後 log 哪些 accepted/rejected
+- [x] **自癒掃描 try-catch** — 不中斷主流程
+- [x] **Model 陣列縮減** — PRIMARY + FALLBACK_1 (Serper) + FALLBACK_2~3 (內建 googleSearch)
+
+### 模型測試結果（2026/7/17）
+- `gemini-3.1-flash-lite` + Serper：731ms，2/2 接受 ✅
+- `gemini-3-flash-preview` + Serper（預設 thinking high）：24s，2/2 拒 ❌
+- `gemini-3-flash-preview` + Serper + thinkingLevel `minimal`：10.6s，1/2 接受 ⚠️
+- `gemini-3.5-flash` + Serper + thinkingLevel `minimal`：6.1s，2/2 接受 ✅
+- `gemini-3-flash-preview` + Serper + thinkingLevel `low`：剛 deploy，待測試
+- 當前部署：`gemini-3-flash-preview` + thinkingLevel `low` + Serper（ace6396）
+
+### Git
+- [x] 約 42+ 次提交，已全部推送至 main
+- [x] 第 11 輪變更：1 個檔案修改（`functions/index.js`）
+

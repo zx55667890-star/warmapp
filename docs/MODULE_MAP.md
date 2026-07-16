@@ -162,7 +162,7 @@
 ## 後端 (Cloud Function)
 | 檔案 | 角色 |
 |------|------|
-| `functions/index.js` | batchProcessPendingSkills (排程 AI 分析) |
+| `functions/index.js` | batchProcessPendingSkills (排程 AI 分析，含 Serper 搜尋、thinkingConfig、4 model fallback) |
 | `functions/package.json` | Node.js 24, firebase-admin, @google/genai |
 | `database.rules.json` | RTDB Security Rules |
 
