@@ -140,8 +140,7 @@
 ## 主題
 | 檔案 | 角色 |
 |------|------|
-| `ui/theme/Color.kt` | 基礎色板（Purple/Pink 主題色） |
-| `ui/theme/AppColors.kt` | AppColors 深色主題色板 |
+| `ui/theme/AppColors.kt` | 主題配色（Material3 基礎色 + AppColors 深色色板） |
 | `ui/theme/Theme.kt` | Material3 主題設定 |
 | `ui/theme/Type.kt` | 字型定義 |
 
