@@ -8,6 +8,7 @@ admin.initializeApp();
 const db = getDatabase();
 
 const geminiApiKey = defineSecret('GEMINI_API_KEY');
+const serperApiKey = defineSecret('SERPER_API_KEY');
 
 function encodePath(text) {
   return Buffer.from(text, 'utf8').toString('base64url');
@@ -17,15 +18,15 @@ const BATCH_LIMIT = 20;
 const PROCESSING_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
 
 const MODELS = [
-  // PRIMARY：最高 RPD 主力，default minimal thinking，不搜尋
+  // PRIMARY：最高 RPD 主力，不搜尋，快速濾掉已知技能
   { name: 'gemini-3.1-flash-lite', label: 'PRIMARY', useSearch: false },
 
-  // FALLBACK：開啟搜尋，需要保留思考能力
-  // 順序依速度/可用性排列，429 高的放最後
-  { name: 'gemini-3.5-flash',       label: 'FALLBACK_1', useSearch: true },
-  { name: 'gemini-2.5-flash-lite',  label: 'FALLBACK_2', useSearch: true },
-  { name: 'gemini-2.5-flash',       label: 'FALLBACK_3', useSearch: true },
-  { name: 'gemini-3-flash-preview', label: 'FALLBACK_4', useSearch: true },
+  // FALLBACK_1：使用 Serper 外部搜尋後再讓同模型判斷（避開內建 googleSearch 的 Free Tier 限制）
+  { name: 'gemini-3.1-flash-lite', label: 'FALLBACK_1', useWebFetch: true },
+
+  // 備用：內建 googleSearch 給 Gen2 模型用
+  { name: 'gemini-2.5-flash-lite', label: 'FALLBACK_2', useSearch: true },
+  { name: 'gemini-2.5-flash',      label: 'FALLBACK_3', useSearch: true },
 ];
 
 async function generateContentWithRetry(modelConfig, prompt, retries = 3) {
@@ -69,6 +70,21 @@ async function generateContentWithRetry(modelConfig, prompt, retries = 3) {
       throw err;
     }
   }
+}
+
+async function searchOnSerper(query) {
+  const res = await fetch('https://google.serper.dev/search', {
+    method: 'POST',
+    headers: {
+      'X-API-KEY': serperApiKey.value(),
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ q: query, num: 3 }),
+    signal: AbortSignal.timeout(5000),
+  });
+  if (!res.ok) throw new Error(`Serper API error: ${res.status}`);
+  const data = await res.json();
+  return (data.organic || []).map(r => `${r.title}: ${r.snippet}`).join('\n');
 }
 
 const REPAIR_BATCH_SIZE = 5;
@@ -128,7 +144,7 @@ async function healOrphanedPending() {
 exports.batchProcessPendingSkills = onSchedule(
   {
     schedule: 'every 5 minutes',
-    secrets: [geminiApiKey],
+    secrets: [geminiApiKey, serperApiKey],
     minInstances: 1,
   },
   async () => {
@@ -270,11 +286,26 @@ exports.batchProcessPendingSkills = onSchedule(
         return { id: virtualId, text: entry.text };
       });
 
-      const prompt = `請判斷以下每筆資料是否為真實、有意義的專業技能描述。
+      // 若 useWebFetch，先對每筆 entry 做 Serper 搜尋
+      let searchContext = '';
+      if (model.useWebFetch) {
+        const searchResults = await Promise.all(slimmedEntries.map(async (se) => {
+          try {
+            const snippets = await searchOnSerper(se.text);
+            return `Entry "${se.id}": "${se.text}"\n搜尋結果：\n${snippets}`;
+          } catch (err) {
+            console.warn(`Search failed for "${se.text}": ${err.message}`);
+            return `Entry "${se.id}": "${se.text}"\n搜尋結果：（搜尋失敗）`;
+          }
+        }));
+        searchContext = '以下是網路搜尋結果，請仔細參考這些資訊來輔助判斷技能的真實性：\n\n' + searchResults.join('\n\n') + '\n\n';
+      }
+
+      const prompt = searchContext + `請判斷以下每筆資料是否為真實、有意義的專業技能描述。
 判斷原則：
 - 如果內容是具體、可理解的專業技能，請提取 4 個最核心的關鍵字標籤
 - 如果內容是無意義的胡言亂語或無法對應到真實場景，請將 status 設為 "REJECTED"
-- 如果你對該技能描述感到猶豫，或者該名詞看起來很新但不確定是否真實，請回傳 REJECTED，交由後續的系統進行查證
+- 請仔細參考上述網路搜尋結果（若有提供）來協助判斷
 - 遇到無法明確判斷時，寧可 REJECTED 也不要勉強給標籤
 - 標籤必須使用與技能描述相同的語言（若描述為中文，標籤也必須是中文）
 
@@ -282,7 +313,8 @@ exports.batchProcessPendingSkills = onSchedule(
 資料：${JSON.stringify(slimmedEntries)}`;
 
       try {
-        const { response, elapsed } = await generateContentWithRetry(model, prompt);
+        const apiModel = model.useWebFetch ? { ...model, useSearch: false } : model;
+        const { response, elapsed } = await generateContentWithRetry(apiModel, prompt);
         console.log(`Model ${model.name} responded in ${elapsed}ms`);
         const text = response.text || '';
         if (!text) throw new Error('AI 回傳空內容');
