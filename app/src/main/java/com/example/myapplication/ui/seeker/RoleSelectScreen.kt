@@ -226,7 +226,7 @@ fun RoleSelectScreen(
                             .height(180.dp)
                             .clickable { onAskQuestion() },
                         shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = AppColors.DarkSurface)
+                        colors = CardDefaults.cardColors(containerColor = AppColors.SurfaceDark)
                     ) {
                         Column(
                             modifier = Modifier.fillMaxSize(),
@@ -247,7 +247,7 @@ fun RoleSelectScreen(
                             .height(180.dp)
                             .clickable { onExpertMode() },
                         shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = AppColors.DarkSurface)
+                        colors = CardDefaults.cardColors(containerColor = AppColors.SurfaceDark)
                     ) {
                         Column(
                             modifier = Modifier.fillMaxSize(),

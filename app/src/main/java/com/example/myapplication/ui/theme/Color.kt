@@ -18,14 +18,3 @@ val CardBackground = Color(0xFF252438)
 val SecondaryText = Color(0xFF9090A8)
 val MutedText = Color(0xFF666680)
 
-object AppColors {
-    val DarkBackground = Color(0xFF000000)
-    val DarkSurface = Color(0xFF1A1A2E)
-    val AccentBlue = Color(0xFF4FC3F7)
-    val AccentGreen = Color(0xFF04C9A0)
-    val TextWhite = Color(0xFFFFFFFF)
-    val TextGray = Color(0xFF888888)
-    val TextLightGray = Color(0xFFE0E0E0)
-    val BorderGray = Color(0xFF444444)
-    val AccentYellow = Color(0xFFFFB300)
-}

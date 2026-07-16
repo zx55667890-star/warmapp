@@ -1,0 +1,39 @@
+package com.example.myapplication.ui.theme
+
+import androidx.compose.ui.graphics.Color
+
+object AppColors {
+    // ── 背景層級 ──
+    val DarkBackground   = Color(0xFF0B0E14)
+    val SurfaceDark      = Color(0xFF12161F)
+    val SurfaceMedium    = Color(0xFF1A1F2E)
+    val SurfaceLight     = Color(0xFF232940)
+
+    // ── 強調色 ──
+    val AccentGreen      = Color(0xFF00E5A0)
+    val AccentBlue       = Color(0xFF4C8BFF)
+    val AccentGradientStart = Color(0xFF00E5A0)
+    val AccentGradientEnd   = Color(0xFF00B4D8)
+    val AccentOrange     = Color(0xFFFF6B35)
+
+    // ── 文字 ──
+    val TextWhite        = Color(0xFFF0F2F5)
+    val TextGray         = Color(0xFF6B7280)
+    val TextMuted        = Color(0xFF3D4455)
+
+    // ── 邊框 & 分隔 ──
+    val BorderGray       = Color(0xFF2A3042)
+    val BorderGlow       = Color(0xFF00E5A0).copy(alpha = 0.25f)
+
+    // ── 玻璃效果 ──
+    val GlassStroke      = Color.White.copy(alpha = 0.06f)
+    val GlassFill        = Color.White.copy(alpha = 0.03f)
+
+    // ── 狀態 ──
+    val StatusError      = Color(0xFFEF4444)
+    val StatusErrorBg    = Color(0xFFEF4444).copy(alpha = 0.08f)
+    val StatusSuccess    = AccentGreen
+    val StatusSuccessBg  = AccentGreen.copy(alpha = 0.08f)
+    val StatusPending    = Color(0xFFFBBF24)
+    val StatusPendingBg  = Color(0xFFFBBF24).copy(alpha = 0.08f)
+}
