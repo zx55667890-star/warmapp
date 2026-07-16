@@ -296,6 +296,7 @@ exports.batchProcessPendingSkills = onSchedule(
         }
 
         const newlyRejectedEntries = [];
+        const acceptedEntries = [];
 
         for (const item of parsed) {
           const entry = localMapping.get(item.id?.toString());
@@ -310,6 +311,7 @@ exports.batchProcessPendingSkills = onSchedule(
           if (isReject) {
             newlyRejectedEntries.push(entry);
           } else {
+            acceptedEntries.push({ text: entry.text, tags });
             const skillRef = `solutions/${entry.userId}/${entry.id}`;
             const t = lockTrackers[entry.userId] || (lockTrackers[entry.userId] = { rejectedCount: 0, hasActive: false });
 
@@ -321,6 +323,8 @@ exports.batchProcessPendingSkills = onSchedule(
           }
         }
 
+        console.log(`${model.label} accepted:`, JSON.stringify(acceptedEntries.map(e => e.text)));
+        console.log(`${model.label} rejected:`, JSON.stringify(newlyRejectedEntries.map(e => e.text)));
         remainingEntries = newlyRejectedEntries;
 
       } catch (err) {
@@ -337,7 +341,7 @@ exports.batchProcessPendingSkills = onSchedule(
     }
 
     if (remainingEntries.length > 0) {
-      console.log(`Final reject for ${remainingEntries.length} items after trying all models.`);
+      console.log(`Final reject for ${remainingEntries.length} items:`, JSON.stringify(remainingEntries.map(e => e.text)));
       for (const entry of remainingEntries) {
         const skillRef = `solutions/${entry.userId}/${entry.id}`;
         const t = lockTrackers[entry.userId] || (lockTrackers[entry.userId] = { rejectedCount: 0, hasActive: false });
