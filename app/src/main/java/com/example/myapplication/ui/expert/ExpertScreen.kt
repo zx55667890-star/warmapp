@@ -189,6 +189,29 @@ fun ExpertScreenContent(
                     Text(stringResource(R.string.expert_back_button), fontWeight = FontWeight.Bold)
                 }
             }
+
+            item {
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(
+                    onClick = {
+                        val skills = listOf(
+                            "Android Kotlin 開發", "Python 資料分析",
+                            "React 前端開發", "機器學習模型訓練",
+                            "Docker 容器部署", "AWS 雲端架構",
+                            "SQL 資料庫設計", "JavaScript 網頁開發",
+                            "Git 版本控制", "RESTful API 設計",
+                            "TypeScript 開發", "Node.js 後端開發",
+                            "Flutter 跨平台開發", "Kubernetes 集群管理",
+                            "Swift iOS 開發"
+                        )
+                        skills.forEach { onPublishSkill(it) }
+                    },
+                    modifier = Modifier.fillMaxWidth().height(44.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF6B35))
+                ) {
+                    Text("批次測試（15筆）", color = Color.White, fontWeight = FontWeight.Bold)
+                }
+            }
         }
 
         if (feedbackMsg != null && buttonCoords != null && outerBoxLayout != null) {
