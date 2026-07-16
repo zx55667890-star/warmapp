@@ -44,7 +44,8 @@
 ### 依賴注入
 - ✅ 統一使用 Koin（`libs.versions.toml` 版本管理）
 - ❌ 沒有手動依賴注入
-- ✅ ViewModel 註冊用 `viewModel { ExpertViewModel(get()) }`
+- ✅ ViewModel 路徑：專家在 `ui/expert/`，提問者在 `ui/seeker/`
+- ✅ ViewModel 註冊用 `viewModel { ExpertViewModel(get(), get(), get(), get()) }`
 
 ### 後端 (Cloud Function)
 - ✅ Node.js 24 runtime
@@ -55,6 +56,7 @@
 - ✅ 503 retry（2s / 4s backoff）
 - ✅ 429/RESOURCE_EXHAUSTED → EXHAUSTED
 - ✅ 有搜尋的模型不使用 `responseMimeType: 'application/json'`（Gemini 2.5 不支援同時使用 tools + JSON mode）
+- ✅ 自我修復排程每 5 分鐘掃描孤立 PENDING（`healOrphanedPending`，每次 5 個 user）
 
 ### 測試
 - ✅ ViewModel 測試用 `Dispatchers.setMain(testDispatcher)` + `runTest`

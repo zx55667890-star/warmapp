@@ -71,6 +71,14 @@
 | @google/genai | ^2.10.0 |
 | nodemailer | ^6.9.0 |
 
+## Cloud Function 自我修復
+| 項目 | 值 |
+|------|-----|
+| 機制 | `healOrphanedPending()` 掃描 `solutions/{uid}` 中 PENDING > 10 分鐘的孤立 entry |
+| 批次 | 每次 5 個 user |
+| 游標 | `config/repair_cursor` 記錄進度 |
+| 原因 | `saveSkill()` 使用兩次個別 `setValue()` 非原子寫入，`pending_skills` 可能寫失敗 |
+
 ## Cloud Function 模型清單 (fallback 順序)
 | 順位 | 模型 | 思考 | 搜尋 |
 |------|------|------|------|

@@ -17,6 +17,16 @@
 - `docs/` 文件目錄（PROJECT_STRUCTURE, ARCHITECTURE, MODULE_MAP, etc.）
 - `functions/index.js` MODEL 策略調整：PRIMARY 改為 gemini-3.1-flash-lite（無思考設定、無搜尋），4 個 FALLBACK 模型啟用 Google Search grounding
 - Prompt 加入「不確定請 REJECT」引導
+- `domain/expert/PublishSkillUseCase.kt` — 封裝技能發布邏輯
+- `domain/expert/ObserveSolutionsUseCase.kt` — 封裝技能歷史監聽
+- `functions/index.js` 孤立 PENDING 自我修復排程（`healOrphanedPending`，每次掃 5 個 user）
+
+### 變更
+- `di/ExpertViewModel.kt` → `ui/expert/ExpertViewModel.kt`（含 `ExpertUiState`、`ExpertUiEvent`）
+- `di/SeekerViewModel.kt` → `ui/seeker/SeekerViewModel.kt`（含 `SeekerUiState`）
+- `ExpertViewModel` 改用注入式 UseCase（`PublishSkillUseCase`、`ObserveSolutionsUseCase`）
+- `database.rules.json` 加入 `solutions/$uid/.indexOn: ["status"]`
+- 同步更新所有 import（ExpertScreen、AppNavigation、AskQuestionScreen、測試）
 
 ### 修正
 - `functions/index.js` 路徑編碼問題：Firebase RTDB 不允許 `.`、`#`、`$`、`[`、`]`，改用 base64url 編碼 blacklist/whitelist 路徑

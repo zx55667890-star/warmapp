@@ -9,7 +9,8 @@
 │  Components / Widgets / Dialogs                          │
 ├─────────────────────────────────────────────────────────┤
 │                 Domain Layer (Use Cases)                  │
-│  ExpertInputValidator                                    │
+│  ExpertInputValidator / PublishSkillUseCase              │
+│  ObserveSolutionsUseCase                                 │
 │  LoginUseCase / RegisterUseCase / ...                    │
 │  SendTextMessageUseCase / ObserveMessagesUseCase / ...   │
 ├─────────────────────────────────────────────────────────┤
@@ -47,35 +48,40 @@ ExpertViewModel.publishSkill(userId, text)
     ├─ [Validate] ExpertInputValidator.validate(text)
     │     └─ 失敗 → publishFeedbackRes = error string
     │
-    └─ [Success] ExpertRepository.saveSkill(userId, text)
-          │
-          ├─ Firebase: solutions/{userId}/{pushId}
-          │     { expertise, tags:[], status:"PENDING", timestamp }
-          │
-          └─ Firebase: pending_skills/{pushId}
-                { userId, text, timestamp }
+    └─ [Success] PublishSkillUseCase(userId, trimmed)
+          └─ ExpertRepository.saveSkill(userId, text)
                 │
-                ▼  (排程，最長等 5 分鐘)
-          batchProcessPendingSkills (Cloud Function)
+                ├─ Firebase: solutions/{userId}/{pushId}
+                │     { expertise, tags:[], status:"PENDING", timestamp }
                 │
-                ├─ 1. Blacklist 檢查 (tags_blacklist/{base64(text)})
-                │     └─ 命中 → REJECTED
-                │
-                ├─ 2. Whitelist 檢查 (tags_whitelist/{base64(text)}/tags)
-                │     └─ 命中 → ACTIVE + 快取標籤
-                │
-                ├─ 3. AI 分析 (5 模型接力)
-                │     PRIMARY: gemini-3.1-flash-lite (無搜尋)
-                │       → REJECT 才丟給下一棒
-                │     FALLBACK_1~4: 有 Google Search 能力
-                │       → 最終 REJECT 才寫入黑名單
-                │
-                └─ 結果寫回：
-                      solutions/{uid}/{id}/status = ACTIVE/REJECTED
-                      solutions/{uid}/{id}/tags = [...]
-                      pending_skills/{id} = null (刪除)
-                      tags_whitelist or tags_blacklist (快取)
-                      users/{uid}/submissionLock (連續拒絕計數)
+                └─ Firebase: pending_skills/{pushId}
+                      { userId, text, timestamp }
+                      │
+                      ▼  (排程，最長等 5 分鐘)
+                batchProcessPendingSkills (Cloud Function)
+                      │
+                      ├─ [Self-Heal] healOrphanedPending()
+                      │    掃描 solutions 中 PENDING > 10 分鐘且
+                      │    pending_skills 無對應 entry 者，補回佇列
+                      │
+                      ├─ 1. Blacklist 檢查 (tags_blacklist/{base64(text)})
+                      │     └─ 命中 → REJECTED
+                      │
+                      ├─ 2. Whitelist 檢查 (tags_whitelist/{base64(text)}/tags)
+                      │     └─ 命中 → ACTIVE + 快取標籤
+                      │
+                      ├─ 3. AI 分析 (5 模型接力)
+                      │     PRIMARY: gemini-3.1-flash-lite (無搜尋)
+                      │       → REJECT 才丟給下一棒
+                      │     FALLBACK_1~4: 有 Google Search 能力
+                      │       → 最終 REJECT 才寫入黑名單
+                      │
+                      └─ 結果寫回：
+                            solutions/{uid}/{id}/status = ACTIVE/REJECTED
+                            solutions/{uid}/{id}/tags = [...]
+                            pending_skills/{id} = null (刪除)
+                            tags_whitelist or tags_blacklist (快取)
+                            users/{uid}/submissionLock (連續拒絕計數)
 ```
 
 ## 資料流 — 聊天

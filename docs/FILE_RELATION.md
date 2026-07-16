@@ -10,11 +10,13 @@ ExpertScreen.kt
   │   └── SkillEditDialog (編輯彈窗)
   │
   └── ExpertViewModel.kt
+        ├── PublishSkillUseCase.kt (發布技能)
+        ├── ObserveSolutionsUseCase.kt (監聽技能歷史)
         ├── ExpertInputValidator.kt (驗證邏輯)
         ├── ExpertRepository.kt (Firebase 資料)
         │     ├── Constants.kt (路徑/欄位/狀態常數)
         │     └── SolutionItem.kt (資料模型)
-        └── AppModule.kt (DI)
+        └── AppModule.kt (DI - 路徑 ui/expert/)
 ```
 
 ## 聊天模式 (Chat)
@@ -56,7 +58,7 @@ AskQuestionScreen.kt
 RoleSelectScreen.kt
   └── MatchingOverlay.kt / MatchingDialog.kt
 
-SeekerViewModel.kt
+SeekerViewModel.kt (ui/seeker/)
   ├── QuestionRepository.kt
   ├── MatchingRepository.kt
   ├── MatchCoordinator.kt
@@ -89,6 +91,8 @@ AuthViewModel.kt
 ```
 Firebase Scheduler (every 5 min)
   └── batchProcessPendingSkills (index.js)
+        ├── [Self-Heal] healOrphanedPending()
+        │     掃描 solutions PENDING > 10min 且無對應 pending_skills entry
         ├── Firebase RTDB (read pending_skills)
         ├── Blacklist check (tags_blacklist)
         ├── Whitelist check (tags_whitelist)

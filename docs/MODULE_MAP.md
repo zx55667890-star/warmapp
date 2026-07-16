@@ -59,10 +59,12 @@
 |------|------|
 | `ui/expert/ExpertScreen.kt` | ExpertScreen bridge + ExpertScreenContent + QuickLogCard + KnowledgeItemCard + SkillEditDialog |
 | `ui/expert/ExpertDialogs.kt` | 專家相關對話框 |
-| `di/ExpertViewModel.kt` | 專家 ViewModel（publish/edit/listen） |
+| `ui/expert/ExpertViewModel.kt` | 專家 ViewModel（publish/edit/listen） |
 | `data/repository/ExpertRepository.kt` | 技能資料 CRUD（Firebase RTDB） |
 | `data/model/SolutionItem.kt` | 技能資料模型 + SkillStatus enum |
 | `domain/expert/ExpertInputValidator.kt` | 前端輸入驗證邏輯 |
+| `domain/expert/PublishSkillUseCase.kt` | 發布技能 UseCase |
+| `domain/expert/ObserveSolutionsUseCase.kt` | 監聽技能歷史 UseCase |
 | `util/ExpertTitleUtil.kt` | 專家稱號工具 |
 
 ## 提問者模式 (seeker)
@@ -80,7 +82,7 @@
 | `ui/seeker/components/BackgroundGlow.kt` | 背景光暈 |
 | `ui/seeker/components/DrawerContent.kt` | 側邊欄內容 |
 | `ui/seeker/components/FullSettingsScreen.kt` | 設定畫面 |
-| `di/SeekerViewModel.kt` | 提問者 ViewModel |
+| `ui/seeker/SeekerViewModel.kt` | 提問者 ViewModel |
 | `domain/seeker/MatchCoordinator.kt` | 配對協調器 |
 | `domain/seeker/ObserveQuestionStatusUseCase.kt` | 問題狀態監聽 |
 | `domain/seeker/SendQuestionMediaUseCase.kt` | 傳送問題媒體 |
