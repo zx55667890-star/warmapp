@@ -22,10 +22,10 @@ const MODELS = [
 
   // FALLBACK：開啟搜尋，需要保留思考能力
   // 順序依速度/可用性排列，429 高的放最後
-  { name: 'gemini-3-flash-preview', label: 'FALLBACK_1', useSearch: true },
+  { name: 'gemini-3.5-flash',       label: 'FALLBACK_1', useSearch: true },
   { name: 'gemini-2.5-flash-lite',  label: 'FALLBACK_2', useSearch: true },
   { name: 'gemini-2.5-flash',       label: 'FALLBACK_3', useSearch: true },
-  { name: 'gemini-3.5-flash',       label: 'FALLBACK_4', useSearch: true },
+  { name: 'gemini-3-flash-preview', label: 'FALLBACK_4', useSearch: true },
 ];
 
 async function generateContentWithRetry(modelConfig, prompt, retries = 3) {
