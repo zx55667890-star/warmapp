@@ -53,3 +53,15 @@ ViewModel property/method 改名時若未同步對應的 Screen composable，IDE
 
 ### 10. Google Sign In 尚未完成
 - **狀態**：`SignInWithGoogleUseCase.kt` 存在但尚未完整整合
+
+### 12. `Icons.Outlined.TrendingUp` 已棄用
+ExpertScreen.kt:302 使用 `Icons.Outlined.TrendingUp`，應改用 `Icons.AutoMirrored.Outlined.TrendingUp`。
+- **影響**：編譯 warning，功能正常
+
+### 13. `GoogleSignIn` 已棄用
+AuthScreen.kt:37/95/101 使用 `GoogleSignIn` class，已標記 deprecated。
+- **影響**：編譯 warning，功能正常
+- **建議**：遷移至 Credential Manager API
+
+### 14. Constants.kt 集中式常數未拆分
+`data/Constants.kt` 包含所有 Firebase 路徑、欄位、狀態值。隨專案規模成長建議依 feature 拆分（ChatConstants.kt / ExpertConstants.kt）或內部用 object 命名空間隔離。

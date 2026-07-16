@@ -20,6 +20,9 @@
 - Gen3 thinking 語法支援 — `thinkingLevel`（minimal/low/medium/high）透過 `thinkingConfig` 傳遞
 - 批次測試按鈕 — ExpertScreen 底部橘色按鈕，20 筆冷門技能
 - Per-skill logging — 每個 model log 哪些 accepted/rejected
+- **Nunito Sans 字體** — `nunito_sans_regular.ttf` + `nunito_sans_bold.ttf`，完整 14 級 Typography 映射含用途註解
+- **6 個 DI module** — CoreModule, AuthModule, ChatModule, ExpertModule, SeekerModule, MediaModule（取代單一 AppModule.kt）
+- **資料層 (Data) 區塊** — UserRepository, DataMigrator, Constants 移出 DI
 
 ### 變更
 - PRIMARY 維持 `gemini-3.1-flash-lite`（無搜尋）
@@ -27,17 +30,21 @@
 - `slimmedEntries`/`localMapping` 移至 model loop 內建（不重送全部 entry）
 - Prompt 增強 — 加入參考網路搜尋指示 + 標籤語言同源規則
 - 自癒掃描 try-catch 包覆，不中斷主流程
-
-### 測試
-- `gemini-3.1-flash-lite` + Serper：731ms，2/2 接受 ✅
-- `gemini-3-flash-preview` + Serper (thinking high)：24s，2/2 拒 ❌
-- `gemini-3-flash-preview` + Serper (thinking minimal)：10.6s，1/2 接受 ⚠️
-- `gemini-3.5-flash` + Serper (thinking minimal)：6.1s，2/2 接受 ✅
-- 當前：`gemini-3-flash-preview` + thinkingLevel `low` + Serper（待測試）
+- **Theme.kt 重寫** — 純深色 `darkColorScheme` 驅動，移除 light/dynamic color
+- **AppColors 色值更新** — AccentGreen/AcentBlue/Orange/GradientEnd 換色，玻璃效果加強
+- **Color.kt 合併進 AppColors.kt** — 刪除 Color.kt，Purple80/Purple40 等死碼移除
+- **MainActivity.kt** — KoinApplication 載入 6 個 modules 取代單一 appModule
+- **MODULE_MAP.md** — DI 區塊拆 6 module + 新增資料層區塊 + AiRepository 移至專家區
+- `CHANGELOG_OLD.md` + `get_sha1.md` 搬入 `docs/`
 
 ### 修正
 - 解決 Gen3 Free Tier 無法使用內建 `googleSearch`（429/RESOURCE_EXHAUSTED）
 - 重疊排程併發控制透過 atomic transaction claim + 5 分鐘 timeout
+
+### 刪除
+- `di/AppModule.kt`（94 行 → 6 個獨立 module 共 158 行）
+- `ui/theme/Color.kt`（合併進 AppColors.kt）
+- 根目錄 `CHANGELOG_OLD.md`、`get_sha1.md`（搬入 docs/）
 
 ## 2026-07-16
 ### 新增

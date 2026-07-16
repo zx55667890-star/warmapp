@@ -140,9 +140,9 @@
 ## 主題
 | 檔案 | 角色 |
 |------|------|
-| `ui/theme/AppColors.kt` | 主題配色（Material3 基礎色 + AppColors 深色色板） |
-| `ui/theme/Theme.kt` | Material3 主題設定 |
-| `ui/theme/Type.kt` | 字型定義 |
+| `ui/theme/AppColors.kt` | 深色主題色板（背景層級、強調色、文字、邊框、玻璃效果、狀態色） |
+| `ui/theme/Theme.kt` | 純深色 Material3 主題（darkColorScheme） |
+| `ui/theme/Type.kt` | Nunito Sans 字型 + 14 級 Typography |
 
 ## 資源
 | 檔案 | 角色 |

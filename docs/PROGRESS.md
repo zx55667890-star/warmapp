@@ -151,3 +151,19 @@
 - [x] 約 42+ 次提交，已全部推送至 main
 - [x] 第 11 輪變更：1 個檔案修改（`functions/index.js`）
 
+### 第 12 輪：主題系統重構（AppColors → Theme → Type + DI 拆分）
+- [x] **AppColors 獨立檔案** — 從 `Color.kt` 中遷出 `object AppColors` 成獨立檔
+- [x] **Color.kt 合併進 AppColors.kt** — 刪除 Color.kt，Purple80/Purple40 等死碼一併移除
+- [x] **色值更新** — AccentGreen `#34D399`、AccentBlue `#60A5FA`、GradientEnd `#2DD4BF`、玻璃效果加強（10%/5%）
+- [x] **Theme.kt 重寫** — 純深色 `darkColorScheme`，完整映射 `AppColors` 到 Material3 色彩角色，移除 light scheme / dynamic color
+- [x] **Nunito Sans 字體** — 加入 `nunito_sans_regular.ttf` + `nunito_sans_bold.ttf`，完整 14 級 Typography 映射
+- [x] **Type.kt 用途註解** — 每級文字角色標示中文用途（displayLarge=頁面大標題、bodyLarge=正文...）
+- [x] **DI 拆分** — `AppModule.kt` 刪除，拆分為 6 個 feature module（Core/Auth/Chat/Expert/Seeker/Media）
+- [x] **MainActivity.kt** — `KoinApplication` 改用 `modules(coreModule, authModule, ...)`
+- [x] **MODULE_MAP.md 更新** — DI 區塊拆 6 module + 新增「資料層」區塊 + AiRepository 移至專家區
+- [x] **根目錄清理** — `CHANGELOG_OLD.md` + `get_sha1.md` 搬入 `docs/`
+
+### Git
+- [x] 約 53+ 次提交，已全部推送至 main
+- [x] 第 12 輪變更：13+ 個檔案（新增 9 檔、刪除 3 檔、修改 6+ 檔）
+
