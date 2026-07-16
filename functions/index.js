@@ -21,12 +21,16 @@ const MODELS = [
   // PRIMARY：最高 RPD 主力，不搜尋，快速濾掉已知技能
   { name: 'gemini-3.1-flash-lite', label: 'PRIMARY', useSearch: false },
 
-  // FALLBACK_1：使用 Serper 外部搜尋後再讓同模型判斷（避開內建 googleSearch 的 Free Tier 限制）
-  { name: 'gemini-3-flash-preview', label: 'FALLBACK_1', useWebFetch: true, thinkingConfig: { thinkingLevel: 'minimal' } },
+  // FALLBACK_1：同 PRIMARY 但啟用 Serper 外部搜尋
+  { name: 'gemini-3.1-flash-lite', label: 'FALLBACK_1', useWebFetch: true },
 
-  // 備用：內建 googleSearch 給 Gen2 模型用
+  // FALLBACK_2~3：內建 googleSearch（Gen2 支援）
   { name: 'gemini-2.5-flash-lite', label: 'FALLBACK_2', useSearch: true },
   { name: 'gemini-2.5-flash',      label: 'FALLBACK_3', useSearch: true },
+
+  // FALLBACK_4~5：Gen3 模型 + Serper + minimal thinking
+  { name: 'gemini-3.5-flash',      label: 'FALLBACK_4', useWebFetch: true, thinkingConfig: { thinkingLevel: 'minimal' } },
+  { name: 'gemini-3-flash-preview',label: 'FALLBACK_5', useWebFetch: true, thinkingConfig: { thinkingLevel: 'minimal' } },
 ];
 
 async function generateContentWithRetry(modelConfig, prompt, retries = 3) {
