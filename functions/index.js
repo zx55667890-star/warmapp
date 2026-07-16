@@ -1,5 +1,5 @@
 const admin = require('firebase-admin');
-const { GoogleGenAI } = require('@google/genai');
+const { GoogleGenAI, Type } = require('@google/genai');
 const { defineSecret } = require('firebase-functions/params');
 const { onSchedule } = require('firebase-functions/v2/scheduler');
 const { getDatabase } = require('firebase-admin/database');
@@ -34,7 +34,21 @@ async function generateContentWithRetry(modelConfig, prompt, retries = 3) {
     try {
       const startTime = Date.now();
       const config = {};
-      if (!modelConfig.useSearch) config.responseMimeType = 'application/json';
+      if (!modelConfig.useSearch) {
+        config.responseMimeType = 'application/json';
+        config.responseSchema = {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              id: { type: Type.STRING },
+              tags: { type: Type.ARRAY, items: { type: Type.STRING } },
+              status: { type: Type.STRING, enum: ['ACTIVE', 'REJECTED'] }
+            },
+            required: ['id', 'tags', 'status']
+          }
+        };
+      }
       if (modelConfig.thinkingConfig) config.thinkingConfig = modelConfig.thinkingConfig;
       if (modelConfig.useSearch) config.tools = [{ googleSearch: {} }];
       const response = await ai.models.generateContent({
@@ -239,6 +253,14 @@ exports.batchProcessPendingSkills = onSchedule(
 
     let lastError = null;
 
+    // Build virtual integer ID mapping to avoid AI miscopying high-entropy Firebase Push IDs
+    const localMapping = new Map();
+    const slimmedEntries = remainingEntries.map((entry, index) => {
+      const virtualId = index.toString();
+      localMapping.set(virtualId, entry);
+      return { id: virtualId, text: entry.text };
+    });
+
     for (const model of candidates) {
       if (remainingEntries.length === 0) break;
 
@@ -247,12 +269,12 @@ exports.batchProcessPendingSkills = onSchedule(
       const prompt = `請判斷以下每筆資料是否為真實、有意義的專業技能描述。
 判斷原則：
 - 如果內容是具體、可理解的專業技能，請提取 4 個最核心的關鍵字標籤
-- 如果內容是無意義的胡言亂語或無法對應到真實場景，請將 tags 設為 ["REJECT"]
-- 如果你對該技能描述感到猶豫，或者該名詞看起來很新但不確定是否真實，請回傳 REJECT，交由後續的系統進行查證
-- 遇到無法明確判斷時，寧可 REJECT 也不要勉強給標籤
+- 如果內容是無意義的胡言亂語或無法對應到真實場景，請將 status 設為 "REJECTED"
+- 如果你對該技能描述感到猶豫，或者該名詞看起來很新但不確定是否真實，請回傳 REJECTED，交由後續的系統進行查證
+- 遇到無法明確判斷時，寧可 REJECTED 也不要勉強給標籤
 
-以 JSON Array 格式回傳，每個物件包含 id 和 tags 欄位。
-資料：${JSON.stringify(remainingEntries.map((e) => ({ id: e.id, text: e.text })))}`;
+以 JSON Array 格式回傳，每個物件包含 id、tags 和 status 欄位。status 為 "ACTIVE"（接受）或 "REJECTED"（拒絕）。
+資料：${JSON.stringify(slimmedEntries)}`;
 
       try {
         const { response, elapsed } = await generateContentWithRetry(model, prompt);
@@ -272,16 +294,19 @@ exports.batchProcessPendingSkills = onSchedule(
         const newlyRejectedEntries = [];
 
         for (const item of parsed) {
-          const entry = remainingEntries.find((e) => e.id === item.id);
+          const entry = localMapping.get(item.id?.toString());
           if (!entry) continue;
 
-          const isReject = item.tags && Array.isArray(item.tags) && item.tags.includes('REJECT');
+          const isReject = item.status === 'REJECTED' ||
+            (Array.isArray(item.tags) && item.tags.includes('REJECT'));
+          const tags = Array.isArray(item.tags)
+            ? item.tags.filter(t => t !== 'REJECT').slice(0, 4)
+            : [];
 
           if (isReject) {
             newlyRejectedEntries.push(entry);
           } else {
-            const skillRef = `solutions/${entry.userId}/${item.id}`;
-            const tags = Array.isArray(item.tags) ? item.tags.slice(0, 4) : [];
+            const skillRef = `solutions/${entry.userId}/${entry.id}`;
             const t = lockTrackers[entry.userId] || (lockTrackers[entry.userId] = { rejectedCount: 0, hasActive: false });
 
             updates[`${skillRef}/status`] = 'ACTIVE';
