@@ -133,9 +133,14 @@ exports.batchProcessPendingSkills = onSchedule(
   },
   async () => {
     console.log('batchProcessPendingSkills started');
+    try {
 
-    await healOrphanedPending();
-    console.log('Post self-heal scan complete, proceeding to process');
+    try {
+      await healOrphanedPending();
+      console.log('Self-heal scan completed');
+    } catch (err) {
+      console.error('Self-heal scan failed, continuing main processing:', err.message);
+    }
 
     const snapshot = await db
       .ref('pending_skills')
@@ -358,5 +363,8 @@ exports.batchProcessPendingSkills = onSchedule(
 
     await db.ref().update(updates);
     console.log('Batch process complete. Updated database.');
+    } catch (err) {
+      console.error('batchProcessPendingSkills failed:', err.message, err.stack);
+    }
   }
 );
