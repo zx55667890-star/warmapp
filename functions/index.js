@@ -256,18 +256,17 @@ exports.batchProcessPendingSkills = onSchedule(
 
     let lastError = null;
 
-    // Build virtual integer ID mapping to avoid AI miscopying high-entropy Firebase Push IDs
-    const localMapping = new Map();
-    const slimmedEntries = remainingEntries.map((entry, index) => {
-      const virtualId = index.toString();
-      localMapping.set(virtualId, entry);
-      return { id: virtualId, text: entry.text };
-    });
-
     for (const model of candidates) {
       if (remainingEntries.length === 0) break;
 
       console.log(`Processing ${remainingEntries.length} skills with model: ${model.name} (${model.label})`);
+
+      const localMapping = new Map();
+      const slimmedEntries = remainingEntries.map((entry, index) => {
+        const virtualId = index.toString();
+        localMapping.set(virtualId, entry);
+        return { id: virtualId, text: entry.text };
+      });
 
       const prompt = `請判斷以下每筆資料是否為真實、有意義的專業技能描述。
 判斷原則：
