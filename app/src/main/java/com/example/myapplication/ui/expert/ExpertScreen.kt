@@ -195,21 +195,33 @@ fun ExpertScreenContent(
                 Button(
                     onClick = {
                         val skills = listOf(
-                            "Android Kotlin 開發", "Python 資料分析",
-                            "React 前端開發", "機器學習模型訓練",
-                            "Docker 容器部署", "AWS 雲端架構",
-                            "SQL 資料庫設計", "JavaScript 網頁開發",
-                            "Git 版本控制", "RESTful API 設計",
-                            "TypeScript 開發", "Node.js 後端開發",
-                            "Flutter 跨平台開發", "Kubernetes 集群管理",
-                            "Swift iOS 開發"
+                            "Mojo 高性能 AI 原生程式語言模組開發",
+                            "Quantum CI 分散式圖形化 CI/CD 執行引擎",
+                            "Backstage 內部開發者入口平台外掛整合",
+                            "OpenTofu 開源 Terraform 分支遷移與管理",
+                            "eBPF Linux 核心動態追蹤與安全監控",
+                            "Zig 零成本抽象系統程式語言開發",
+                            "Tekton Kubernetes 原生 CI/CD 管線建置",
+                            "Kyverno Kubernetes 准入控制策略管理",
+                            "CycloneDX 軟體物料清單自動生成與稽核",
+                            "Pulumi 基礎設施即程式碼多雲編排",
+                            "Dagger CI/CD 管線容器化圖形執行",
+                            "WasmEdge WebAssembly 輕量級邊緣運算",
+                            "教你如何用 OPENCLAW 使用電腦操控",
+                            "HashiCorp Boundary 零信任動態憑證代理",
+                            "NixOS 宣告式系統配置與可重現建置",
+                            "Temporal 持久化分散式工作流程編排",
+                            "RisingWave 串流資料庫即時物化視圖",
+                            "Cilium eBPF 容器網路安全與可觀測性",
+                            "Carbon Google 實驗性系統程式語言",
+                            "教你如何使用 GPT 5.6 提示詞工程"
                         )
                         skills.forEach { onPublishSkill(it) }
                     },
                     modifier = Modifier.fillMaxWidth().height(44.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF6B35))
                 ) {
-                    Text("批次測試（15筆）", color = Color.White, fontWeight = FontWeight.Bold)
+                    Text("批次測試（20筆）", color = Color.White, fontWeight = FontWeight.Bold)
                 }
             }
         }
