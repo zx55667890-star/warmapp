@@ -24,8 +24,6 @@ const MODELS = [
   // 順序依速度/可用性排列，429 高的放最後
   { name: 'gemini-2.5-flash',       label: 'FALLBACK_1', thinkingConfig: { thinkingBudget: 0 },       useSearch: true },
   { name: 'gemini-2.5-flash-lite',  label: 'FALLBACK_2', thinkingConfig: { thinkingBudget: 0 },       useSearch: true },
-  { name: 'gemini-3-flash-preview', label: 'FALLBACK_3', thinkingConfig: { thinkingLevel: 'minimal' }, useSearch: true },
-  { name: 'gemini-3.5-flash',       label: 'FALLBACK_4', thinkingConfig: { thinkingLevel: 'minimal' }, useSearch: true },
 ];
 
 async function generateContentWithRetry(modelConfig, prompt, retries = 3) {
