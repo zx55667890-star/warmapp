@@ -22,7 +22,7 @@ const MODELS = [
   { name: 'gemini-3.1-flash-lite', label: 'PRIMARY', useSearch: false },
 
   // FALLBACK_1：使用 Serper 外部搜尋後再讓同模型判斷（避開內建 googleSearch 的 Free Tier 限制）
-  { name: 'gemini-3-flash-preview', label: 'FALLBACK_1', useWebFetch: true, thinkingConfig: { thinkingLevel: 'high' } },
+  { name: 'gemini-3-flash-preview', label: 'FALLBACK_1', useWebFetch: true, thinkingConfig: { thinkingLevel: 'minimal' } },
 
   // 備用：內建 googleSearch 給 Gen2 模型用
   { name: 'gemini-2.5-flash-lite', label: 'FALLBACK_2', useSearch: true },
