@@ -65,6 +65,7 @@
 | `ui/expert/ExpertDialogs.kt` | 專家相關對話框 |
 | `ui/expert/ExpertViewModel.kt` | 專家 ViewModel（publish/edit/listen） |
 | `data/repository/ExpertRepository.kt` | 技能資料 CRUD（Firebase RTDB） |
+| `data/repository/AiRepository.kt` | AI 標籤分析（Gemini API） |
 | `data/model/SolutionItem.kt` | 技能資料模型 + SkillStatus enum |
 | `data/model/Experience.kt` | 專家上線經驗資料模型 |
 | `domain/expert/ExpertInputValidator.kt` | 前端輸入驗證邏輯 |
@@ -159,11 +160,19 @@
 ## DI / 依賴注入
 | 檔案 | 角色 |
 |------|------|
-| `di/AppModule.kt` | Koin 模組（所有 singleton + ViewModel） |
+| `di/CoreModule.kt` | 核心基礎設施（Firebase + 跨功能共用單例） |
+| `di/AuthModule.kt` | 登入驗證模組 |
+| `di/ChatModule.kt` | 聊天模組 |
+| `di/ExpertModule.kt` | 專家模組 |
+| `di/SeekerModule.kt` | 提問者模組 |
+| `di/MediaModule.kt` | 媒體模組 |
+
+## 資料層 (Data)
+| 檔案 | 角色 |
+|------|------|
 | `data/Constants.kt` | FirebasePaths, FirebaseFields, StatusValues 常數 |
-| `data/repository/DataMigrator.kt` | 資料遷移工具 |
-| `data/repository/AiRepository.kt` | AI 相關 Firebase Functions 呼叫 |
 | `data/repository/UserRepository.kt` | 使用者資料 CRUD |
+| `data/repository/DataMigrator.kt` | 資料遷移工具 |
 
 ## 後端 (Cloud Function)
 | 檔案 | 角色 |

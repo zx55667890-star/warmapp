@@ -11,7 +11,12 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsControllerCompat
-import com.example.myapplication.di.appModule
+import com.example.myapplication.di.authModule
+import com.example.myapplication.di.chatModule
+import com.example.myapplication.di.coreModule
+import com.example.myapplication.di.expertModule
+import com.example.myapplication.di.mediaModule
+import com.example.myapplication.di.seekerModule
 import com.example.myapplication.ui.navigation.AppNavigation
 import com.example.myapplication.ui.theme.MyApplicationTheme
 import org.koin.android.ext.koin.androidContext
@@ -54,7 +59,7 @@ class MainActivity : ComponentActivity() {
                 KoinApplication(
                     application = {
                         androidContext(this@MainActivity)
-                        modules(appModule)
+                        modules(coreModule, authModule, chatModule, expertModule, seekerModule, mediaModule)
                     }
                 ) {
 
