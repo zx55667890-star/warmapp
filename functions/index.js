@@ -277,8 +277,9 @@ exports.batchProcessPendingSkills = onSchedule(
 - 如果內容是無意義的胡言亂語或無法對應到真實場景，請將 status 設為 "REJECTED"
 - 如果你對該技能描述感到猶豫，或者該名詞看起來很新但不確定是否真實，請回傳 REJECTED，交由後續的系統進行查證
 - 遇到無法明確判斷時，寧可 REJECTED 也不要勉強給標籤
+- 標籤必須使用與技能描述相同的語言（若描述為中文，標籤也必須是中文）
 
-以 JSON Array 格式回傳，每個物件包含 id、tags 和 status 欄位。status 為 "ACTIVE"（接受）或 "REJECTED"（拒絕）。
+ 以 JSON Array 格式回傳，每個物件包含 id、tags 和 status 欄位。status 為 "ACTIVE"（接受）或 "REJECTED"（拒絕）。
 資料：${JSON.stringify(slimmedEntries)}`;
 
       try {
