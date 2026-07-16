@@ -1,47 +1,51 @@
 package com.example.myapplication.ui.theme
 
-import android.os.Build
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 
-private val DarkColorScheme = darkColorScheme(
-    primary = Purple80,
-    secondary = PurpleGrey80,
-    tertiary = Pink80,
-    background = Color.Black,
-    surface = Color.Black
-)
+// 把 AppColors 映射到 Material3 的色彩角色
+private val AppDarkColorScheme = darkColorScheme(
+    primary            = AppColors.AccentGreen,
+    onPrimary          = AppColors.DarkBackground,
+    primaryContainer   = AppColors.AccentGreen.copy(alpha = 0.12f),
+    onPrimaryContainer = AppColors.AccentGreen,
 
-private val LightColorScheme = lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40
+    secondary          = AppColors.AccentBlue,
+    onSecondary        = AppColors.DarkBackground,
+    secondaryContainer = AppColors.AccentBlue.copy(alpha = 0.12f),
+    onSecondaryContainer = AppColors.AccentBlue,
+
+    tertiary           = AppColors.AccentOrange,
+    onTertiary         = AppColors.DarkBackground,
+
+    background         = AppColors.DarkBackground,
+    onBackground       = AppColors.TextWhite,
+
+    surface            = AppColors.SurfaceDark,
+    onSurface          = AppColors.TextWhite,
+    surfaceVariant     = AppColors.SurfaceMedium,
+    onSurfaceVariant   = AppColors.TextGray,
+
+    error              = AppColors.StatusError,
+    onError            = AppColors.DarkBackground,
+    errorContainer     = AppColors.StatusErrorBg,
+    onErrorContainer   = AppColors.StatusError,
+
+    outline            = AppColors.BorderGray,
+    outlineVariant     = AppColors.BorderGray.copy(alpha = 0.5f),
+
+    inverseSurface     = AppColors.TextWhite,
+    inverseOnSurface   = AppColors.DarkBackground,
+    inversePrimary     = AppColors.AccentGreen.copy(alpha = 0.7f)
 )
 
 @Composable
 fun MyApplicationTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    dynamicColor: Boolean = true,
     content: @Composable () -> Unit
 ) {
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        }
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
-    }
-
     MaterialTheme(
-        colorScheme = colorScheme,
+        colorScheme = AppDarkColorScheme,
         typography = Typography,
         content = content
     )
