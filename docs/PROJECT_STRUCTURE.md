@@ -112,7 +112,11 @@ warmapp/
 │       │   │   │   │   └── VideoPlayerDialog.kt
 │       │   │   │   ├── expert/
 │       │   │   │   │   ├── ExpertDialogs.kt
-│       │   │   │   │   └── ExpertScreen.kt
+│       │   │   │   │   ├── ExpertScreen.kt
+│       │   │   │   │   └── components/
+│       │   │   │   │       ├── KnowledgeItemCard.kt
+│       │   │   │   │       ├── QuickLogCard.kt
+│       │   │   │   │       └── SkillEditDialog.kt
 │       │   │   │   ├── navigation/
 │       │   │   │   │   ├── AppNavigation.kt
 │       │   │   │   │   └── Route.kt

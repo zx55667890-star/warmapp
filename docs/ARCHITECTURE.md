@@ -115,13 +115,13 @@ MainActivity
        │   └─ FullSettingsScreen (DrawerContent)
        │
        ├─ Expert (專家)
-       │   └─ ExpertScreen
-       │       ├─ ExpertScreenContent (stateless)
-       │       │   ├─ QuickLogCard (輸入 + 發布)
-       │       │   ├─ KnowledgeItemCard (技能卡片)
-       │       │   ├─ SkillEditDialog (編輯彈窗)
-       │       │   └─ Floating feedback overlay
-       │       └─ ExpertDialogs
+        │   └─ ExpertScreen
+        │       ├─ ExpertScreenContent (stateless)
+        │       │   ├─ components/QuickLogCard (輸入 + 發布)
+        │       │   ├─ components/KnowledgeItemCard (技能卡片)
+        │       │   ├─ components/SkillEditDialog (編輯彈窗)
+        │       │   └─ Floating feedback overlay
+        │       └─ ExpertDialogs
        │
        ├─ ChatScreen
        │   ├─ ChatTopBar

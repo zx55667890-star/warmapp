@@ -4,10 +4,10 @@
 
 ```
 ExpertScreen.kt
-  ├── ExpertScreenContent.kt (stateless)
-  │   ├── QuickLogCard (輸入 + 發布)
-  │   ├── KnowledgeItemCard (技能卡片顯示)
-  │   └── SkillEditDialog (編輯彈窗)
+  ├── ExpertScreenContent (stateless)
+  │   ├── components/QuickLogCard.kt (輸入 + 發布)
+  │   ├── components/KnowledgeItemCard.kt (技能卡片顯示)
+  │   └── components/SkillEditDialog.kt (編輯彈窗)
   │
   └── ExpertViewModel.kt
         ├── PublishSkillUseCase.kt (發布技能)

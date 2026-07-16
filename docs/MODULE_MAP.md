@@ -57,7 +57,10 @@
 ## 專家模式 (skill 技能發布)
 | 檔案 | 角色 |
 |------|------|
-| `ui/expert/ExpertScreen.kt` | ExpertScreen bridge + ExpertScreenContent + QuickLogCard + KnowledgeItemCard + SkillEditDialog |
+| `ui/expert/ExpertScreen.kt` | ExpertScreen bridge + ExpertScreenContent |
+| `ui/expert/components/QuickLogCard.kt` | 技能輸入卡片 + FeedbackBanner |
+| `ui/expert/components/KnowledgeItemCard.kt` | 知識庫項目卡片 + EmptyKnowledgeCard |
+| `ui/expert/components/SkillEditDialog.kt` | 技能編輯對話框 |
 | `ui/expert/ExpertDialogs.kt` | 專家相關對話框 |
 | `ui/expert/ExpertViewModel.kt` | 專家 ViewModel（publish/edit/listen） |
 | `data/repository/ExpertRepository.kt` | 技能資料 CRUD（Firebase RTDB） |
