@@ -137,7 +137,8 @@
 ## 主題
 | 檔案 | 角色 |
 |------|------|
-| `ui/theme/Color.kt` | AppColors 色彩定義 |
+| `ui/theme/Color.kt` | 基礎色板（Purple/Pink 主題色） |
+| `ui/theme/AppColors.kt` | AppColors 深色主題色板 |
 | `ui/theme/Theme.kt` | Material3 主題設定 |
 | `ui/theme/Type.kt` | 字型定義 |
 
