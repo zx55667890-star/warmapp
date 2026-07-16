@@ -24,11 +24,15 @@ import com.example.myapplication.domain.chat.RecallMessageUseCase
 import com.example.myapplication.domain.chat.SendMediaUseCase
 import com.example.myapplication.domain.chat.FetchOpponentUseCase
 import com.example.myapplication.domain.chat.SendTextMessageUseCase
+import com.example.myapplication.domain.expert.ObserveSolutionsUseCase
+import com.example.myapplication.domain.expert.PublishSkillUseCase
 import com.example.myapplication.domain.seeker.ObserveQuestionStatusUseCase
 import com.example.myapplication.domain.seeker.SendQuestionMediaUseCase
 import com.example.myapplication.domain.seeker.ValidateQuestionQuotaUseCase
 import com.example.myapplication.ui.auth.AuthViewModel
 import com.example.myapplication.ui.chat.ChatViewModel
+import com.example.myapplication.ui.expert.ExpertViewModel
+import com.example.myapplication.ui.seeker.SeekerViewModel
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.storage.FirebaseStorage
@@ -80,8 +84,11 @@ val appModule = module {
     factory { ObserveQuestionStatusUseCase(get()) }
     factory { SendQuestionMediaUseCase(get()) }
 
+    factory { PublishSkillUseCase(get()) }
+    factory { ObserveSolutionsUseCase(get()) }
+
     viewModel { AuthViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get()) }
-    viewModel { ExpertViewModel(get()) }
+    viewModel { ExpertViewModel(get(), get(), get(), get()) }
     viewModel { SeekerViewModel(get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     viewModel { ChatViewModel(get(), get(), get(), get(), get()) }
 }

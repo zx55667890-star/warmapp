@@ -57,6 +57,60 @@ async function generateContentWithRetry(modelConfig, prompt, retries = 3) {
   }
 }
 
+const REPAIR_BATCH_SIZE = 5;
+const PENDING_STALE_MS = 10 * 60 * 1000;
+
+async function healOrphanedPending() {
+  const cursorSnapshot = await db.ref('config/repair_cursor').once('value');
+  const cursor = cursorSnapshot.val() || '';
+
+  const usersSnapshot = await db.ref('users')
+    .orderByKey()
+    .startAfter(cursor)
+    .limitToFirst(REPAIR_BATCH_SIZE)
+    .once('value');
+
+  const users = usersSnapshot.val();
+  if (!users) {
+    console.log('Repair scan: no more users to check, resetting cursor');
+    await db.ref('config/repair_cursor').set('');
+    return;
+  }
+
+  const uids = Object.keys(users);
+  const lastKey = uids[uids.length - 1];
+  let repaired = 0;
+
+  for (const uid of uids) {
+    const solutionsSnapshot = await db.ref(`solutions/${uid}`)
+      .orderByChild('status')
+      .equalTo('PENDING')
+      .once('value');
+
+    const solutions = solutionsSnapshot.val();
+    if (!solutions) continue;
+
+    const now = Date.now();
+    for (const [skillId, data] of Object.entries(solutions)) {
+      const timestamp = data.timestamp || 0;
+      if (now - timestamp < PENDING_STALE_MS) continue;
+
+      const pendingSnapshot = await db.ref(`pending_skills/${skillId}`).once('value');
+      if (pendingSnapshot.exists()) continue;
+
+      await db.ref(`pending_skills/${skillId}`).set({
+        userId: uid,
+        text: data.expertise || '',
+        timestamp: now,
+      });
+      repaired++;
+    }
+  }
+
+  await db.ref('config/repair_cursor').set(lastKey);
+  console.log(`Repair scan: checked ${uids.length} users, cursor=${lastKey}, repaired=${repaired}`);
+}
+
 exports.batchProcessPendingSkills = onSchedule(
   {
     schedule: 'every 5 minutes',
@@ -65,6 +119,9 @@ exports.batchProcessPendingSkills = onSchedule(
   },
   async () => {
     console.log('batchProcessPendingSkills started');
+
+    await healOrphanedPending();
+    console.log('Post self-heal scan complete, proceeding to process');
 
     const snapshot = await db
       .ref('pending_skills')

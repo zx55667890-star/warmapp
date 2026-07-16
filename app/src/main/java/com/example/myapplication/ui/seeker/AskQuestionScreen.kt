@@ -25,7 +25,7 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.myapplication.di.SeekerViewModel
+import com.example.myapplication.ui.seeker.SeekerViewModel
 import com.example.myapplication.domain.seeker.SendMedia
 import com.example.myapplication.ui.camera.CameraCaptureScreen
 import com.example.myapplication.ui.seeker.components.AskQuestionHeader

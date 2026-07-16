@@ -1,4 +1,4 @@
-package com.example.myapplication.di
+package com.example.myapplication.ui.expert
 
 import android.util.Log
 import androidx.annotation.StringRes
@@ -12,6 +12,8 @@ import com.example.myapplication.data.model.SkillStatus
 import com.example.myapplication.data.model.SolutionItem
 import com.example.myapplication.data.repository.ExpertRepository
 import com.example.myapplication.domain.expert.ExpertInputValidator
+import com.example.myapplication.domain.expert.ObserveSolutionsUseCase
+import com.example.myapplication.domain.expert.PublishSkillUseCase
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
@@ -58,8 +60,10 @@ sealed class ExpertUiEvent {
 
 class ExpertViewModel(
     private val firebaseDb: FirebaseDatabase,
+    private val expertRepository: ExpertRepository,
+    private val publishSkillUseCase: PublishSkillUseCase,
+    private val observeSolutionsUseCase: ObserveSolutionsUseCase,
 ) : ViewModel() {
-    private val repository = ExpertRepository(firebaseDb)
 
     private val _uiState = MutableStateFlow(ExpertUiState())
     val uiState: StateFlow<ExpertUiState> = _uiState.asStateFlow()
@@ -77,7 +81,7 @@ class ExpertViewModel(
         if (userId.isBlank()) return
         viewModelScope.launch {
             try {
-                repository.listenToSolutionHistory(userId).collect { history ->
+                observeSolutionsUseCase(userId).collect { history ->
                     _uiState.update { it.copy(solutionHistory = history) }
                 }
             } catch (_: Exception) {
@@ -116,7 +120,7 @@ class ExpertViewModel(
             }
 
             try {
-                repository.saveSkill(userId, trimmed)
+                publishSkillUseCase(userId, trimmed)
                 _uiState.update { it.copy(
                     publishFeedbackRes = R.string.expert_toast_skill_submitted,
                     publishFeedbackIsError = false
@@ -142,7 +146,7 @@ class ExpertViewModel(
         }
         viewModelScope.launch {
             try {
-                repository.observeExpertStatus(userId).collect { (rating, helpCount) ->
+                expertRepository.observeExpertStatus(userId).collect { (rating, helpCount) ->
                     _uiState.update { it.copy(rating = rating, helpCount = helpCount) }
                 }
             } catch (_: Exception) {
@@ -154,7 +158,7 @@ class ExpertViewModel(
     }
 
     fun setExpertOnline(online: Boolean, userId: String) {
-        repository.setExpertOnline(online, userId, _uiState.value.activeExperienceId)
+        expertRepository.setExpertOnline(online, userId, _uiState.value.activeExperienceId)
     }
 
     private fun observeSubmissionLock(userId: String) {
@@ -183,7 +187,7 @@ class ExpertViewModel(
         }
         viewModelScope.launch {
             try {
-                val experienceId = repository.publishExperience(userId, trimmed)
+                val experienceId = expertRepository.publishExperience(userId, trimmed)
                 _uiState.update { it.copy(activeExperienceId = experienceId, activeExperienceText = trimmed) }
             } catch (e: Exception) {
                 if (e is kotlinx.coroutines.CancellationException) throw e
@@ -222,7 +226,7 @@ class ExpertViewModel(
         _uiState.update { it.copy(isSubmitting = true) }
         viewModelScope.launch {
             try {
-                repository.editExperience(
+                expertRepository.editExperience(
                     experienceId = currentState.activeExperienceId,
                     newText = trimmed
                 )
@@ -243,7 +247,7 @@ class ExpertViewModel(
     }
 
     fun stopExperience() {
-        repository.stopExperience(_uiState.value.activeExperienceId)
+        expertRepository.stopExperience(_uiState.value.activeExperienceId)
         _uiState.update {
             it.copy(activeExperienceId = "", activeExperienceText = "", isEditing = false)
         }
@@ -294,7 +298,7 @@ class ExpertViewModel(
         _uiState.update { it.copy(isSubmitting = true) }
         viewModelScope.launch {
             try {
-                repository.editSkill(userId, target.id, trimmed)
+                expertRepository.editSkill(userId, target.id, trimmed)
                 _uiState.update {
                     it.copy(
                         isSubmitting = false,
@@ -441,7 +445,7 @@ class ExpertViewModel(
     fun cleanup() {
         cleanupGlobalListener()
         cleanupLockListener()
-        repository.cleanup(_uiState.value.activeExperienceId)
+        expertRepository.cleanup(_uiState.value.activeExperienceId)
     }
 
     private fun cleanupLockListener() {

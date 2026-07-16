@@ -31,9 +31,9 @@ import androidx.compose.ui.geometry.Offset
 import com.example.myapplication.R
 import com.example.myapplication.data.model.SkillStatus
 import com.example.myapplication.data.model.SolutionItem
-import com.example.myapplication.di.ExpertUiEvent
-import com.example.myapplication.di.ExpertUiState
-import com.example.myapplication.di.ExpertViewModel
+import com.example.myapplication.ui.expert.ExpertUiEvent
+import com.example.myapplication.ui.expert.ExpertUiState
+import com.example.myapplication.ui.expert.ExpertViewModel
 import com.example.myapplication.domain.expert.ExpertInputValidator
 import com.example.myapplication.ui.theme.AppColors
 import kotlinx.coroutines.delay

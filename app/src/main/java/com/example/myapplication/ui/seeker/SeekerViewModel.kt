@@ -1,4 +1,4 @@
-﻿package com.example.myapplication.di
+package com.example.myapplication.ui.seeker
 
 import android.content.SharedPreferences
 import android.util.Log
@@ -329,4 +329,3 @@ class SeekerViewModel(
         super.onCleared()
     }
 }
-

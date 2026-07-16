@@ -78,6 +78,7 @@
     },
     "solutions": {
       "$uid": {
+        ".indexOn": ["status"],
         ".read": "$uid === auth.uid",
         ".write": "$uid === auth.uid",
         "$pushId": {

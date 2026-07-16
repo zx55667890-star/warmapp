@@ -38,8 +38,8 @@ import androidx.navigation.navArgument
 import com.example.myapplication.data.repository.AuthRepository
 import com.example.myapplication.data.repository.DataMigrator
 import com.example.myapplication.data.repository.UserRepository
-import com.example.myapplication.di.ExpertViewModel
-import com.example.myapplication.di.SeekerViewModel
+import com.example.myapplication.ui.expert.ExpertViewModel
+import com.example.myapplication.ui.seeker.SeekerViewModel
 import com.example.myapplication.ui.auth.AuthScreen
 import com.example.myapplication.ui.auth.AuthViewModel
 import com.example.myapplication.ui.auth.NicknameSettingsDialog

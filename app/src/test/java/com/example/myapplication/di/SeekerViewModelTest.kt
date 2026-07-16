@@ -5,7 +5,7 @@ import com.example.myapplication.data.repository.AiRepository
 import com.example.myapplication.data.repository.MatchingRepositoryInterface
 import com.example.myapplication.data.repository.MediaUploader
 import com.example.myapplication.data.repository.QuestionRepository
-import com.example.myapplication.di.SeekerViewModel
+import com.example.myapplication.ui.seeker.SeekerViewModel
 import com.example.myapplication.domain.seeker.ObserveQuestionStatusUseCase
 import com.example.myapplication.domain.seeker.QuestionStatus
 import com.example.myapplication.domain.seeker.SendQuestionMediaUseCase
