@@ -14,17 +14,14 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
-import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -156,18 +153,11 @@ fun AppNavigation() {
             .fillMaxSize()
             .drawBackgroundGlow()
     ) {
-        Scaffold(
-            modifier = Modifier.fillMaxSize(),
-            containerColor = Color.Transparent,
-            contentWindowInsets = WindowInsets(0, 0, 0, 0)
-        ) { innerPadding ->
-            NavHost(
-                navController = navController,
-                startDestination = if (authRepository.isLoggedIn()) Routes.ROLE_SELECT else Routes.AUTH,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-            ) {
+        NavHost(
+            navController = navController,
+            startDestination = if (authRepository.isLoggedIn()) Routes.ROLE_SELECT else Routes.AUTH,
+            modifier = Modifier.fillMaxSize()
+        ) {
                 composable(Routes.AUTH) {
                     AuthScreen(
                         viewModel = authViewModel,
@@ -354,7 +344,6 @@ fun AppNavigation() {
                     color = AppColors.DarkBackground,
                     fontWeight = FontWeight.Bold
                 )
-            }
         }
     }
 }
