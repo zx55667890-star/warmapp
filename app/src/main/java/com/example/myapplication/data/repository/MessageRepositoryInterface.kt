@@ -31,6 +31,8 @@ interface MessageRepositoryInterface {
 
     fun updateTypingStatus(userId: String, isTyping: Boolean)
 
+    fun addMessagesListener(onMessages: (List<ChatMessage>) -> Unit): ValueEventListener
+    fun removeMessagesListener(listener: ValueEventListener)
     fun removeListener(listener: ValueEventListener)
 
     fun removeStatusListener(listener: ValueEventListener)

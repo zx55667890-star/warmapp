@@ -190,6 +190,33 @@ class MessageRepository(
         messagesRef.child("typing_status").child(userId).setValue(isTyping)
     }
 
+    override fun addMessagesListener(onMessages: (List<ChatMessage>) -> Unit): ValueEventListener {
+        Log.d("MessageRepo", "addMessagesListener: adding listener to ${messagesRef.path}")
+        val listener = object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                Log.d("MessageRepo", "addMessagesListener onDataChange: children=${snapshot.childrenCount}")
+                val msgs = mutableListOf<ChatMessage>()
+                for (child in snapshot.children) {
+                    if (child.key == "typing_status") continue
+                    val msg = parseMessage(child)
+                    if (msg != null) msgs.add(msg)
+                }
+                msgs.sortBy { it.timestamp }
+                onMessages(msgs)
+            }
+            override fun onCancelled(error: DatabaseError) {
+                Log.e("MessageRepo", "addMessagesListener onCancelled: ${error.message}", error.toException())
+            }
+        }
+        messagesRef.addValueEventListener(listener)
+        Log.d("MessageRepo", "addMessagesListener: listener added")
+        return listener
+    }
+
+    override fun removeMessagesListener(listener: ValueEventListener) {
+        messagesRef.removeEventListener(listener)
+    }
+
     override fun removeListener(listener: ValueEventListener) {
         messagesRef.orderByChild("timestamp").limitToLast(PAGE_SIZE).removeEventListener(listener)
     }

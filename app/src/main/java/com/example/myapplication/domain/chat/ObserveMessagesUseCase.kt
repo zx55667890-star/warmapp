@@ -25,6 +25,33 @@ class ObserveMessagesUseCase(
 
     private val activeSessions = ConcurrentHashMap<String, ChatSession>()
 
+    fun observeMessagesDirect(chatroomId: String): Flow<MessagesResult> = callbackFlow {
+        Log.d("ChatVM", "observeMessagesDirect callbackFlow started chatroomId=$chatroomId")
+        val repo = repoFactory.create(chatroomId)
+        val session = ChatSession()
+        activeSessions[chatroomId] = session
+
+        val listener = repo.addMessagesListener { list ->
+            session.realTimeMessages = list
+            synchronized(session) {
+                val merged = (session.loadedOlder + session.realTimeMessages).sortedBy { it.timestamp }
+                trySend(MessagesResult(merged, session.hasMoreMessages))
+            }
+        }
+        session.onUpdate = {
+            synchronized(session) {
+                val merged = (session.loadedOlder + session.realTimeMessages).sortedBy { it.timestamp }
+                trySend(MessagesResult(merged, session.hasMoreMessages))
+            }
+        }
+
+        awaitClose {
+            Log.d("ChatVM", "observeMessagesDirect awaitClose chatroomId=$chatroomId")
+            repo.removeMessagesListener(listener)
+            activeSessions.remove(chatroomId)
+        }
+    }
+
     fun observeMessages(chatroomId: String): Flow<MessagesResult> = callbackFlow {
         Log.d("ChatVM", "observeMessages callbackFlow started chatroomId=$chatroomId")
         val repo = repoFactory.create(chatroomId)

@@ -84,7 +84,7 @@ class ChatViewModel(
                 .flatMapLatest { (roomId, uid) ->
                     Log.d("ChatVM", "flatMapLatest roomId=$roomId uid=$uid")
                     combine(
-                        observeMessagesUseCase.observeMessages(roomId),
+                        observeMessagesUseCase.observeMessagesDirect(roomId),
                         observeMessagesUseCase.observeTypingStatus(roomId, uid),
                         observeMessagesUseCase.observeChatStatus(roomId)
                     ) { messagesResult, isTyping, isEnded ->
