@@ -1,14 +1,16 @@
 package com.example.myapplication.ui.components
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
@@ -20,6 +22,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
+import com.example.myapplication.ui.theme.AppColors
 
 @Composable
 fun FullScreenImageDialog(
@@ -34,30 +37,24 @@ fun FullScreenImageDialog(
         return
     }
 
-    var currentIndex by remember { mutableIntStateOf(startIndex.coerceIn(0, imageUrls.lastIndex)) }
+    var currentIndex by remember {
+        mutableIntStateOf(startIndex.coerceIn(0, imageUrls.lastIndex))
+    }
     var scale by remember { mutableFloatStateOf(1f) }
     var offsetX by remember { mutableFloatStateOf(0f) }
     var offsetY by remember { mutableFloatStateOf(0f) }
     var totalPanX by remember { mutableFloatStateOf(0f) }
 
     fun resetZoom() {
-        scale = 1f
-        offsetX = 0f
-        offsetY = 0f
+        scale = 1f; offsetX = 0f; offsetY = 0f
     }
 
     fun goNext() {
-        if (currentIndex < imageUrls.lastIndex) {
-            currentIndex++
-            resetZoom()
-        }
+        if (currentIndex < imageUrls.lastIndex) { currentIndex++; resetZoom() }
     }
 
     fun goPrev() {
-        if (currentIndex > 0) {
-            currentIndex--
-            resetZoom()
-        }
+        if (currentIndex > 0) { currentIndex--; resetZoom() }
     }
 
     Dialog(
@@ -68,12 +65,18 @@ fun FullScreenImageDialog(
         )
     ) {
         Box(
-            modifier = Modifier.fillMaxSize().background(Color.Black)
+            modifier = Modifier
+                .fillMaxSize()
+                .background(AppColors.DarkBackground)
+                .statusBarsPadding()
+                .navigationBarsPadding()
         ) {
+            // ── 圖片本體 ──
             Box(
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier
+                    .fillMaxSize()
                     .pointerInput(Unit) {
-                        detectTransformGestures { centroid, pan, zoom, _ ->
+                        detectTransformGestures { _, pan, zoom, _ ->
                             if (zoom != 1f) {
                                 totalPanX = 0f
                                 val newScale = (scale * zoom).coerceIn(1f, 5f)
@@ -81,8 +84,8 @@ fun FullScreenImageDialog(
                                     resetZoom()
                                 } else {
                                     val ratio = newScale / scale
-                                    offsetX += (centroid.x - offsetX) * (1f - ratio)
-                                    offsetY += (centroid.y - offsetY) * (1f - ratio)
+                                    offsetX += (pan.x - offsetX) * (1f - ratio)
+                                    offsetY += (pan.y - offsetY) * (1f - ratio)
                                     scale = newScale
                                 }
                             } else if (scale > 1f) {
@@ -92,13 +95,8 @@ fun FullScreenImageDialog(
                             } else {
                                 totalPanX += pan.x
                                 val threshold = 150f
-                                if (totalPanX > threshold) {
-                                    goPrev()
-                                    totalPanX = 0f
-                                } else if (totalPanX < -threshold) {
-                                    goNext()
-                                    totalPanX = 0f
-                                }
+                                if (totalPanX > threshold) { goPrev(); totalPanX = 0f }
+                                else if (totalPanX < -threshold) { goNext(); totalPanX = 0f }
                             }
                         }
                     }
@@ -124,7 +122,8 @@ fun FullScreenImageDialog(
                     model = imageUrls[currentIndex],
                     contentDescription = null,
                     contentScale = contentScaleType,
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier
+                        .fillMaxSize()
                         .graphicsLayer(
                             scaleX = scale,
                             scaleY = scale,
@@ -135,18 +134,47 @@ fun FullScreenImageDialog(
                 )
             }
 
-            if (imageUrls.size > 1) {
-                Text(
-                    text = "${currentIndex + 1}/${imageUrls.size}",
-                    color = Color.White,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Medium,
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .padding(top = 48.dp)
-                        .background(Color(0x80000000), RoundedCornerShape(8.dp))
-                        .padding(horizontal = 12.dp, vertical = 4.dp)
-                )
+            // ── 頂部工具列 ──
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.TopCenter)
+                    .background(
+                        AppColors.DarkBackground.copy(alpha = 0.5f)
+                    )
+                    .padding(horizontal = 20.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (imageUrls.size > 1) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (imageUrls.size <= 7) {
+                            repeat(imageUrls.size) { index ->
+                                Box(
+                                    modifier = Modifier
+                                        .size(if (index == currentIndex) 8.dp else 6.dp)
+                                        .background(
+                                            color = if (index == currentIndex)
+                                                AppColors.TextWhite
+                                            else
+                                                AppColors.TextGray.copy(alpha = 0.5f),
+                                            shape = CircleShape
+                                        )
+                                )
+                            }
+                        } else {
+                            Text(
+                                text = "${currentIndex + 1} / ${imageUrls.size}",
+                                color = AppColors.TextWhite,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+                }
             }
         }
     }

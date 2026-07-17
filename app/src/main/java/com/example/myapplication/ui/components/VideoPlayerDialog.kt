@@ -4,7 +4,12 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
@@ -12,16 +17,16 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
-import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
@@ -32,6 +37,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultDataSource
+import com.example.myapplication.ui.theme.AppColors
 import com.example.myapplication.util.VideoCacheManager
 import kotlinx.coroutines.delay
 
@@ -92,22 +98,24 @@ fun VideoPlayerDialog(
         }
     }
 
-    androidx.compose.ui.window.Dialog(
+    Dialog(
         onDismissRequest = onDismiss,
-        properties = androidx.compose.ui.window.DialogProperties(
+        properties = DialogProperties(
             usePlatformDefaultWidth = false,
             decorFitsSystemWindows = false
         )
     ) {
         Box(
-            modifier = Modifier.fillMaxSize().background(Color.Black)
+            modifier = Modifier
+                .fillMaxSize()
+                .background(AppColors.DarkBackground)
         ) {
+            // ── 影片本體 ──
             AndroidView(
                 factory = { ctx ->
-                    // 修正這裡：改用 DefaultDataSource.Factory，它支援 http 和 file 協議
                     val dataSourceFactory = CacheDataSource.Factory()
                         .setCache(VideoCacheManager.getCache(ctx))
-                        .setUpstreamDataSourceFactory(DefaultDataSource.Factory(ctx)) // 改成這行+
+                        .setUpstreamDataSourceFactory(DefaultDataSource.Factory(ctx))
                     val exoPlayer = ExoPlayer.Builder(ctx)
                         .setMediaSourceFactory(DefaultMediaSourceFactory(dataSourceFactory))
                         .build()
@@ -122,21 +130,18 @@ fun VideoPlayerDialog(
                                     restored = true
                                 }
                             }
-                            if (state == Player.STATE_ENDED) {
-                                isPlaying = false
-                            }
+                            if (state == Player.STATE_ENDED) isPlaying = false
                         }
                         override fun onIsPlayingChanged(playing: Boolean) {
                             isPlaying = playing
                         }
                         override fun onPlayerError(error: PlaybackException) {
-                            errorMsg = error.localizedMessage ?: "\u64AD\u653E\u5931\u6557"
+                            errorMsg = error.localizedMessage ?: "播放失敗"
                             isBuffering = false
                         }
                     })
                     exoPlayer.prepare()
                     exoPlayer.playWhenReady = true
-
                     player = exoPlayer
 
                     PlayerView(ctx).apply {
@@ -148,23 +153,40 @@ fun VideoPlayerDialog(
                 modifier = Modifier.fillMaxSize()
             )
 
+            // ── 載入中 ──
             if (isBuffering && errorMsg == null) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
-                ) { CircularProgressIndicator(color = Color.White) }
+                ) {
+                    CircularProgressIndicator(
+                        color = AppColors.AccentGreen,
+                        strokeWidth = 3.dp,
+                        modifier = Modifier.size(40.dp)
+                    )
+                }
             }
 
+            // ── 錯誤 ──
             if (errorMsg != null) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
-                ) { Text(errorMsg!!, color = Color.White, fontSize = 16.sp) }
+                ) {
+                    Text(
+                        errorMsg!!,
+                        color = AppColors.StatusError,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
             }
 
+            // ── 重播按鈕 ──
             if (!isPlaying && !isBuffering && errorMsg == null && duration > 0) {
                 Box(
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier
+                        .fillMaxSize()
                         .clickable {
                             player?.seekTo(0)
                             player?.play()
@@ -172,27 +194,45 @@ fun VideoPlayerDialog(
                     contentAlignment = Alignment.Center
                 ) {
                     Box(
-                        modifier = Modifier.size(64.dp).background(Color(0x80000000), CircleShape),
+                        modifier = Modifier
+                            .size(64.dp)
+                            .background(
+                                AppColors.DarkBackground.copy(alpha = 0.6f),
+                                CircleShape
+                            ),
                         contentAlignment = Alignment.Center
-                    ) { Text("\u25B6", color = Color.White, fontSize = 32.sp) }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.PlayArrow,
+                            contentDescription = "重播",
+                            tint = AppColors.TextWhite,
+                            modifier = Modifier.size(36.dp)
+                        )
+                    }
                 }
             }
 
+            // ── 點擊暫停 ──
             if (isPlaying && !isBuffering) {
                 Box(
-                    modifier = Modifier.fillMaxSize().clickable { player?.pause() }
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clickable { player?.pause() }
                 )
             }
 
+            // ── 底部控制列 ──
             Column(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
-                    .background(Color(0x80000000))
+                    .background(AppColors.DarkBackground.copy(alpha = 0.6f))
                     .padding(horizontal = 16.dp, vertical = 6.dp)
             ) {
                 Slider(
-                    value = if (duration > 0) (currentPosition.toFloat() / duration.toFloat()).coerceIn(0f, 1f) else 0f,
+                    value = if (duration > 0)
+                        (currentPosition.toFloat() / duration.toFloat()).coerceIn(0f, 1f)
+                    else 0f,
                     onValueChange = { fraction ->
                         isDragging = true
                         currentPosition = (fraction * duration).toLong()
@@ -201,33 +241,56 @@ fun VideoPlayerDialog(
                         player?.seekTo(currentPosition)
                         isDragging = false
                     },
-                    modifier = Modifier.fillMaxWidth().height(24.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(24.dp),
                     colors = SliderDefaults.colors(
-                        thumbColor = Color(0xFF04C9A0),
-                        activeTrackColor = Color(0xFF04C9A0),
-                        inactiveTrackColor = Color(0x66FFFFFF)
+                        thumbColor = AppColors.AccentGreen,
+                        activeTrackColor = AppColors.AccentGreen,
+                        inactiveTrackColor = AppColors.TextWhite.copy(alpha = 0.2f)
                     )
                 )
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 4.dp),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text(formatTime(currentPosition), color = Color.White, fontSize = 12.sp)
-                    Text(formatTime(duration), color = Color.White, fontSize = 12.sp)
+                    Text(
+                        formatTime(currentPosition),
+                        color = AppColors.TextWhite,
+                        fontSize = 12.sp
+                    )
+                    Text(
+                        formatTime(duration),
+                        color = AppColors.TextGray,
+                        fontSize = 12.sp
+                    )
                 }
             }
 
+            // ── 關閉按鈕 ──
             if (!isPlaying) {
                 Box(
                     modifier = Modifier
                         .align(Alignment.TopStart)
-                        .padding(start = 16.dp, top = 16.dp)
                         .statusBarsPadding()
+                        .padding(start = 16.dp, top = 16.dp)
                         .size(40.dp)
-                        .background(Color(0x80000000), CircleShape)
+                        .background(
+                            AppColors.DarkBackground.copy(alpha = 0.6f),
+                            CircleShape
+                        )
                         .clickable { onDismiss() },
                     contentAlignment = Alignment.Center
-                ) { Text("\u2715", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold) }
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "關閉",
+                        tint = AppColors.TextWhite,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
             }
         }
     }

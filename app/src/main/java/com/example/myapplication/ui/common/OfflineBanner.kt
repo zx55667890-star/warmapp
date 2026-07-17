@@ -16,10 +16,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.myapplication.ui.theme.AppColors
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
@@ -28,7 +28,9 @@ import com.google.firebase.database.ValueEventListener
 @Composable
 fun OfflineBanner(modifier: Modifier = Modifier) {
     var isOffline by remember { mutableStateOf(false) }
-    val connectedRef = remember { FirebaseDatabase.getInstance().getReference(".info/connected") }
+    val connectedRef = remember {
+        FirebaseDatabase.getInstance().getReference(".info/connected")
+    }
 
     DisposableEffect(Unit) {
         val listener = object : ValueEventListener {
@@ -49,15 +51,15 @@ fun OfflineBanner(modifier: Modifier = Modifier) {
         Box(
             modifier = modifier
                 .fillMaxWidth()
-                .background(Color(0xFFFF6B35))
-                .padding(vertical = 4.dp),
+                .background(AppColors.StatusPending)
+                .padding(vertical = 6.dp),
             contentAlignment = Alignment.Center
         ) {
             Text(
                 text = "離線中 — 資料仍可讀取，變更將在恢復連線後同步",
-                color = Color.White,
+                color = AppColors.DarkBackground,
                 fontSize = 12.sp,
-                fontWeight = FontWeight.Medium
+                fontWeight = FontWeight.SemiBold
             )
         }
     }

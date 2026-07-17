@@ -8,19 +8,20 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.lazy.LazyListState
+import com.example.myapplication.ui.theme.AppColors
 
 @Composable
 fun ScrollToBottomButton(
     listState: LazyListState,
-    isDarkTheme: Boolean,
+    isDarkTheme: Boolean = true,
     totalMessages: Int,
     modifier: Modifier = Modifier,
     isLoadingMore: Boolean = false,
@@ -54,12 +55,14 @@ fun ScrollToBottomButton(
         if (isAtBottom) {
             showScrollToBottom = false
         } else {
-            val scrolledToNewer = currentIndex < prevIndex || (currentIndex == prevIndex && currentOffset < prevOffset)
+            val scrolledToNewer = currentIndex < prevIndex ||
+                    (currentIndex == prevIndex && currentOffset < prevOffset)
             showScrollToBottom = scrolledToNewer
         }
         prevIndex = currentIndex
         prevOffset = currentOffset
     }
+
     AnimatedVisibility(
         visible = showScrollToBottom,
         enter = slideInVertically { it } + fadeIn(),
@@ -68,14 +71,18 @@ fun ScrollToBottomButton(
     ) {
         FloatingActionButton(
             onClick = onScrollToBottom,
-            containerColor = if (isDarkTheme) Color(0xFF3A3A4A) else Color.White,
-            contentColor = if (isDarkTheme) Color.White else Color(0xFF04C9A0),
-            shape = CircleShape
+            containerColor = AppColors.SurfaceMedium,
+            contentColor = AppColors.AccentGreen,
+            shape = CircleShape,
+            elevation = FloatingActionButtonDefaults.elevation(
+                defaultElevation = 6.dp,
+                pressedElevation = 8.dp
+            )
         ) {
             Icon(
                 Icons.Default.KeyboardArrowDown,
                 contentDescription = "回到底部",
-                modifier = Modifier.size(36.dp)
+                modifier = Modifier.size(32.dp)
             )
         }
     }
