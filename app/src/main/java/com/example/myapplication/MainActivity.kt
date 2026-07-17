@@ -30,6 +30,11 @@ class MainActivity : ComponentActivity() {
 
         super.onCreate(savedInstanceState)
 
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            window.isStatusBarContrastEnforced = false
+            window.isNavigationBarContrastEnforced = false
+        }
+
         createNotificationChannel()
 
         setContent {
