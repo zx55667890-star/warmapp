@@ -10,6 +10,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
@@ -50,9 +51,10 @@ fun ChatScreen(
 
     val context = LocalContext.current
     val window = (context as? android.app.Activity)?.window
+    val navBarColorArgb = AppColors.DarkBackground.toArgb()
     SideEffect {
         window?.let {
-            it.navigationBarColor = android.graphics.Color.parseColor("#0F1117")
+            it.navigationBarColor = navBarColorArgb
             val controller = WindowCompat.getInsetsController(it, it.decorView)
             controller.isAppearanceLightNavigationBars = false
         }
