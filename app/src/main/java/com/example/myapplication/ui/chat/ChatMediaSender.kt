@@ -29,11 +29,22 @@ class ChatMediaSender(
 
         val id = pendingMsg.id
         val job = scope.launch {
-            val success = upload()
+            val success = try {
+                upload()
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    onPendingRemoved?.invoke(id)
+                    onShowSnackbar?.invoke(e.message ?: "上傳失敗")
+                }
+                return@launch
+            }
             withContext(Dispatchers.Main) {
                 if (success) {
+                    onPendingRemoved?.invoke(id)
                     val realMsg = pendingMsg.copy(id = "uploaded_$id")
                     onMessageAdded?.invoke(realMsg)
+                } else {
+                    onPendingRemoved?.invoke(id)
                 }
             }
         }
