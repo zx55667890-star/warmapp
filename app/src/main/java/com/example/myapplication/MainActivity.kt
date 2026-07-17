@@ -28,14 +28,14 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // 🌊 1. 讓 Compose 可以畫到整個螢幕（關鍵）
+        // 🌊 讓 App 延伸到狀態列後面
         WindowCompat.setDecorFitsSystemWindows(window, false)
-
-        // 🌌 2. Edge-to-edge
-        enableEdgeToEdge()
-
         window.statusBarColor = Color.TRANSPARENT
         window.navigationBarColor = Color.TRANSPARENT
+
+        // 🌌 Edge-to-edge
+        enableEdgeToEdge()
+
         window.decorView.setBackgroundColor(android.graphics.Color.parseColor("#133281"))
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
