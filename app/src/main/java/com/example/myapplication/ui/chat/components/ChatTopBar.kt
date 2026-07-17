@@ -85,13 +85,13 @@ fun QuestionBanner(
 ) {
     if (questionText.isNotBlank()) {
         Surface(
-            color = AppColors.SurfaceMedium,
+            color = AppColors.DarkBackground,
             modifier = Modifier.fillMaxWidth()
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Box(
