@@ -125,10 +125,7 @@ fun BubbleContent(
 @Composable
 private fun PendingOverlay() {
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(AppColors.DarkBackground.copy(alpha = 0.5f))
-            .clickable(enabled = false) {},
+        modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
         CircularProgressIndicator(
