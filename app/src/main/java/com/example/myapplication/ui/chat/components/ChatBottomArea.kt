@@ -22,6 +22,8 @@ fun ChatBottomArea(
         modifier = modifier
             .fillMaxWidth()
             .wrapContentHeight()
+            .navigationBarsPadding()
+            .imePadding()
     ) {
         uiState.replyToMessage?.let { replyMsg ->
             val previewText = when {

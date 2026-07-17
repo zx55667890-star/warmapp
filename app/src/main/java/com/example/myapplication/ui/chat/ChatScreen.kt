@@ -132,6 +132,7 @@ fun ChatScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .statusBarsPadding()
+                .navigationBarsPadding()
                 .imePadding()
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
