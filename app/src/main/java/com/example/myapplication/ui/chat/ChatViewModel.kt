@@ -157,7 +157,11 @@ class ChatViewModel(
         val id = _chatroomId.value ?: return
         val uid = _userId.value ?: return
         val s = _uiState.value
-        if (!s.isChatActive || text.isBlank()) return
+        if (text.isBlank()) return
+        if (!s.isChatActive) {
+            _events.tryEmit(ChatEvent.ShowSnackbar("對話已結束，無法發送訊息"))
+            return
+        }
         sendTextMessageUseCase(
             chatroomId = id, userId = uid, myRole = myRole,
             text = text,
