@@ -66,8 +66,16 @@ fun AppNavigation() {
     val seekerViewModel: SeekerViewModel = koinViewModel()
     val expertUiState by expertViewModel.uiState.collectAsStateWithLifecycle()
     val seekerUiState by seekerViewModel.uiState.collectAsStateWithLifecycle()
-    val userId: String = authRepository.currentUserId
+    var userId by remember { mutableStateOf(authRepository.currentUserId) }
     val firebaseDb: FirebaseDatabase = koinInject()
+
+    // Reactively track auth state (covers anonymous sign-in after Skip)
+    DisposableEffect(Unit) {
+        val listener = authRepository.addAuthStateListener { user ->
+            userId = user?.uid ?: ""
+        }
+        onDispose { authRepository.removeAuthStateListener(listener) }
+    }
     val dataMigrator: DataMigrator = koinInject()
     val userRepository: UserRepository = koinInject()
     var showNicknameSettings by remember { mutableStateOf(false) }
@@ -168,8 +176,15 @@ fun AppNavigation() {
                             }
                         },
                         onSkip = {
-                            navController.navigate(Routes.ROLE_SELECT) {
-                                popUpTo(Routes.AUTH) { inclusive = true }
+                            scope.launch {
+                                try {
+                                    authRepository.signInAnonymously()
+                                } catch (_: Exception) {
+                                    // Anonymous sign-in unavailable (disabled in console)
+                                }
+                                navController.navigate(Routes.ROLE_SELECT) {
+                                    popUpTo(Routes.AUTH) { inclusive = true }
+                                }
                             }
                         }
                     )

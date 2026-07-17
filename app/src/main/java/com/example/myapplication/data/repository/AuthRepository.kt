@@ -137,6 +137,14 @@ class AuthRepository(
             }
     }
 
+    suspend fun signInAnonymously() {
+        suspendCancellableCoroutine { cont ->
+            firebaseAuth.signInAnonymously()
+                .addOnSuccessListener { cont.resume(Unit) }
+                .addOnFailureListener { cont.resumeWithException(it) }
+        }
+    }
+
     fun logout() {
         firebaseAuth.signOut()
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
