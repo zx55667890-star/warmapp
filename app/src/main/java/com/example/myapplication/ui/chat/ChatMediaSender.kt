@@ -29,23 +29,11 @@ class ChatMediaSender(
 
         val id = pendingMsg.id
         val job = scope.launch {
-            val success = try {
-                upload()
-            } catch (e: Exception) {
-                withContext(Dispatchers.Main) {
-                    onPendingRemoved?.invoke(id)
-                    onShowSnackbar?.invoke(e.message ?: "上傳失敗")
-                }
-                return@launch
-            }
+            val success = upload()
             withContext(Dispatchers.Main) {
                 if (success) {
-                    pendingUploadJobs.remove(id)
-                    onPendingRemoved?.invoke(id)
                     val realMsg = pendingMsg.copy(id = "uploaded_$id")
                     onMessageAdded?.invoke(realMsg)
-                } else {
-                    onPendingRemoved?.invoke(id)
                 }
             }
         }
@@ -54,15 +42,9 @@ class ChatMediaSender(
 
     fun sendVideo(chatroomId: String, userId: String, myRole: String, uri: Uri, isCameraCapture: Boolean = false, onError: (String) -> Unit = {}) {
         val basePendingMsg = sendMediaUseCase.createPendingMessage(userId, myRole, uri, isVideo = true, isCameraCapture = isCameraCapture)
-        val pendingMsg = basePendingMsg.copy(localId = basePendingMsg.id)
-        var lastError: String? = null
+        val pendingMsg = basePendingMsg.copy(localId = basePendingMsg.id, localImageUrls = listOf(uri.toString()))
         sendMedia(pendingMsg) {
-            lastError = null
-            val ok = sendMediaUseCase.sendVideo(chatroomId, userId, myRole, uri, onProgress = {}) { err ->
-                lastError = err; onError(err)
-            }
-            if (!ok) onShowSnackbar?.invoke(lastError ?: "影片上傳失敗")
-            ok
+            sendMediaUseCase.sendVideo(chatroomId, userId, myRole, uri, onProgress = {}, onError = onError)
         }
     }
 
@@ -82,13 +64,8 @@ class ChatMediaSender(
                 localImageUrls = listOf(uris.first().toString())
             )
         }
-        var lastError: String? = null
         sendMedia(pendingMsg) {
-            lastError = null
-            val urls = sendMediaUseCase.sendImages(chatroomId, userId, myRole, uris, onProgress = {}) { err ->
-                lastError = err; onError(err)
-            }
-            if (urls.isEmpty()) onShowSnackbar?.invoke(lastError ?: "圖片上傳失敗")
+            val urls = sendMediaUseCase.sendImages(chatroomId, userId, myRole, uris, onProgress = {}, onError = onError)
             urls.isNotEmpty()
         }
     }

@@ -9,7 +9,7 @@ import com.example.myapplication.ui.chat.ChatUiState
 @Composable
 fun ChatBottomArea(
     uiState: ChatUiState,
-    isDarkTheme: Boolean = true,
+    isDarkTheme: Boolean,
     onSendMessage: (String) -> Unit,
     onSendImage: (List<Uri>) -> Unit,
     onTypingStatusChange: (Boolean) -> Unit,
@@ -22,19 +22,10 @@ fun ChatBottomArea(
         modifier = modifier
             .fillMaxWidth()
             .wrapContentHeight()
-            .navigationBarsPadding()
-            .imePadding()
     ) {
         uiState.replyToMessage?.let { replyMsg ->
-            val previewText = when {
-                replyMsg.text.isNotBlank() -> replyMsg.text
-                replyMsg.imageUrls.isNotEmpty() || replyMsg.imageUrl.isNotBlank() -> "[圖片]"
-                replyMsg.videoUrl.isNotBlank() -> "[影片]"
-                replyMsg.voiceUrl.isNotBlank() -> "[語音]"
-                else -> ""
-            }
             ReplyPreviewBar(
-                text = previewText,
+                text = replyMsg.text.ifBlank { if (replyMsg.imageUrls.isNotEmpty() || replyMsg.imageUrl.isNotBlank()) "[圖片]" else if (replyMsg.videoUrl.isNotBlank()) "[影片]" else if (replyMsg.voiceUrl.isNotBlank()) "[語音]" else "" },
                 isDarkTheme = isDarkTheme,
                 onDismiss = onDismissReply
             )

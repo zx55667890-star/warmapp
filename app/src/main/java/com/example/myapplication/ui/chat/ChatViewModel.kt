@@ -40,8 +40,10 @@ class ChatViewModel(
         it.onPendingRemoved = { id ->
             _uiState.update { state -> state.copy(pendingMessages = state.pendingMessages.filter { p -> p.id != id }) }
         }
-        it.onMessageAdded = { msg ->
-            _uiState.update { state -> state.copy(messages = state.messages + msg) }
+        it.onMessageAdded = { realMsg ->
+            // Do nothing here. We rely entirely on the ObserveMessagesUseCase to atomically swap 
+            // the pending message with the confirmed server message. This prevents the UI from 
+            // temporarily collapsing when the pending message is removed before the observer fires.
         }
         it.onScrollToBottom = { _events.tryEmit(ChatEvent.ScrollToBottom) }
         it.onShowSnackbar = { _events.tryEmit(ChatEvent.ShowSnackbar(it)) }
@@ -92,19 +94,16 @@ class ChatViewModel(
                     _uiState.update { state ->
                         val uid = _userId.value ?: ""
                         
-                        // Strip temporary uploaded_ placeholders; real Firebase data is authoritative
-                        val filteredMessages = state.messages.filter { !it.id.startsWith("uploaded_") }
-                        
                         // 找出這次更新中「新增」的、且是我發送的多媒體訊息
                         val newConfirmedMediaMsgs = messagesResult.messages.filter { newMsg ->
-                            filteredMessages.none { oldMsg -> oldMsg.id == newMsg.id } &&
+                            state.messages.none { oldMsg -> oldMsg.id == newMsg.id } &&
                             newMsg.senderId == uid && 
                             (newMsg.imageUrl.isNotBlank() || newMsg.videoUrl.isNotBlank() || newMsg.voiceUrl.isNotBlank() || newMsg.imageUrls.isNotEmpty() || newMsg.text.isBlank())
                         }.toMutableList()
                         
-                        // 先將伺服器傳來的訊息繼承我們原本已經綁定好 localId 與 localImageUrls
+                        // 先將伺服器傳來的訊息繼承我們原本已經綁定好的 localId 與 localImageUrls
                         var mappedMessages = messagesResult.messages.map { newMsg ->
-                            val existingMsg = filteredMessages.find { it.id == newMsg.id }
+                            val existingMsg = state.messages.find { it.id == newMsg.id }
                             if (existingMsg != null && existingMsg.localId.isNotBlank()) {
                                 newMsg.copy(
                                     localId = existingMsg.localId,
@@ -126,7 +125,7 @@ class ChatViewModel(
                                     if (it.id == match.id) {
                                         it.copy(
                                             localId = pending.localId.takeIf { id -> id.isNotBlank() } ?: pending.id,
-                                            localImageUrls = if (pending.videoUrl.isNotBlank()) emptyList() else pending.localImageUrls,
+                                            localImageUrls = pending.localImageUrls,
                                             isCameraCapture = pending.isCameraCapture
                                         )
                                     } else it 

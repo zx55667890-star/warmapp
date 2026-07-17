@@ -7,18 +7,18 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.Image
-import com.example.myapplication.ui.theme.AppColors
 import com.example.myapplication.util.MediaMetadataHelper
 import com.example.myapplication.util.VideoThumbnailCache
 
@@ -26,7 +26,7 @@ import com.example.myapplication.util.VideoThumbnailCache
 @OptIn(ExperimentalFoundationApi::class)
 fun VideoThumbnail(
     url: String,
-    isDarkTheme: Boolean = true,
+    isDarkTheme: Boolean,
     onVideoClick: (String) -> Unit,
     modifier: Modifier = Modifier,
     onLongPress: () -> Unit = {}
@@ -47,8 +47,8 @@ fun VideoThumbnail(
 
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(10.dp))
-            .background(AppColors.SurfaceDark)
+            .clip(RoundedCornerShape(8.dp))
+            .background(if (isDarkTheme) Color(0xFF2A2A2A) else Color(0xFFE0E0E0))
             .combinedClickable(
                 onClick = { onVideoClick(url) },
                 onLongClick = onLongPress
@@ -66,18 +66,10 @@ fun VideoThumbnail(
         Box(
             modifier = Modifier
                 .size(48.dp)
-                .background(
-                    AppColors.DarkBackground.copy(alpha = 0.6f),
-                    CircleShape
-                ),
+                .background(Color(0xCC000000), CircleShape),
             contentAlignment = Alignment.Center
         ) {
-            Icon(
-                imageVector = Icons.Default.PlayArrow,
-                contentDescription = "播放",
-                tint = AppColors.TextWhite,
-                modifier = Modifier.size(28.dp)
-            )
+            Text("▶", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
         }
     }
 }
