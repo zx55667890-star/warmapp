@@ -130,6 +130,7 @@ fun ChatScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .background(AppColors.DarkBackground)
+                .statusBarsPadding()
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null
