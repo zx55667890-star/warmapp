@@ -1,16 +1,14 @@
 package com.example.myapplication
 
-import android.annotation.SuppressLint
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.core.view.WindowCompat
-import androidx.core.view.WindowInsetsControllerCompat
 import com.example.myapplication.di.authModule
 import com.example.myapplication.di.chatModule
 import com.example.myapplication.di.coreModule
@@ -24,46 +22,24 @@ import org.koin.compose.KoinApplication
 
 class MainActivity : ComponentActivity() {
 
-    @Suppress("DEPRECATION")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // 🌊 讓 App 延伸到狀態列後面
-        WindowCompat.setDecorFitsSystemWindows(window, false)
-        window.statusBarColor = Color.TRANSPARENT
-        window.navigationBarColor = Color.TRANSPARENT
-
-        // 🌌 Edge-to-edge
-        enableEdgeToEdge()
-
-        window.decorView.setBackgroundColor(android.graphics.Color.parseColor("#133281"))
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            window.isStatusBarContrastEnforced = false
-            window.isNavigationBarContrastEnforced = false
-        }
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT)
+        )
 
         createNotificationChannel()
 
-        // ⚡ 4. 控制 icon 顏色
-        val controller = WindowInsetsControllerCompat(window, window.decorView)
-        controller.isAppearanceLightStatusBars = false
-        controller.isAppearanceLightNavigationBars = false
-        controller.systemBarsBehavior =
-            WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-
         setContent {
-
             MyApplicationTheme {
-
                 KoinApplication(
                     application = {
                         androidContext(this@MainActivity)
                         modules(coreModule, authModule, chatModule, expertModule, seekerModule, mediaModule)
                     }
                 ) {
-
-                    // 🚀 這裡才是整個 UI Root
                     AppNavigation()
                 }
             }

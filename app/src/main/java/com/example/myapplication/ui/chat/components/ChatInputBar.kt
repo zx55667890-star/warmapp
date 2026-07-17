@@ -73,6 +73,7 @@ fun ChatInputBar(
     Surface(
         modifier = Modifier
             .fillMaxWidth()
+            .navigationBarsPadding()
             .padding(start = 30.dp, end = 30.dp, bottom = 20.dp)
             .border(0.5.dp, AppColors.GlassStroke, RoundedCornerShape(28.dp)),
         color = AppColors.SurfaceMedium,
