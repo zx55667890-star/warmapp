@@ -1,14 +1,17 @@
 package com.example.myapplication.ui.chat
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.myapplication.data.repository.UserRepository
 import com.example.myapplication.ui.theme.AppColors
@@ -55,6 +58,9 @@ fun ChatScreen(
         val opponentId = if (myRole == "user") expertId else ""
         if (opponentId.isNotBlank()) {
             opponentNickname = userRepository.getNickname(opponentId)
+        }
+        if (opponentNickname.isBlank() || opponentNickname == myNickname) {
+            opponentNickname = if (myRole == "expert") "提問者" else "專家"
         }
     }
     LaunchedEffect(uiState.messages) {
@@ -117,14 +123,15 @@ fun ChatScreen(
         }
     })
 
-    Scaffold(
-        containerColor = AppColors.DarkBackground,
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
-    ) { innerPadding ->
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(AppColors.DarkBackground)
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
+                .statusBarsPadding()
                 .imePadding()
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
@@ -147,7 +154,7 @@ fun ChatScreen(
                     },
                     onBack = onBack,
                     opponentNickname = opponentNickname,
-                    myNickname = myNickname
+                    myNickname = if (myNickname == "使用者") "" else myNickname
                 )
                 QuestionBanner(
                     questionText = chatQuestionText,
@@ -242,6 +249,14 @@ fun ChatScreen(
                 }
             )
         }
+
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
+                .padding(bottom = 80.dp)
+        )
 
         ChatDialogHost(
             uiState = uiState,
