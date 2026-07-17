@@ -54,8 +54,10 @@ fun ChatScreen(
     val navBarColorArgb = AppColors.DarkBackground.toArgb()
     SideEffect {
         window?.let {
+            it.statusBarColor = navBarColorArgb
             it.navigationBarColor = navBarColorArgb
             val controller = WindowCompat.getInsetsController(it, it.decorView)
+            controller.isAppearanceLightStatusBars = false
             controller.isAppearanceLightNavigationBars = false
         }
     }
