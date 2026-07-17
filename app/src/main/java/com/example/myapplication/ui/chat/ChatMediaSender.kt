@@ -45,7 +45,6 @@ class ChatMediaSender(
                     onMessageAdded?.invoke(realMsg)
                 } else {
                     onPendingRemoved?.invoke(id)
-                    onShowSnackbar?.invoke("上傳失敗")
                 }
             }
         }
@@ -55,8 +54,14 @@ class ChatMediaSender(
     fun sendVideo(chatroomId: String, userId: String, myRole: String, uri: Uri, isCameraCapture: Boolean = false, onError: (String) -> Unit = {}) {
         val basePendingMsg = sendMediaUseCase.createPendingMessage(userId, myRole, uri, isVideo = true, isCameraCapture = isCameraCapture)
         val pendingMsg = basePendingMsg.copy(localId = basePendingMsg.id)
+        var lastError: String? = null
         sendMedia(pendingMsg) {
-            sendMediaUseCase.sendVideo(chatroomId, userId, myRole, uri, onProgress = {}, onError = onError)
+            lastError = null
+            val ok = sendMediaUseCase.sendVideo(chatroomId, userId, myRole, uri, onProgress = {}) { err ->
+                lastError = err; onError(err)
+            }
+            if (!ok) onShowSnackbar?.invoke(lastError ?: "影片上傳失敗")
+            ok
         }
     }
 
@@ -76,8 +81,13 @@ class ChatMediaSender(
                 localImageUrls = listOf(uris.first().toString())
             )
         }
+        var lastError: String? = null
         sendMedia(pendingMsg) {
-            val urls = sendMediaUseCase.sendImages(chatroomId, userId, myRole, uris, onProgress = {}, onError = onError)
+            lastError = null
+            val urls = sendMediaUseCase.sendImages(chatroomId, userId, myRole, uris, onProgress = {}) { err ->
+                lastError = err; onError(err)
+            }
+            if (urls.isEmpty()) onShowSnackbar?.invoke(lastError ?: "圖片上傳失敗")
             urls.isNotEmpty()
         }
     }
