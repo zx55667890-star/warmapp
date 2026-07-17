@@ -11,16 +11,23 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Text
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavType
@@ -316,6 +323,36 @@ fun AppNavigation() {
                     userId = userId,
                     userRepository = userRepository,
                     onDismiss = { showNicknameSettings = false }
+                )
+            }
+
+            // ── 測試聊天室按鈕（開發用）──
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(16.dp)
+                    .size(48.dp)
+                    .background(AppColors.AccentOrange, CircleShape)
+                    .clickable {
+                        navController.navigate(
+                            Routes.chat(
+                                chatroomId = "test_chatroom",
+                                myRole = "user",
+                                expertId = "test_expert",
+                                expertText = "這是一則測試問題描述，用於預覽聊天室畫面",
+                                expertDate = "2026-07-17"
+                            )
+                        ) {
+                            popUpTo(Routes.ROLE_SELECT) { inclusive = false }
+                            launchSingleTop = true
+                        }
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    "T",
+                    color = AppColors.DarkBackground,
+                    fontWeight = FontWeight.Bold
                 )
             }
         }
