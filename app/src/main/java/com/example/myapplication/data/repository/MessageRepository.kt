@@ -57,10 +57,8 @@ class MessageRepository(
         onHasMore: (Boolean) -> Unit
     ): ValueEventListener {
         val query = messagesRef.orderByChild("timestamp").limitToLast(PAGE_SIZE)
-        Log.d("MessageRepo", "listenToRecentMessages: adding listener to ${messagesRef.path} query=${query.ref.path}")
         val listener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                Log.d("MessageRepo", "listenToRecentMessages onDataChange: children=${snapshot.childrenCount}")
                 val realTimeMessages = mutableListOf<ChatMessage>()
                 for (child in snapshot.children) {
                     if (child.key == "typing_status") continue
@@ -73,11 +71,10 @@ class MessageRepository(
             }
 
             override fun onCancelled(error: DatabaseError) {
-                Log.e("MessageRepo", "listenToRecentMessages onCancelled: ${error.message}", error.toException())
+                Log.w("MessageRepo", "Recent messages listener cancelled", error.toException())
             }
         }
         query.addValueEventListener(listener)
-        Log.d("MessageRepo", "listenToRecentMessages: listener added")
         return listener
     }
 
@@ -191,10 +188,8 @@ class MessageRepository(
     }
 
     override fun addMessagesListener(onMessages: (List<ChatMessage>) -> Unit): ValueEventListener {
-        Log.d("MessageRepo", "addMessagesListener: adding listener to ${messagesRef.path}")
         val listener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                Log.d("MessageRepo", "addMessagesListener onDataChange: children=${snapshot.childrenCount}")
                 val msgs = mutableListOf<ChatMessage>()
                 for (child in snapshot.children) {
                     if (child.key == "typing_status") continue
@@ -205,11 +200,10 @@ class MessageRepository(
                 onMessages(msgs)
             }
             override fun onCancelled(error: DatabaseError) {
-                Log.e("MessageRepo", "addMessagesListener onCancelled: ${error.message}", error.toException())
+                Log.w("MessageRepo", "Messages listener cancelled", error.toException())
             }
         }
         messagesRef.addValueEventListener(listener)
-        Log.d("MessageRepo", "addMessagesListener: listener added")
         return listener
     }
 

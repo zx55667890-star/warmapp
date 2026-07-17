@@ -1,6 +1,5 @@
 package com.example.myapplication.domain.chat
 
-import android.util.Log
 import com.example.myapplication.data.model.ChatMessage
 import com.example.myapplication.data.repository.MessageRepositoryFactory
 import kotlinx.coroutines.channels.awaitClose
@@ -26,7 +25,6 @@ class ObserveMessagesUseCase(
     private val activeSessions = ConcurrentHashMap<String, ChatSession>()
 
     fun observeMessagesDirect(chatroomId: String): Flow<MessagesResult> = callbackFlow {
-        Log.d("ChatVM", "observeMessagesDirect callbackFlow started chatroomId=$chatroomId")
         val repo = repoFactory.create(chatroomId)
         val session = ChatSession()
         activeSessions[chatroomId] = session
@@ -46,48 +44,21 @@ class ObserveMessagesUseCase(
         }
 
         awaitClose {
-            Log.d("ChatVM", "observeMessagesDirect awaitClose chatroomId=$chatroomId")
             repo.removeMessagesListener(listener)
             activeSessions.remove(chatroomId)
         }
     }
 
-    fun observeMessages(chatroomId: String): Flow<MessagesResult> = callbackFlow {
-        Log.d("ChatVM", "observeMessages callbackFlow started chatroomId=$chatroomId")
+    fun observeTypingStatus(chatroomId: String, myUserId: String): Flow<Boolean> = callbackFlow {
         val repo = repoFactory.create(chatroomId)
-        val session = ChatSession()
-        activeSessions[chatroomId] = session
+        val listener = repo.listenToTypingStatus(myUserId) { isTyping -> trySend(isTyping) }
+        awaitClose { repo.removeTypingListener(listener) }
+    }
 
-        val emitMerged = {
-            synchronized(session) {
-                val merged = (session.loadedOlder + session.realTimeMessages).sortedBy { it.timestamp }
-                Log.d("ChatVM", "observeMessages emitMerged merged.size=${merged.size}")
-                trySend(MessagesResult(merged, session.hasMoreMessages))
-            }
-        }
-        session.onUpdate = { emitMerged() }
-
-        val listener = repo.listenToRecentMessages(
-            userId = "",
-            onMessages = { list ->
-                Log.d("ChatVM", "observeMessages onMessages list.size=${list.size}")
-                session.realTimeMessages = list
-                emitMerged()
-            },
-            onTypingChange = {},
-            onHasMore = { hasMore ->
-                Log.d("ChatVM", "observeMessages onHasMore hasMore=$hasMore")
-                session.hasMoreMessages = hasMore
-                emitMerged()
-            }
-        )
-
-        awaitClose {
-            Log.d("ChatVM", "observeMessages awaitClose chatroomId=$chatroomId")
-            repo.removeListener(listener)
-            repo.clearTypingStatus("")
-            activeSessions.remove(chatroomId)
-        }
+    fun observeChatStatus(chatroomId: String): Flow<Boolean> = callbackFlow {
+        val repo = repoFactory.create(chatroomId)
+        val listener = repo.listenToStatus { isEnded -> trySend(isEnded) }
+        awaitClose { repo.removeStatusListener(listener) }
     }
 
     fun loadMore(chatroomId: String, oldestTimestamp: Long?, onComplete: () -> Unit) {
@@ -108,32 +79,6 @@ class ObserveMessagesUseCase(
                 session.onUpdate?.invoke()
             }
         )
-    }
-
-    fun observeTypingStatus(chatroomId: String, myUserId: String): Flow<Boolean> = callbackFlow {
-        Log.d("ChatVM", "observeTypingStatus callbackFlow started chatroomId=$chatroomId myUserId=$myUserId")
-        val repo = repoFactory.create(chatroomId)
-        val listener = repo.listenToTypingStatus(myUserId) { isTyping ->
-            Log.d("ChatVM", "observeTypingStatus callback isTyping=$isTyping")
-            trySend(isTyping)
-        }
-        awaitClose {
-            Log.d("ChatVM", "observeTypingStatus awaitClose")
-            repo.removeTypingListener(listener)
-        }
-    }
-
-    fun observeChatStatus(chatroomId: String): Flow<Boolean> = callbackFlow {
-        Log.d("ChatVM", "observeChatStatus callbackFlow started chatroomId=$chatroomId")
-        val repo = repoFactory.create(chatroomId)
-        val listener = repo.listenToStatus { isEnded ->
-            Log.d("ChatVM", "observeChatStatus callback isEnded=$isEnded")
-            trySend(isEnded)
-        }
-        awaitClose {
-            Log.d("ChatVM", "observeChatStatus awaitClose")
-            repo.removeStatusListener(listener)
-        }
     }
 
     fun markAsRead(chatroomId: String, msgIds: List<String>, userId: String) {

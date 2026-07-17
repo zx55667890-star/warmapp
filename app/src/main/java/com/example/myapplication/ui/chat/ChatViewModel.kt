@@ -8,7 +8,6 @@ import com.example.myapplication.domain.chat.ObserveMessagesUseCase
 import com.example.myapplication.domain.chat.RecallMessageUseCase
 import com.example.myapplication.domain.chat.SendMediaUseCase
 import com.example.myapplication.domain.chat.SendTextMessageUseCase
-import android.util.Log
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -63,7 +62,6 @@ class ChatViewModel(
     fun initChat(chatroomId: String, userId: String, role: String) {
         _userId.value = userId
         myRole = role
-        Log.d("ChatVM", "initChat chatroomId=$chatroomId userId=$userId role=$role currentRoom=${_chatroomId.value}")
         if (_chatroomId.value == chatroomId) return
         _chatroomId.value = chatroomId
         _uiState.update {
@@ -82,7 +80,6 @@ class ChatViewModel(
                 _userId.filterNotNull()
             ) { roomId, uid -> roomId to uid }
                 .flatMapLatest { (roomId, uid) ->
-                    Log.d("ChatVM", "flatMapLatest roomId=$roomId uid=$uid")
                     combine(
                         observeMessagesUseCase.observeMessagesDirect(roomId),
                         observeMessagesUseCase.observeTypingStatus(roomId, uid),
@@ -91,7 +88,6 @@ class ChatViewModel(
                         Triple(messagesResult, isTyping, isEnded)
                     }
                 }.collect { (messagesResult, isTyping, isEnded) ->
-                    Log.d("ChatVM", "Observer fired: messages=${messagesResult.messages.size} isTyping=$isTyping isEnded=$isEnded")
                     try {
                         val prevSize = _uiState.value.messages.size
                         _uiState.update { state ->
@@ -154,19 +150,15 @@ class ChatViewModel(
                         }
                         if (isEnded) _events.tryEmit(ChatEvent.ChatEndedByOther)
                         if (messagesResult.messages.size != prevSize && !_uiState.value.isLoadingMore) _events.tryEmit(ChatEvent.ScrollToBottom)
-                    } catch (e: Exception) {
-                        Log.e("ChatVM", "Observer collect failed", e)
+                    } catch (_: Exception) {
                     }
                 }
         }
     }
 
     fun sendMessage(text: String) {
-        val id = _chatroomId.value
-        val uid = _userId.value
-        Log.d("ChatVM", "sendMessage id=$id uid=$uid text=$text isChatActive=${_uiState.value.isChatActive}")
-        if (id == null) { Log.w("ChatVM", "sendMessage: chatroomId is null"); return }
-        if (uid == null) { Log.w("ChatVM", "sendMessage: userId is null"); return }
+        val id = _chatroomId.value ?: return
+        val uid = _userId.value ?: return
         val s = _uiState.value
         if (text.isBlank()) return
         if (!s.isChatActive) {
