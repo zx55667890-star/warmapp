@@ -15,7 +15,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
@@ -25,12 +24,12 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.myapplication.ui.seeker.SeekerViewModel
 import com.example.myapplication.domain.seeker.SendMedia
 import com.example.myapplication.ui.camera.CameraCaptureScreen
 import com.example.myapplication.ui.seeker.components.AskQuestionHeader
 import com.example.myapplication.ui.seeker.components.AskQuestionInputBar
 import com.example.myapplication.ui.seeker.components.AttachmentBottomSheet
+import com.example.myapplication.ui.theme.AppColors
 import com.example.myapplication.ui.voice.VoiceRecordingScreen
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -55,33 +54,21 @@ fun AskQuestionScreen(
 
     BackHandler(onBack = onBack)
 
-    // 🛡️ 新增：進入畫面時，自動獲取並重整最新提問額度
-    LaunchedEffect(userId) {
-        viewModel.refreshQuota(userId)
-    }
+    LaunchedEffect(userId) { viewModel.refreshQuota(userId) }
+    LaunchedEffect(Unit) { viewModel.clearActiveChatRoomId() }
 
-    // 清除上次的 activeChatRoomId，確保配對覆蓋層能正常顯示
-    LaunchedEffect(Unit) {
-        viewModel.clearActiveChatRoomId()
-    }
-
-    // 🛡️ 新增：攔截並監聽 ViewModel 拋出的額度超標/多開限制警告
     LaunchedEffect(seekerUiState.quotaError) {
         seekerUiState.quotaError?.let { errorMsg ->
             snackbarHostState.showSnackbar(errorMsg)
-            viewModel.clearQuotaError() // 顯示完畢後立刻洗掉狀態
+            viewModel.clearQuotaError()
         }
     }
 
-    LaunchedEffect(Unit) {
-        focusRequester.requestFocus()
-    }
+    LaunchedEffect(Unit) { focusRequester.requestFocus() }
 
     var wasMatching by remember { mutableStateOf(false) }
     LaunchedEffect(seekerUiState.isUserMatching) {
-        if (wasMatching && !seekerUiState.isUserMatching) {
-            focusRequester.requestFocus()
-        }
+        if (wasMatching && !seekerUiState.isUserMatching) focusRequester.requestFocus()
         wasMatching = seekerUiState.isUserMatching
     }
 
@@ -99,17 +86,22 @@ fun AskQuestionScreen(
         contract = ActivityResultContracts.GetMultipleContents()
     ) { uris ->
         if (uris.isNotEmpty()) {
-            selectedMediaList = selectedMediaList + uris.map { SelectedMedia(it, isVideo = false, isVoice = false) }
+            selectedMediaList = selectedMediaList + uris.map {
+                SelectedMedia(it, isVideo = false, isVoice = false)
+            }
         }
     }
 
     Scaffold(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
-        containerColor = Color.Transparent,
+        containerColor = AppColors.DarkBackground,
         contentWindowInsets = WindowInsets(0.dp)
     ) { innerPadding ->
-        Box(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
-
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+        ) {
             val imeInsets = WindowInsets.ime
             val density = LocalDensity.current
             Box(
@@ -137,9 +129,13 @@ fun AskQuestionScreen(
                         .padding(horizontal = 24.dp, vertical = 4.dp),
                     contentAlignment = Alignment.CenterEnd
                 ) {
+                    val isExhausted = seekerUiState.dailyRemainingQuota == 0
                     Text(
                         text = "今日剩餘提問次數：${seekerUiState.dailyRemainingQuota} 次",
-                        color = if (seekerUiState.dailyRemainingQuota == 0) Color(0xFFEF5350) else Color.Gray.copy(alpha = 0.7f),
+                        color = if (isExhausted)
+                            AppColors.StatusError
+                        else
+                            AppColors.TextGray.copy(alpha = 0.7f),
                         fontSize = 12.sp
                     )
                 }
@@ -159,15 +155,14 @@ fun AskQuestionScreen(
                 )
             }
 
-            // 全螢幕配對中覆蓋層
             AnimatedVisibility(
-                visible = seekerUiState.isUserMatching && seekerUiState.activeChatRoomId.isBlank() && seekerUiState.quotaError == null,
-                enter = fadeIn(animationSpec = tween(300)),
-                exit = fadeOut(animationSpec = tween(300))
+                visible = seekerUiState.isUserMatching &&
+                        seekerUiState.activeChatRoomId.isBlank() &&
+                        seekerUiState.quotaError == null,
+                enter = fadeIn(tween(300)),
+                exit = fadeOut(tween(300))
             ) {
-                MatchingOverlay(
-                    onCancel = { viewModel.cancelUserMatching() }
-                )
+                MatchingOverlay(onCancel = { viewModel.cancelUserMatching() })
             }
         }
 
@@ -175,7 +170,8 @@ fun AskQuestionScreen(
             CameraCaptureScreen(
                 onImageCaptured = { uri, isVideo ->
                     showCameraCapture = false
-                    selectedMediaList = selectedMediaList + SelectedMedia(uri, isVideo, isVoice = false)
+                    selectedMediaList = selectedMediaList +
+                            SelectedMedia(uri, isVideo, isVoice = false)
                 },
                 onDismiss = { showCameraCapture = false },
                 preWarmFuture = cameraProviderFuture
@@ -187,7 +183,8 @@ fun AskQuestionScreen(
                 onDismiss = { showVoiceRecording = false },
                 onVoiceRecorded = { filePath ->
                     showVoiceRecording = false
-                    selectedMediaList = selectedMediaList + SelectedMedia(Uri.fromFile(File(filePath)), isVideo = false, isVoice = true)
+                    selectedMediaList = selectedMediaList +
+                            SelectedMedia(Uri.fromFile(File(filePath)), isVideo = false, isVoice = true)
                 }
             )
         }
@@ -195,9 +192,18 @@ fun AskQuestionScreen(
         if (showAttachSheet) {
             AttachmentBottomSheet(
                 onDismiss = { showAttachSheet = false },
-                onGalleryClick = { showAttachSheet = false; imagePickerLauncher.launch("image/*") },
-                onCameraClick = { showAttachSheet = false; showCameraCapture = true },
-                onVoiceClick = { showAttachSheet = false; showVoiceRecording = true }
+                onGalleryClick = {
+                    showAttachSheet = false
+                    imagePickerLauncher.launch("image/*")
+                },
+                onCameraClick = {
+                    showAttachSheet = false
+                    showCameraCapture = true
+                },
+                onVoiceClick = {
+                    showAttachSheet = false
+                    showVoiceRecording = true
+                }
             )
         }
 

@@ -46,18 +46,6 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlin.math.roundToInt
 
 @Composable
-fun Modifier.fadeSlideIn(index: Int, baseDelay: Long = 80L): Modifier {
-    var visible by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) { delay(index * baseDelay); visible = true }
-    return this.then(
-        Modifier.animateContentSize()
-            .let {
-                if (visible) it else it
-            }
-    )
-}
-
-@Composable
 fun ExpertScreen(viewModel: ExpertViewModel, userId: String, onNavigateToInput: () -> Unit = {}) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -391,7 +379,7 @@ private fun ActionButton(text: String, onClick: () -> Unit, style: ActionButtonS
                         ),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(text, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    Text(text, color = AppColors.DarkBackground, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                 }
             }
         }

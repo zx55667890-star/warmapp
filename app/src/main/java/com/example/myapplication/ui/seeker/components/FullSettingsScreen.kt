@@ -14,33 +14,31 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.example.myapplication.ui.theme.AppColors
 
 @Composable
 fun FullSettingsScreen(
     onDismiss: () -> Unit,
     onLogoutClick: () -> Unit
 ) {
-    // 使用全螢幕 Dialog 鋪滿，達到全螢幕設定頁面的效果
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(
-            usePlatformDefaultWidth = false, // 滿版關鍵
+            usePlatformDefaultWidth = false,
             decorFitsSystemWindows = false
         )
     ) {
         Surface(
             modifier = Modifier.fillMaxSize(),
-            color = Color(0xFF121212) // 設定頁面專用質感極致黑
+            color = AppColors.DarkBackground
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
-                // 1. 頂部導覽列 (Top App Bar)
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -49,27 +47,33 @@ fun FullSettingsScreen(
                         .padding(horizontal = 4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    IconButton(onClick = onDismiss) {
+                    IconButton(
+                        onClick = onDismiss,
+                        modifier = Modifier
+                            .size(40.dp)
+                            .background(
+                                AppColors.SurfaceMedium,
+                                shape = RoundedCornerShape(12.dp)
+                            )
+                    ) {
                         Icon(
                             imageVector = Icons.Default.ArrowBackIosNew,
                             contentDescription = "Back",
-                            tint = Color.White,
-                            modifier = Modifier.size(20.dp)
+                            tint = AppColors.TextWhite,
+                            modifier = Modifier.size(18.dp)
                         )
                     }
                     Text(
                         text = "設定",
-                        color = Color.White,
+                        color = AppColors.TextWhite,
                         fontSize = 17.sp,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.weight(1f),
                         textAlign = TextAlign.Center
                     )
-                    // 為了平衡右側空間的偽排版留白
                     Spacer(modifier = Modifier.width(48.dp))
                 }
 
-                // 2. 設定選單主體內容 (可捲動)
                 Column(
                     modifier = Modifier
                         .weight(1f)
@@ -99,18 +103,19 @@ fun FullSettingsScreen(
 
                     Spacer(modifier = Modifier.height(20.dp))
 
-                    // 登出按鈕元件
                     Button(
                         onClick = onLogoutClick,
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(52.dp),
                         shape = RoundedCornerShape(14.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF241414)) // 隱約的暗紅警告感
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = AppColors.StatusError.copy(alpha = 0.08f)
+                        )
                     ) {
                         Text(
                             text = "登出帳戶",
-                            color = Color(0xFFEF4444), // 明亮紅字
+                            color = AppColors.StatusError,
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -127,9 +132,10 @@ fun FullSettingsScreen(
 private fun SettingsGroupHeader(title: String) {
     Text(
         text = title,
-        color = Color(0xFF666666),
+        color = AppColors.TextMuted,
         fontSize = 13.sp,
         fontWeight = FontWeight.Bold,
+        letterSpacing = 0.5.sp,
         modifier = Modifier.padding(start = 8.dp, bottom = 4.dp, top = 4.dp)
     )
 }
@@ -139,28 +145,28 @@ private fun SettingsItem(
     title: String,
     subtitle: String? = null,
     onClick: () -> Unit
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
-                .background(Color(0xFF1A1A1A))
-                .clickable { onClick() }
-                .padding(horizontal = 16.dp, vertical = 14.dp),
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(AppColors.SurfaceDark)
+            .clickable { onClick() }
+            .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
-                color = Color.White,
+                color = AppColors.TextWhite,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Medium
             )
             if (subtitle != null) {
-                Spacer(modifier = Modifier.height(1.dp))
+                Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = subtitle,
-                    color = Color(0xFF8E8E93),
+                    color = AppColors.TextGray,
                     fontSize = 11.sp
                 )
             }
@@ -168,7 +174,7 @@ private fun SettingsItem(
         Icon(
             imageVector = Icons.Default.ChevronRight,
             contentDescription = "Go",
-            tint = Color(0xFF48484A),
+            tint = AppColors.TextMuted,
             modifier = Modifier.size(20.dp)
         )
     }

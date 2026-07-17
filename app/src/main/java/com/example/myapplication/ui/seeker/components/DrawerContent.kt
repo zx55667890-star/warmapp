@@ -14,13 +14,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.example.myapplication.ui.theme.AppColors
 
 @Composable
 fun DrawerContent(
@@ -32,41 +32,46 @@ fun DrawerContent(
     avatarUrl: String? = null
 ) {
     var searchQuery by remember { mutableStateOf("") }
-    val drawerBackground = Color(0xFF171717) // 契合 ChatGPT 風格的優雅深灰
-    val textColor = Color(0xFFECECEC)
 
     Column(
         modifier = modifier
             .fillMaxHeight()
-            .width(290.dp) // 稍微縮減寬度，讓右側主畫面露出的比例更好看
-            .background(drawerBackground)
+            .width(290.dp)
+            .background(AppColors.SurfaceDark)
             .padding(horizontal = 16.dp)
     ) {
         Spacer(modifier = Modifier.statusBarsPadding())
         Spacer(modifier = Modifier.height(12.dp))
 
-        // 💡 修正 1：改用 OutlinedTextFieldDefaults.colors 以及正確的 containerColor 參數
         OutlinedTextField(
             value = searchQuery,
             onValueChange = { searchQuery = it; onSearch(it) },
-            placeholder = { Text("搜尋對話...", color = Color(0xFF7D7D7D), fontSize = 14.sp) },
-            leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search", tint = Color(0xFF7D7D7D)) },
-            modifier = Modifier
-                .fillMaxWidth(),
+            placeholder = {
+                Text("搜尋對話…", color = AppColors.TextMuted, fontSize = 14.sp)
+            },
+            leadingIcon = {
+                Icon(
+                    Icons.Default.Search,
+                    contentDescription = "Search",
+                    tint = AppColors.TextMuted
+                )
+            },
+            modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(24.dp),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = Color.Transparent,
-                unfocusedBorderColor = Color.Transparent,
-                focusedContainerColor = Color(0xFF242424),
-                unfocusedContainerColor = Color(0xFF242424),
-                cursorColor = Color.White
+                focusedBorderColor = AppColors.AccentGreen.copy(alpha = 0.3f),
+                unfocusedBorderColor = AppColors.BorderGray.copy(alpha = 0.5f),
+                focusedContainerColor = AppColors.SurfaceMedium,
+                unfocusedContainerColor = AppColors.SurfaceMedium,
+                cursorColor = AppColors.AccentGreen,
+                focusedTextColor = AppColors.TextWhite,
+                unfocusedTextColor = AppColors.TextWhite
             ),
             singleLine = true
         )
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // 歷史對話紀錄
         LazyColumn(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(2.dp)
@@ -81,14 +86,17 @@ fun DrawerContent(
             items(4) { HistoryItem("Kotlin 協程的運用與實踐", onHistoryItemClick) }
         }
 
-        // 底部個人資料列
+        HorizontalDivider(
+            color = AppColors.BorderGray.copy(alpha = 0.5f),
+            thickness = 0.5.dp
+        )
+
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 14.dp)
                 .clip(RoundedCornerShape(12.dp))
                 .clickable { onSettingsClick() }
-                // 💡 修正 2：將 symmetric 改回正確的 horizontal
                 .padding(horizontal = 8.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -104,10 +112,15 @@ fun DrawerContent(
                     modifier = Modifier
                         .size(36.dp)
                         .clip(CircleShape)
-                        .background(Color(0xFF3B82F6)),
+                        .background(AppColors.AccentBlue),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(nickname.take(1), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                    Text(
+                        nickname.take(1),
+                        color = AppColors.DarkBackground,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 15.sp
+                    )
                 }
             }
 
@@ -115,7 +128,7 @@ fun DrawerContent(
 
             Text(
                 text = nickname,
-                color = textColor,
+                color = AppColors.TextWhite,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.weight(1f)
@@ -124,10 +137,10 @@ fun DrawerContent(
             Icon(
                 imageVector = Icons.Default.MoreHoriz,
                 contentDescription = "Settings",
-                tint = Color(0xFF8E8E93)
+                tint = AppColors.TextGray
             )
         }
-        Spacer(modifier = Modifier.navigationBarsPadding()) // 確保相容底部虛擬導覽列
+        Spacer(modifier = Modifier.navigationBarsPadding())
     }
 }
 
@@ -135,9 +148,10 @@ fun DrawerContent(
 private fun HistoryGroupHeader(title: String) {
     Text(
         text = title,
-        color = Color(0xFF666666),
+        color = AppColors.TextMuted,
         fontSize = 11.sp,
         fontWeight = FontWeight.Bold,
+        letterSpacing = 0.5.sp,
         modifier = Modifier.padding(top = 14.dp, bottom = 6.dp, start = 8.dp)
     )
 }
@@ -146,7 +160,7 @@ private fun HistoryGroupHeader(title: String) {
 private fun HistoryItem(text: String, onClick: (String) -> Unit) {
     Text(
         text = text,
-        color = Color(0xFFC5C5C5),
+        color = AppColors.TextGray,
         fontSize = 14.sp,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,

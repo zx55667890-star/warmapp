@@ -13,22 +13,20 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.example.myapplication.ui.theme.AppColors
 import com.example.myapplication.util.MediaMetadataHelper
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -62,14 +60,17 @@ fun VoiceMessageBubble(
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_PAUSE) {
-                player?.pause()
-                isPlaying = false
-            }
-            if (event == Lifecycle.Event.ON_STOP) {
-                player?.release()
-                player = null
-                isPlaying = false
+            when (event) {
+                Lifecycle.Event.ON_PAUSE -> {
+                    player?.pause()
+                    isPlaying = false
+                }
+                Lifecycle.Event.ON_STOP -> {
+                    player?.release()
+                    player = null
+                    isPlaying = false
+                }
+                else -> {}
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -85,6 +86,8 @@ fun VoiceMessageBubble(
     } else {
         (duration / 1000).toInt().coerceAtLeast(1)
     }
+
+    val contentColor = if (isMine) AppColors.DarkBackground else AppColors.TextWhite
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -117,7 +120,6 @@ fun VoiceMessageBubble(
                 },
                 onLongClick = onLongPress
             )
-
     ) {
         val waveAnim = remember { Animatable(0f) }
         LaunchedEffect(isPlaying) {
@@ -136,33 +138,52 @@ fun VoiceMessageBubble(
         val waveCount = if (isPlaying) (waveAnim.value * 3.99f).toInt() else 3
 
         val waveCanvas = @Composable {
-            Canvas(modifier = Modifier.size(24.dp, 22.dp).then(if (!isMine) Modifier.scale(-1f, 1f) else Modifier)) {
+            Canvas(
+                modifier = Modifier
+                    .size(24.dp, 22.dp)
+                    .then(
+                        if (!isMine) Modifier.scale(-1f, 1f)
+                        else Modifier
+                    )
+            ) {
                 val cy = size.height / 2
                 val cx = size.width
-
                 val radii = listOf(4.dp.toPx(), 8.dp.toPx(), 12.dp.toPx())
                 for (i in 0 until waveCount) {
                     if (i >= radii.size) break
                     val r = radii[i]
                     drawArc(
-                        color = Color.Black,
+                        color = contentColor,
                         startAngle = 135f,
                         sweepAngle = 90f,
                         useCenter = false,
                         topLeft = Offset(cx - 4.dp.toPx() - r, cy - r),
                         size = Size(r * 2, r * 2),
-                        style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round)
+                        style = Stroke(
+                            width = 2.dp.toPx(),
+                            cap = StrokeCap.Round
+                        )
                     )
                 }
             }
         }
 
         if (isMine) {
-            Text("${displaySec}\"", fontSize = 16.sp, color = Color.Black, fontWeight = FontWeight.Medium)
+            Text(
+                "${displaySec}\"",
+                fontSize = 16.sp,
+                color = contentColor,
+                fontWeight = FontWeight.Medium
+            )
             waveCanvas()
         } else {
             waveCanvas()
-            Text("${displaySec}\"", fontSize = 16.sp, color = Color.Black, fontWeight = FontWeight.Medium)
+            Text(
+                "${displaySec}\"",
+                fontSize = 16.sp,
+                color = contentColor,
+                fontWeight = FontWeight.Medium
+            )
         }
     }
 }

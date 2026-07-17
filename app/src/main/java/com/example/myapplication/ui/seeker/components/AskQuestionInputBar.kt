@@ -5,7 +5,6 @@ import android.media.MediaMetadataRetriever
 import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
@@ -22,6 +21,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
@@ -36,6 +36,7 @@ import coil.compose.AsyncImage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import com.example.myapplication.ui.seeker.SelectedMedia
+import com.example.myapplication.ui.theme.AppColors
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -56,9 +57,9 @@ fun AskQuestionInputBar(
         modifier = Modifier
             .fillMaxWidth()
             .padding(start = 30.dp, end = 30.dp, bottom = bottomPadding)
-            .border(0.5.dp, Color(0xFF333333), RoundedCornerShape(32.dp)),
-        color = Color(0xFF1A1A1E),
-        shape = RoundedCornerShape(32.dp),
+            .border(0.5.dp, AppColors.GlassStroke, RoundedCornerShape(28.dp)),
+        color = AppColors.SurfaceMedium,
+        shape = RoundedCornerShape(28.dp),
         tonalElevation = 0.dp
     ) {
         Column(
@@ -87,18 +88,25 @@ fun AskQuestionInputBar(
             OutlinedTextField(
                 value = question,
                 onValueChange = onQuestionChange,
-                modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusRequester(focusRequester),
                 maxLines = 5,
                 minLines = 1,
+                placeholder = {
+                    Text("描述你的問題…", color = AppColors.TextMuted, fontSize = 15.sp)
+                },
                 shape = RoundedCornerShape(24.dp),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
                 keyboardActions = KeyboardActions(onSend = { onSendClick() }),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = Color.Transparent,
                     unfocusedBorderColor = Color.Transparent,
-                    cursorColor = Color(0xFF888888),
+                    cursorColor = AppColors.AccentGreen,
                     focusedContainerColor = Color.Transparent,
-                    unfocusedContainerColor = Color.Transparent
+                    unfocusedContainerColor = Color.Transparent,
+                    focusedTextColor = AppColors.TextWhite,
+                    unfocusedTextColor = AppColors.TextWhite
                 ),
                 leadingIcon = {
                     IconButton(
@@ -108,7 +116,7 @@ fun AskQuestionInputBar(
                         Text(
                             "+",
                             fontSize = 32.sp,
-                            color = if (isSystemInDarkTheme()) Color(0xFFCCCCCC) else Color(0xFF666666),
+                            color = AppColors.TextGray,
                             fontWeight = FontWeight.Normal
                         )
                     }
@@ -119,14 +127,16 @@ fun AskQuestionInputBar(
                         enabled = selectedMediaList.isNotEmpty() || question.isNotBlank(),
                         modifier = Modifier.size(52.dp)
                     ) {
-                        val isDark = isSystemInDarkTheme()
                         val iconColor = when {
-                            showSentFeedback -> Color(0xFF04C9A0)
-                            question.isNotBlank() -> Color(0xFFD4A853)
-                            else -> if (isDark) Color(0xFF555555) else Color(0xFFBBBBBB)
+                            showSentFeedback -> AppColors.AccentGreen
+                            question.isNotBlank() -> AppColors.AccentOrange
+                            else -> AppColors.TextMuted
                         }
                         Icon(
-                            imageVector = if (showSentFeedback) Icons.Default.Check else Icons.AutoMirrored.Filled.Send,
+                            imageVector = if (showSentFeedback)
+                                Icons.Default.Check
+                            else
+                                Icons.AutoMirrored.Filled.Send,
                             contentDescription = "傳送",
                             tint = iconColor,
                             modifier = Modifier.size(28.dp)
@@ -139,7 +149,12 @@ fun AskQuestionInputBar(
 }
 
 @Composable
-private fun MediaPreviewItem(uri: Uri, isVideo: Boolean, isVoice: Boolean, onRemove: () -> Unit) {
+private fun MediaPreviewItem(
+    uri: Uri,
+    isVideo: Boolean,
+    isVoice: Boolean,
+    onRemove: () -> Unit
+) {
     val context = LocalContext.current
     var videoBitmap by remember { mutableStateOf<Bitmap?>(null) }
 
@@ -150,44 +165,71 @@ private fun MediaPreviewItem(uri: Uri, isVideo: Boolean, isVoice: Boolean, onRem
                 try {
                     retriever.setDataSource(context, uri)
                     retriever.getFrameAtTime()
-                } catch (e: Exception) { if (e is kotlinx.coroutines.CancellationException) throw e;
+                } catch (e: Exception) {
+                    if (e is kotlinx.coroutines.CancellationException) throw e
                     null
                 } finally {
-                    try { retriever.release() } catch (e: Exception) { if (e is kotlinx.coroutines.CancellationException) throw e;}
+                    try { retriever.release() } catch (_: Exception) {}
                 }
             }
         }
     }
 
     Box(modifier = Modifier.size(80.dp)) {
+        val previewShape = RoundedCornerShape(10.dp)
+
         if (isVoice) {
             Box(
-                modifier = Modifier.fillMaxSize().background(Color(0xFF2D2D3A), RoundedCornerShape(8.dp)),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(previewShape)
+                    .background(AppColors.SurfaceLight),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Default.Mic, contentDescription = "語音", tint = Color(0xFFD4A853), modifier = Modifier.size(32.dp))
+                Icon(
+                    Icons.Default.Mic,
+                    contentDescription = "語音",
+                    tint = AppColors.AccentOrange,
+                    modifier = Modifier.size(32.dp)
+                )
             }
         } else if (isVideo && videoBitmap != null) {
             Image(
                 bitmap = videoBitmap!!.asImageBitmap(),
                 contentDescription = "預覽影片",
-                modifier = Modifier.fillMaxSize().background(Color(0xFF2D2D3A), RoundedCornerShape(8.dp)),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(previewShape),
                 contentScale = ContentScale.Crop
             )
         } else {
             AsyncImage(
                 model = uri,
                 contentDescription = "預覽圖片",
-                modifier = Modifier.fillMaxSize().background(Color(0xFF2D2D3A), RoundedCornerShape(8.dp)),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(previewShape),
                 contentScale = ContentScale.Crop
             )
         }
+
         IconButton(
             onClick = onRemove,
-            modifier = Modifier.size(32.dp).align(Alignment.TopEnd)
+            modifier = Modifier
+                .size(28.dp)
+                .align(Alignment.TopEnd)
+                .padding(2.dp)
+                .background(
+                    AppColors.DarkBackground.copy(alpha = 0.7f),
+                    RoundedCornerShape(8.dp)
+                )
         ) {
-            Icon(Icons.Default.Close, contentDescription = "移除", tint = Color.White, modifier = Modifier.size(20.dp))
+            Icon(
+                Icons.Default.Close,
+                contentDescription = "移除",
+                tint = AppColors.TextWhite,
+                modifier = Modifier.size(16.dp)
+            )
         }
     }
 }
-

@@ -1,34 +1,28 @@
 package com.example.myapplication.ui.navigation
 
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
 import android.Manifest
 import android.app.Activity
 import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.core.content.ContextCompat
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.navigation.NavController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -38,18 +32,19 @@ import androidx.navigation.navArgument
 import com.example.myapplication.data.repository.AuthRepository
 import com.example.myapplication.data.repository.DataMigrator
 import com.example.myapplication.data.repository.UserRepository
-import com.example.myapplication.ui.expert.ExpertViewModel
-import com.example.myapplication.ui.seeker.SeekerViewModel
 import com.example.myapplication.ui.auth.AuthScreen
 import com.example.myapplication.ui.auth.AuthViewModel
 import com.example.myapplication.ui.auth.NicknameSettingsDialog
 import com.example.myapplication.ui.chat.ChatScreen
 import com.example.myapplication.ui.expert.ExpertAssignDialog
 import com.example.myapplication.ui.expert.ExpertScreen
+import com.example.myapplication.ui.expert.ExpertViewModel
 import com.example.myapplication.ui.expert.ExpertWaitingDialog
 import com.example.myapplication.ui.seeker.AskQuestionScreen
 import com.example.myapplication.ui.seeker.RoleSelectScreen
+import com.example.myapplication.ui.seeker.SeekerViewModel
 import com.example.myapplication.ui.seeker.components.drawBackgroundGlow
+import com.example.myapplication.ui.theme.AppColors
 import com.example.myapplication.util.uploadChatAndComplete
 import com.google.firebase.database.FirebaseDatabase
 import kotlinx.coroutines.launch
@@ -74,17 +69,22 @@ fun AppNavigation() {
     var showNicknameSettings by remember { mutableStateOf(false) }
     val context = LocalContext.current
 
+    // ── 通知權限 ──
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
-    ) { /* granted or denied */ }
+    ) { }
     LaunchedEffect(Unit) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            if (ContextCompat.checkSelfPermission(
+                    context, Manifest.permission.POST_NOTIFICATIONS
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
                 notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
         }
     }
 
+    // ── FCM 通知導航 ──
     LaunchedEffect(Unit) {
         val activity = context as? Activity
         val intent = activity?.intent
@@ -96,11 +96,15 @@ fun AppNavigation() {
             val expertDate = intent?.getStringExtra(Routes.EXTRA_EXPERT_DATE) ?: ""
             navController.navigate(
                 Routes.chat(chatroomId, myRole, expertId, expertText, expertDate)
-            ) { popUpTo(Routes.ROLE_SELECT) { inclusive = false }; launchSingleTop = true }
+            ) {
+                popUpTo(Routes.ROLE_SELECT) { inclusive = false }
+                launchSingleTop = true
+            }
             intent?.removeExtra(Routes.EXTRA_CHATROOM_ID)
         }
     }
 
+    // ── 初始化 ──
     LaunchedEffect(Unit) { dataMigrator.migrateIfNeeded(userId) }
     LaunchedEffect(Unit) {
         if (userId.isNotBlank()) {
@@ -111,11 +115,20 @@ fun AppNavigation() {
         expertViewModel.initializeExpertStatus(userId)
     }
 
+    // ── 自動導航到聊天室 ──
     LaunchedEffect(seekerUiState.activeChatRoomId) {
         if (seekerUiState.activeChatRoomId.isNotBlank()) {
             navController.navigate(
-                Routes.chat(seekerUiState.activeChatRoomId, "user", seekerUiState.matchedExpertId, seekerUiState.matchedExpertText, seekerUiState.matchedExpertDate)
-            ) { popUpTo(Routes.ROLE_SELECT) { inclusive = false }; launchSingleTop = true }
+                Routes.chat(
+                    seekerUiState.activeChatRoomId, "user",
+                    seekerUiState.matchedExpertId,
+                    seekerUiState.matchedExpertText,
+                    seekerUiState.matchedExpertDate
+                )
+            ) {
+                popUpTo(Routes.ROLE_SELECT) { inclusive = false }
+                launchSingleTop = true
+            }
         }
     }
 
@@ -123,17 +136,14 @@ fun AppNavigation() {
         if (expertUiState.activeChatRoomId.isNotBlank()) {
             navController.navigate(
                 Routes.chat(expertUiState.activeChatRoomId, "expert", "", "", "")
-            ) { popUpTo(Routes.ROLE_SELECT) { inclusive = false }; launchSingleTop = true }
+            ) {
+                popUpTo(Routes.ROLE_SELECT) { inclusive = false }
+                launchSingleTop = true
+            }
         }
     }
 
-    val navBackStackEntry by navController.currentBackStackEntryAsState()
-    val currentRoute = navBackStackEntry?.destination?.route
-    val containerColor = when (currentRoute) {
-        Routes.ROLE_SELECT -> Color(0xFF171717)
-        else -> Color.Black
-    }
-// 將原本的 containerColor = when(...) 判斷式移除，改為透明
+    // ── 主畫面 ──
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -179,12 +189,15 @@ fun AppNavigation() {
                     RoleSelectScreen(
                         nickname = nickname,
                         avatarUrl = photoUrl,
-                        onAskQuestion = { navController.navigate(Routes.ASK) { launchSingleTop = true } },
+                        onAskQuestion = {
+                            navController.navigate(Routes.ASK) { launchSingleTop = true }
+                        },
                         onExpertMode = {
                             expertViewModel.setExpertOnline(true, userId)
                             navController.navigate(Routes.EXPERT) {
                                 popUpTo(navController.graph.startDestinationId) { saveState = true }
-                                launchSingleTop = true; restoreState = true
+                                launchSingleTop = true
+                                restoreState = true
                             }
                         },
                         onLogout = {
@@ -199,25 +212,47 @@ fun AppNavigation() {
 
                 composable(
                     Routes.ASK,
-                    enterTransition = { slideInHorizontally(animationSpec = tween(350)) { it } + fadeIn(animationSpec = tween(350)) },
-                    exitTransition = { slideOutHorizontally(animationSpec = tween(350)) { it / 3 } + fadeOut(animationSpec = tween(350)) },
-                    popEnterTransition = { slideInHorizontally(animationSpec = tween(350)) { -it / 3 } + fadeIn(animationSpec = tween(350)) },
-                    popExitTransition = { slideOutHorizontally(animationSpec = tween(350)) { it } + fadeOut(animationSpec = tween(350)) }
+                    enterTransition = {
+                        slideInHorizontally(tween(350)) { it } + fadeIn(tween(350))
+                    },
+                    exitTransition = {
+                        slideOutHorizontally(tween(350)) { it / 3 } + fadeOut(tween(350))
+                    },
+                    popEnterTransition = {
+                        slideInHorizontally(tween(350)) { -it / 3 } + fadeIn(tween(350))
+                    },
+                    popExitTransition = {
+                        slideOutHorizontally(tween(350)) { it } + fadeOut(tween(350))
+                    }
                 ) {
                     var nickname by remember { mutableStateOf("使用者") }
-                    LaunchedEffect(userId) { nickname = userRepository.getNickname(userId).ifBlank { "使用者" } }
+                    LaunchedEffect(userId) {
+                        nickname = userRepository.getNickname(userId).ifBlank { "使用者" }
+                    }
                     AskQuestionScreen(
-                        viewModel = seekerViewModel, userId = userId, nickname = nickname,
-                        onBack = { navController.popBackStack(Routes.ROLE_SELECT, inclusive = false) }
+                        viewModel = seekerViewModel,
+                        userId = userId,
+                        nickname = nickname,
+                        onBack = {
+                            navController.popBackStack(Routes.ROLE_SELECT, inclusive = false)
+                        }
                     )
                 }
 
                 composable(
                     Routes.EXPERT,
-                    enterTransition = { slideInHorizontally(animationSpec = tween(350)) { it } + fadeIn(animationSpec = tween(350)) },
-                    exitTransition = { slideOutHorizontally(animationSpec = tween(350)) { it / 3 } + fadeOut(animationSpec = tween(350)) },
-                    popEnterTransition = { slideInHorizontally(animationSpec = tween(350)) { -it / 3 } + fadeIn(animationSpec = tween(350)) },
-                    popExitTransition = { slideOutHorizontally(animationSpec = tween(350)) { it } + fadeOut(animationSpec = tween(350)) }
+                    enterTransition = {
+                        slideInHorizontally(tween(350)) { it } + fadeIn(tween(350))
+                    },
+                    exitTransition = {
+                        slideOutHorizontally(tween(350)) { it / 3 } + fadeOut(tween(350))
+                    },
+                    popEnterTransition = {
+                        slideInHorizontally(tween(350)) { -it / 3 } + fadeIn(tween(350))
+                    },
+                    popExitTransition = {
+                        slideOutHorizontally(tween(350)) { it } + fadeOut(tween(350))
+                    }
                 ) {
                     ExpertScreen(
                         viewModel = expertViewModel,
@@ -225,7 +260,8 @@ fun AppNavigation() {
                         onNavigateToInput = {
                             navController.navigate(Routes.ROLE_SELECT) {
                                 popUpTo(navController.graph.startDestinationId) { saveState = true }
-                                launchSingleTop = true; restoreState = true
+                                launchSingleTop = true
+                                restoreState = true
                             }
                         }
                     )
@@ -240,19 +276,34 @@ fun AppNavigation() {
                         navArgument(Routes.CHAT_EXPERT_TEXT) { type = NavType.StringType },
                         navArgument(Routes.CHAT_EXPERT_DATE) { type = NavType.StringType }
                     ),
-                    enterTransition = { slideInHorizontally(animationSpec = tween(350)) { it } + fadeIn(animationSpec = tween(350)) },
-                    exitTransition = { slideOutHorizontally(animationSpec = tween(350)) { it / 3 } + fadeOut(animationSpec = tween(350)) },
-                    popEnterTransition = { slideInHorizontally(animationSpec = tween(350)) { -it / 3 } + fadeIn(animationSpec = tween(350)) },
-                    popExitTransition = { slideOutHorizontally(animationSpec = tween(350)) { it } + fadeOut(animationSpec = tween(350)) }
+                    enterTransition = {
+                        slideInHorizontally(tween(350)) { it } + fadeIn(tween(350))
+                    },
+                    exitTransition = {
+                        slideOutHorizontally(tween(350)) { it / 3 } + fadeOut(tween(350))
+                    },
+                    popEnterTransition = {
+                        slideInHorizontally(tween(350)) { -it / 3 } + fadeIn(tween(350))
+                    },
+                    popExitTransition = {
+                        slideOutHorizontally(tween(350)) { it } + fadeOut(tween(350))
+                    }
                 ) { entry ->
-                    ChatRouteContent(entry.arguments, userId, firebaseDb, navController, scope)
+                    ChatRouteContent(
+                        arguments = entry.arguments,
+                        userId = userId,
+                        firebaseDb = firebaseDb,
+                        navController = navController,
+                        scope = scope
+                    )
                 }
             }
 
-        Box {
+            // ── 全域對話框 ──
             if (expertUiState.showGlobalAssignDialog) {
                 ExpertAssignDialog(
-                    questionText = expertUiState.globalAssignedQText, userId = userId,
+                    questionText = expertUiState.globalAssignedQText,
+                    userId = userId,
                     onAccept = { expertViewModel.acceptGlobalAssignment() },
                     onReject = { expertViewModel.rejectGlobalAssignment(userId) }
                 )
@@ -260,11 +311,14 @@ fun AppNavigation() {
             if (expertUiState.isExpertWaitingForSeeker) {
                 ExpertWaitingDialog(onCancel = { expertViewModel.cancelWaiting(userId) })
             }
-            showNicknameSettings.let {
-                if (it) NicknameSettingsDialog(userId = userId, userRepository = userRepository, onDismiss = { showNicknameSettings = false })
+            if (showNicknameSettings) {
+                NicknameSettingsDialog(
+                    userId = userId,
+                    userRepository = userRepository,
+                    onDismiss = { showNicknameSettings = false }
+                )
             }
         }
-    }
     }
 }
 
@@ -273,7 +327,7 @@ private fun ChatRouteContent(
     arguments: android.os.Bundle?,
     userId: String,
     firebaseDb: FirebaseDatabase,
-    navController: NavController,
+    navController: androidx.navigation.NavController,
     scope: kotlinx.coroutines.CoroutineScope
 ) {
     val chatroomId = arguments?.getString(Routes.CHAT_CHATROOM_ID) ?: ""
@@ -283,8 +337,13 @@ private fun ChatRouteContent(
     val expertDate = arguments?.getString(Routes.CHAT_EXPERT_DATE) ?: ""
 
     ChatScreen(
-        chatroomId = chatroomId, userId = userId, myRole = myRole,
-        chatQuestionText = expertText, expertId = expertId, expertText = expertText, expertDate = expertDate,
+        chatroomId = chatroomId,
+        userId = userId,
+        myRole = myRole,
+        chatQuestionText = expertText,
+        expertId = expertId,
+        expertText = expertText,
+        expertDate = expertDate,
         onBack = {
             scope.launch {
                 uploadChatAndComplete(chatroomId, firebaseDb)
@@ -293,4 +352,3 @@ private fun ChatRouteContent(
         }
     )
 }
-

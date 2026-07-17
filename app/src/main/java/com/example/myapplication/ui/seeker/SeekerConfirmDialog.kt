@@ -1,22 +1,14 @@
 package com.example.myapplication.ui.seeker
 
-import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.myapplication.ui.theme.AppColors
 
 @Composable
 fun SeekerConfirmDialog(
@@ -27,36 +19,44 @@ fun SeekerConfirmDialog(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val isDarkTheme = isSystemInDarkTheme()
-
     AlertDialog(
         onDismissRequest = onDismiss,
-        shape = RoundedCornerShape(24.dp),
-        containerColor = if (isDarkTheme) Color(0xFF2D2D3A) else Color.White,
+        shape = RoundedCornerShape(20.dp),
+        containerColor = AppColors.SurfaceDark,
+        titleContentColor = AppColors.TextWhite,
+        textContentColor = AppColors.TextGray,
         title = {
             Text(
                 "專家已接受您的提問",
-                color = if (isDarkTheme) Color(0xFFE0E0E0) else Color(0xFF333333)
+                fontWeight = FontWeight.Bold
             )
         },
         text = {
             Column {
                 Text(
-                    "專家: $expertName",
-                    color = if (isDarkTheme) Color(0xFFCCCCCC) else Color.DarkGray,
+                    "專家：$expertName",
+                    color = AppColors.TextGray,
                     fontSize = 14.sp
                 )
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(10.dp))
                 Text(
-                    "經驗: $expertText",
-                    color = if (isDarkTheme) Color(0xFFE0E0E0) else Color.Black,
-                    fontSize = 15.sp,
+                    "經驗",
+                    color = AppColors.TextGray,
+                    fontSize = 12.sp,
                     fontWeight = FontWeight.Medium
                 )
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(2.dp))
                 Text(
-                    "上架日期: $expertDate",
-                    color = if (isDarkTheme) Color(0xFF888888) else Color.Gray,
+                    expertText,
+                    color = AppColors.TextWhite,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Medium,
+                    lineHeight = 22.sp
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    "上架日期：$expertDate",
+                    color = AppColors.TextGray,
                     fontSize = 12.sp
                 )
             }
@@ -64,17 +64,18 @@ fun SeekerConfirmDialog(
         confirmButton = {
             Button(
                 onClick = onConfirm,
-                modifier = Modifier.padding(end = 4.dp)
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = AppColors.AccentGreen,
+                    contentColor = AppColors.DarkBackground
+                )
             ) {
-                Text("確認")
+                Text("確認", fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text(
-                    "取消",
-                    color = if (isDarkTheme) Color(0xFF80CBC4) else Color(0xFF2196F3)
-                )
+                Text("取消", color = AppColors.TextGray)
             }
         }
     )

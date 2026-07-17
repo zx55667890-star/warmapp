@@ -155,7 +155,7 @@ fun QuickLogCard(
                 ) {
                     Text(
                         text = stringResource(R.string.expert_publish_button),
-                        color = if (expertise.isNotBlank()) Color(0xFF0B0E14) else AppColors.TextGray,
+                        color = if (expertise.isNotBlank()) AppColors.DarkBackground else AppColors.TextGray,
                         fontWeight = FontWeight.Bold,
                         fontSize = 15.sp
                     )

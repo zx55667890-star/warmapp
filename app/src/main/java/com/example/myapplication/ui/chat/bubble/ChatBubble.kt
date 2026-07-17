@@ -6,7 +6,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -16,12 +15,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.myapplication.data.model.ChatMessage
+import com.example.myapplication.ui.theme.AppColors
 
 @Composable
 fun ChatBubble(
@@ -38,7 +37,6 @@ fun ChatBubble(
     onQuoteClick: (String) -> Unit = {},
     highlighted: Boolean = false
 ) {
-    val isDarkTheme = isSystemInDarkTheme()
     val bubbleShape = RoundedCornerShape(16.dp)
     var showMenu by remember { mutableStateOf(false) }
 
@@ -61,7 +59,7 @@ fun ChatBubble(
                 Box(
                     modifier = Modifier
                         .size(32.dp)
-                        .background(if (isDarkTheme) Color(0xFF5C6BC0) else Color(0xFF90CAF9), CircleShape)
+                        .background(AppColors.AccentBlue, CircleShape)
                         .clip(CircleShape)
                         .clickable { onAvatarClick() },
                     contentAlignment = Alignment.Center
@@ -69,7 +67,7 @@ fun ChatBubble(
                     Text(
                         text = if (msg.senderRole == "expert") "專" else "問",
                         fontSize = 12.sp,
-                        color = Color.White,
+                        color = AppColors.DarkBackground,
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -78,10 +76,11 @@ fun ChatBubble(
 
             Box(modifier = Modifier.widthIn(max = 260.dp)) {
                 val bubbleBg by animateColorAsState(
-                    targetValue = if (highlighted) {
-                        if (isDarkTheme) Color(0xFF5C6BC0) else Color(0xFFFFF3CD)
-                    } else if (isMine) Color(0xFF95EC69)
-                    else if (isDarkTheme) Color(0xFF3A3A4A) else Color.White,
+                    targetValue = when {
+                        highlighted -> AppColors.AccentBlue.copy(alpha = 0.3f)
+                        isMine -> AppColors.AccentGreen
+                        else -> AppColors.SurfaceLight
+                    },
                     animationSpec = tween(600),
                     label = "bubbleBg"
                 )

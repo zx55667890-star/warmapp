@@ -5,29 +5,30 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.HelpOutline
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.myapplication.ui.theme.AppColors
 
 @Composable
 fun ChatTopBar(
     myRole: String,
     isChatActive: Boolean,
-    isDarkTheme: Boolean,
+    isDarkTheme: Boolean = true,
     onEndChat: () -> Unit,
     onBack: () -> Unit,
     opponentNickname: String = if (myRole == "expert") "提問者" else "專家",
     myNickname: String = ""
 ) {
     Surface(
-        color = if (isDarkTheme) Color(0xFF2D2D3A) else Color(0xFFF8F9FA),
+        color = AppColors.SurfaceDark,
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
@@ -41,24 +42,35 @@ fun ChatTopBar(
             Column {
                 Text(
                     text = opponentNickname,
-                    fontWeight = FontWeight.Bold, fontSize = 18.sp
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    color = AppColors.TextWhite
                 )
                 if (myNickname.isNotBlank()) {
                     Text(
                         text = "我: $myNickname",
                         fontSize = 12.sp,
-                        color = if (isDarkTheme) Color(0xFFAAAAAA) else Color.Gray
+                        color = AppColors.TextGray
                     )
                 }
-                if (!isChatActive) Text("對話已結束", fontSize = 12.sp, color = Color.Red)
+                if (!isChatActive) {
+                    Text(
+                        "對話已結束",
+                        fontSize = 12.sp,
+                        color = AppColors.StatusError
+                    )
+                }
             }
-            TextButton(onClick = {
-                if (isChatActive) onEndChat()
-                else onBack()
-            }) {
+
+            val buttonColor = if (isChatActive) AppColors.StatusError else AppColors.AccentBlue
+            TextButton(
+                onClick = {
+                    if (isChatActive) onEndChat() else onBack()
+                }
+            ) {
                 Text(
                     if (isChatActive) "結束對話" else "返回",
-                    color = Color(0xFFD32F2F),
+                    color = buttonColor,
                     fontWeight = FontWeight.Bold
                 )
             }
@@ -69,11 +81,11 @@ fun ChatTopBar(
 @Composable
 fun QuestionBanner(
     questionText: String,
-    isDarkTheme: Boolean
+    isDarkTheme: Boolean = true
 ) {
     if (questionText.isNotBlank()) {
         Surface(
-            color = if (isDarkTheme) Color(0xFF3A3A4A) else Color.White,
+            color = AppColors.SurfaceMedium,
             modifier = Modifier.fillMaxWidth()
         ) {
             Row(
@@ -85,27 +97,33 @@ fun QuestionBanner(
                 Box(
                     modifier = Modifier
                         .size(32.dp)
-                        .background(if (isDarkTheme) Color(0xFF4A4A5A) else Color.White, CircleShape)
+                        .background(AppColors.SurfaceLight, CircleShape)
                         .border(
-                            BorderStroke(1.dp, if (isDarkTheme) Color(0xFF666680) else Color(0xFFE0E0E0)),
+                            BorderStroke(1.dp, AppColors.BorderGray),
                             CircleShape
                         ),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("❓", fontSize = 16.sp, color = if (isDarkTheme) Color.White else Color(0xFF04C9A0))
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Outlined.HelpOutline,
+                        contentDescription = "問題",
+                        tint = AppColors.AccentGreen,
+                        modifier = Modifier.size(18.dp)
+                    )
                 }
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         "問題內容",
                         fontSize = 11.sp,
-                        color = if (isDarkTheme) Color(0xFFAAAAAA) else Color.Gray,
+                        color = AppColors.TextGray,
                         fontWeight = FontWeight.Medium
                     )
+                    Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = questionText,
                         fontSize = 14.sp,
-                        color = if (isDarkTheme) Color(0xFF90CAF9) else Color(0xFF1565C0),
+                        color = AppColors.AccentBlue,
                         fontWeight = FontWeight.Medium,
                         maxLines = 2
                     )

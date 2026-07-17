@@ -1,17 +1,13 @@
 package com.example.myapplication.ui.chat.dialog
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.myapplication.ui.theme.AppColors
 
 @Composable
 fun EndChatConfirmDialog(
@@ -19,35 +15,33 @@ fun EndChatConfirmDialog(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val isDarkTheme = isSystemInDarkTheme()
-
     AlertDialog(
         onDismissRequest = onDismiss,
-        shape = RoundedCornerShape(24.dp),
-        containerColor = if (isDarkTheme) Color(0xFF2D2D3A) else Color.White,
+        shape = RoundedCornerShape(20.dp),
+        containerColor = AppColors.SurfaceDark,
+        titleContentColor = AppColors.TextWhite,
+        textContentColor = AppColors.TextGray,
         title = {
-            Text(
-                "結束對話？",
-                color = if (isDarkTheme) Color(0xFFE0E0E0) else Color(0xFF333333)
-            )
+            Text("結束對話？", fontWeight = FontWeight.Bold)
         },
         text = {
-            Text(
-                "確定要結束這次對話嗎？",
-                color = if (isDarkTheme) Color(0xFFAAAAAA) else Color.Gray
-            )
+            Text("確定要結束這次對話嗎？")
         },
         confirmButton = {
-            Button(onClick = onConfirm) {
+            Button(
+                onClick = onConfirm,
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = AppColors.StatusError,
+                    contentColor = AppColors.TextWhite
+                )
+            ) {
                 Text("結束", fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text(
-                    "取消",
-                    color = if (isDarkTheme) Color(0xFF80CBC4) else Color(0xFF2196F3)
-                )
+                Text("取消", color = AppColors.TextGray)
             }
         }
     )

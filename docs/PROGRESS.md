@@ -168,21 +168,20 @@
 - [x] 第 12 輪變更：13+ 個檔案（新增 9 檔、刪除 3 檔、修改 6+ 檔）
 
 ### 第 13 輪：全面 AppColors 主題化（所有 UI 檔案移除硬編碼顏色）
-- [x] **AuthScreen.kt** — AnimatedContent 頁面切換 + `AppColors` 主題化
-- [x] **WelcomePanel.kt** — 5 階段進場動畫 + breathing logo + `AppColors`
-- [x] **LoginForm.kt** — `AnimatedVisibility` 註冊欄位展開 + gradient button + `AppColors`
-- [x] **ResetPasswordPanel.kt** — `ForgotPasswordPanel` + `NewPasswordForm` + `GradientButton` 三合一
-- [x] **NicknameSettingsDialog.kt** — `AppColors` 主題化 + `isSaving` 狀態 + 自動關閉
-- [x] **CompactTextField.kt** — focus 邊框/背景 `animateColorAsState` + `AppColors`
-- [x] **LoadingOverlay.kt** — `AnimatedVisibility` fade + 呼吸脈衝 `CircularProgressIndicator`
-- [x] **ToastOverlay.kt** — 頂部滑入/滑出動畫 + `statusBarsPadding` + `GlassStroke` 邊框
-- [x] **OfflineBanner.kt** — `AppColors.StatusPending` 配色
-- [x] **FullScreenImageDialog.kt** — 圓點（≤7）/ 數字（>7）頁碼指示器 + `AppColors`
-- [x] **RatingDialog.kt** — Material Icons Star + `animateColorAsState` 星星顏色
-- [x] **ScrollToBottomButton.kt** — `SurfaceMedium` + `AccentGreen` + FAB elevation
-- [x] **VideoPlayerDialog.kt** — `Icons.Default.PlayArrow`/`Close` + `AppColors` 全主題化
+- [x] **主題基底** — AppColors 色值調整、Theme.kt 全面重寫（純深色 darkColorScheme）、Type.kt（Nunito Sans 字型）
+- [x] **登入模組**（5 檔案）— AuthScreen（AnimatedContent+AppColors）、WelcomePanel（五階段進場+呼吸Logo）、LoginForm（GradientButton）、ResetPasswordPanel（三合一）、NicknameSettingsDialog（深色化+自動關閉）
+- [x] **共用元件**（7 檔案）— LoadingOverlay（呼吸脈衝）、ToastOverlay（頂部滑入+GlassStroke）、CompactTextField（聚焦動畫）、OfflineBanner（StatusPending）、FullScreenImageDialog（頁碼指示器）、RatingDialog（Material Star）、VideoPlayerDialog（PlayArrow icon）、ScrollToBottomButton（SurfaceMedium+AccentGreen）
+- [x] **導航**（2 檔案）— AppNavigation（Scaffold Transparent+修復嵌套）、Route（無改動）
+- [x] **專家模組**（6 檔案）— ExpertScreen（砍 fadeSlideIn）、ExpertDialogs（~15 處 isSystemInDarkTheme 移除）、QuickLogCard（DarkBackground 文字）
+- [x] **提問者主畫面**（5 檔案）— AskQuestionScreen（Scaffold DarkBackground）、RoleSelectScreen（AccentBlue/AccentGreen/StatusPending）、MatchingOverlay/Dialog/SeekerConfirmDialog（全 AppColors）
+- [x] **提問者子元件**（6 檔案）— AskQuestionHeader（AutoAwesome+呼吸）、AskQuestionInputBar（11 處色碼改寫）、AttachmentBottomSheet（SurfaceDark）、BackgroundGlow（綠藍雙色）、DrawerContent（10 處色碼改寫）、FullSettingsScreen（登出 StatusError）
+- [x] **聊天元件**（6 檔案）— ChatTopBar（砍 12 處 isDarkTheme）、ChatInputBar（8 處色碼改寫+Warning 圖標）、MessageList（TextGray）、ReplyPreviewBar、TypingIndicator
+- [x] **聊天泡泡**（6 檔案）— ChatBubble（砍 4 處 isSystemInDarkTheme）、BubbleContent（砍 5 處+PendingOverlay）、BubbleContextMenu（SurfaceMedium）、BubbleStatusMetadata（AccentGreen 已讀）、VideoThumbnail（PlayArrow icon）、VoiceMessageBubble（動態 contentColor）
+- [x] **聊天主畫面與對話框**（4 檔案）— ChatScreen（Scaffold DarkBackground）、EndChatConfirmDialog（StatusError 破壞性按鈕）、OpponentProfileDialog（ProfileStat 元件）
+- [x] **相機模組**（6 檔案）— CameraCaptureScreen（DarkBackground+StatusPending）、CameraControlButtons、CameraPreviewActions（StatusError/AccentGreen）、ImagePreviewScreen（PlayArrow icon）、VideoPreviewPlayer（Slider AccentGreen）
+- [x] **錄音模組**（1 檔案）— VoiceRecordingScreen（DarkBackground 遮罩+StatusError 按鈕）
 
 ### Git
-- [x] 約 267+ 次提交，已全部推送至 main
-- [x] 第 13 輪變更：13 個檔案修改
+- [x] 約 280+ 次提交，已全部推送至 main
+- [x] 第 13 輪變更：36+ 個 UI 檔案修改（已推送）
 

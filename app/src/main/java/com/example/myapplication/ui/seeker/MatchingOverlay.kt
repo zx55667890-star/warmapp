@@ -9,11 +9,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.myapplication.ui.theme.AppColors
 import kotlinx.coroutines.delay
 
 @Composable
@@ -31,11 +31,11 @@ fun MatchingOverlay(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.6f))
+            .background(AppColors.DarkBackground.copy(alpha = 0.7f))
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
-                onClick = { }
+                onClick = {}
             ),
         contentAlignment = Alignment.Center
     ) {
@@ -45,14 +45,13 @@ fun MatchingOverlay(
             modifier = Modifier.padding(32.dp)
         ) {
             Surface(
-                shape = RoundedCornerShape(28.dp),
-                color = Color(0xFF1A1A2E),
-                modifier = Modifier.size(56.dp),
-                contentColor = Color.Transparent
+                shape = RoundedCornerShape(20.dp),
+                color = AppColors.SurfaceMedium,
+                modifier = Modifier.size(56.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(
-                        color = Color(0xFF04C9A0),
+                        color = AppColors.AccentGreen,
                         modifier = Modifier.size(28.dp),
                         strokeWidth = 3.dp
                     )
@@ -65,7 +64,7 @@ fun MatchingOverlay(
                 text = "配對中請稍候",
                 fontWeight = FontWeight.Bold,
                 fontSize = 20.sp,
-                color = Color.White
+                color = AppColors.TextWhite
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -73,7 +72,7 @@ fun MatchingOverlay(
             Text(
                 text = "正在為您尋找合適的專家" + ".".repeat(dotCount),
                 fontSize = 14.sp,
-                color = Color.White.copy(alpha = 0.6f),
+                color = AppColors.TextGray,
                 textAlign = TextAlign.Center
             )
 
@@ -81,10 +80,13 @@ fun MatchingOverlay(
 
             OutlinedButton(
                 onClick = onCancel,
-                colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = Color(0xFF80CBC4)
+                shape = RoundedCornerShape(20.dp),
+                border = androidx.compose.foundation.BorderStroke(
+                    1.dp, AppColors.BorderGray
                 ),
-                shape = RoundedCornerShape(20.dp)
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = AppColors.TextGray
+                )
             ) {
                 Text("取消配對", fontWeight = FontWeight.Bold)
             }

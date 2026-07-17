@@ -1,27 +1,30 @@
 package com.example.myapplication.ui.camera
 
 import android.net.Uri
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
-import androidx.media3.common.util.UnstableApi
 import androidx.media3.ui.PlayerView
+import com.example.myapplication.ui.theme.AppColors
 import kotlinx.coroutines.delay
 
 @UnstableApi
@@ -53,7 +56,11 @@ fun VideoPreviewPlayer(
         onDispose { exoPlayer?.release() }
     }
 
-    Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(AppColors.DarkBackground)
+    ) {
         AndroidView(
             factory = { ctx ->
                 PlayerView(ctx).apply {
@@ -106,9 +113,21 @@ fun VideoPreviewPlayer(
                 contentAlignment = Alignment.Center
             ) {
                 Box(
-                    modifier = Modifier.size(64.dp).background(Color(0x80000000), CircleShape),
+                    modifier = Modifier
+                        .size(64.dp)
+                        .background(
+                            AppColors.DarkBackground.copy(alpha = 0.6f),
+                            CircleShape
+                        ),
                     contentAlignment = Alignment.Center
-                ) { Text("\u25B6", color = Color.White, fontSize = 32.sp) }
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.PlayArrow,
+                        contentDescription = "播放",
+                        tint = AppColors.TextWhite,
+                        modifier = Modifier.size(36.dp)
+                    )
+                }
             }
         }
 
@@ -116,26 +135,54 @@ fun VideoPreviewPlayer(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .background(Color(0x80000000))
+                .background(AppColors.DarkBackground.copy(alpha = 0.6f))
                 .padding(horizontal = 16.dp, vertical = 6.dp)
         ) {
-            val fmt = { ms: Long -> "%02d:%02d".format((ms / 1000).toInt() / 60, (ms / 1000).toInt() % 60) }
+            val fmt = { ms: Long ->
+                "%02d:%02d".format(
+                    (ms / 1000).toInt() / 60,
+                    (ms / 1000).toInt() % 60
+                )
+            }
             Slider(
-                value = if (duration > 0) (currentPosition.toFloat() / duration.toFloat()).coerceIn(0f, 1f) else 0f,
+                value = if (duration > 0)
+                    (currentPosition.toFloat() / duration.toFloat()).coerceIn(0f, 1f)
+                else 0f,
                 onValueChange = { f ->
-                    isDragging = true; currentPosition = (f * duration).toLong()
+                    isDragging = true
+                    currentPosition = (f * duration).toLong()
                     onActiveChanged(true)
                 },
                 onValueChangeFinished = {
-                    exoPlayer?.seekTo(currentPosition); isDragging = false
+                    exoPlayer?.seekTo(currentPosition)
+                    isDragging = false
                     onActiveChanged(isPlaying)
                 },
-                modifier = Modifier.fillMaxWidth().height(24.dp),
-                colors = SliderDefaults.colors(thumbColor = Color(0xFF04C9A0), activeTrackColor = Color(0xFF04C9A0), inactiveTrackColor = Color(0x66FFFFFF))
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(24.dp),
+                colors = SliderDefaults.colors(
+                    thumbColor = AppColors.AccentGreen,
+                    activeTrackColor = AppColors.AccentGreen,
+                    inactiveTrackColor = AppColors.TextWhite.copy(alpha = 0.2f)
+                )
             )
-            Row(Modifier.fillMaxWidth().padding(bottom = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(fmt(currentPosition), color = Color.White, fontSize = 12.sp)
-                Text(fmt(duration), color = Color.White, fontSize = 12.sp)
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 4.dp),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    fmt(currentPosition),
+                    color = AppColors.TextWhite,
+                    fontSize = 12.sp
+                )
+                Text(
+                    fmt(duration),
+                    color = AppColors.TextGray,
+                    fontSize = 12.sp
+                )
             }
         }
     }

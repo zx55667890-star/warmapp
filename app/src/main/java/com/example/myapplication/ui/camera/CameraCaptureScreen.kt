@@ -6,27 +6,29 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
-import android.view.View
+import android.view.MotionEvent
 import android.view.WindowInsetsController
+import android.view.WindowManager
+import android.util.Size
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import android.util.Size
-import android.view.WindowManager
 import androidx.camera.core.AspectRatio
 import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.FocusMeteringAction
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
-import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.core.Preview
+import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.video.FileOutputOptions
+import androidx.camera.video.Recording
+import androidx.camera.video.VideoRecordEvent
 import androidx.camera.view.PreviewView
-import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.border
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -36,26 +38,23 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.myapplication.ui.theme.AppColors
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.concurrent.Executor
-import androidx.camera.video.VideoRecordEvent
-import androidx.camera.video.Recording
-import android.view.MotionEvent
 
 @Composable
 fun CameraCaptureScreen(
@@ -68,7 +67,9 @@ fun CameraCaptureScreen(
 
     var hasCameraPermission by remember {
         mutableStateOf(
-            ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+            ContextCompat.checkSelfPermission(
+                context, Manifest.permission.CAMERA
+            ) == PackageManager.PERMISSION_GRANTED
         )
     }
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -81,13 +82,17 @@ fun CameraCaptureScreen(
     }
 
     if (!hasCameraPermission) {
-        LaunchedEffect(Unit) { permissionLauncher.launch(Manifest.permission.CAMERA) }
+        LaunchedEffect(Unit) {
+            permissionLauncher.launch(Manifest.permission.CAMERA)
+        }
     }
 
     if (hasCameraPermission) {
         val lifecycleOwner = LocalLifecycleOwner.current
         @Suppress("DEPRECATION")
-        val cameraProviderFuture = remember { preWarmFuture ?: ProcessCameraProvider.getInstance(context) }
+        val cameraProviderFuture = remember {
+            preWarmFuture ?: ProcessCameraProvider.getInstance(context)
+        }
         val mainExecutor: Executor = remember { ContextCompat.getMainExecutor(context) }
         val cameraVm: CameraViewModel = viewModel()
 
@@ -104,32 +109,42 @@ fun CameraCaptureScreen(
         LaunchedEffect(cameraUiState.lensFacing, previewView) {
             val pv = previewView ?: return@LaunchedEffect
             cameraReady = false
-            val provider = withContext(Dispatchers.IO) { cameraProviderFuture.get() }
+            val provider = withContext(Dispatchers.IO) {
+                cameraProviderFuture.get()
+            }
             provider.unbindAll()
-            val selector = CameraSelector.Builder().requireLensFacing(cameraUiState.lensFacing).build()
-            val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
-            val displayRot: Int
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                displayRot = context.display!!.rotation
+            val selector = CameraSelector.Builder()
+                .requireLensFacing(cameraUiState.lensFacing)
+                .build()
+            val windowManager = context.getSystemService(
+                Context.WINDOW_SERVICE
+            ) as WindowManager
+            val displayRot: Int = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                context.display!!.rotation
             } else {
                 @Suppress("DEPRECATION")
-                displayRot = windowManager.defaultDisplay.rotation
+                windowManager.defaultDisplay.rotation
             }
             @Suppress("DEPRECATION")
             val preview = Preview.Builder()
                 .setTargetAspectRatio(AspectRatio.RATIO_16_9)
                 .setTargetRotation(displayRot)
                 .build().apply {
-                setSurfaceProvider(pv.surfaceProvider)
-            }
+                    setSurfaceProvider(pv.surfaceProvider)
+                }
             cameraVm.imageCapture.flashMode = cameraUiState.flashMode
             cameraVm.videoCapture.targetRotation = displayRot
             cameraVm.imageCapture.targetRotation = displayRot
-            camera = provider.bindToLifecycle(lifecycleOwner, selector, preview, cameraVm.imageCapture, cameraVm.videoCapture)
+            camera = provider.bindToLifecycle(
+                lifecycleOwner, selector, preview,
+                cameraVm.imageCapture, cameraVm.videoCapture
+            )
             cameraReady = true
         }
 
-        if (cameraUiState.cameraState == CameraCaptureState.PREVIEW && cameraUiState.capturedFileUri != null) {
+        if (cameraUiState.cameraState == CameraCaptureState.PREVIEW &&
+            cameraUiState.capturedFileUri != null
+        ) {
             cameraUiState.capturedFileUri?.let { uri ->
                 ImagePreviewScreen(
                     fileUri = uri,
@@ -142,11 +157,16 @@ fun CameraCaptureScreen(
                 )
             }
         } else {
-            Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(AppColors.DarkBackground)
+            ) {
                 if (!cameraReady) {
                     CircularProgressIndicator(
                         modifier = Modifier.align(Alignment.Center),
-                        color = Color.White
+                        color = AppColors.AccentGreen,
+                        strokeWidth = 3.dp
                     )
                 }
 
@@ -157,17 +177,22 @@ fun CameraCaptureScreen(
                             view.setOnTouchListener { _, event ->
                                 if (event.action == MotionEvent.ACTION_DOWN) {
                                     focusPoint = Pair(event.x, event.y)
-                                    val cam = camera ?: return@setOnTouchListener true
-                                    val pv = view as PreviewView
+                                    val cam = camera
+                                        ?: return@setOnTouchListener true
                                     try {
                                         cam.cameraControl.cancelFocusAndMetering()
-                                        val factory = pv.meteringPointFactory
-                                        val point = factory.createPoint(event.x, event.y)
+                                        val factory = view.meteringPointFactory
+                                        val point = factory.createPoint(
+                                            event.x, event.y
+                                        )
                                         val action = FocusMeteringAction.Builder(
-                                            point, FocusMeteringAction.FLAG_AF
+                                            point,
+                                            FocusMeteringAction.FLAG_AF
                                         ).build()
                                         cam.cameraControl.startFocusAndMetering(action)
-                                    } catch (e: Exception) { if (e is kotlinx.coroutines.CancellationException) throw e;}
+                                    } catch (e: Exception) {
+                                        if (e is kotlinx.coroutines.CancellationException) throw e
+                                    }
                                 }
                                 true
                             }
@@ -178,7 +203,9 @@ fun CameraCaptureScreen(
                 )
 
                 if (cameraUiState.isRecording) {
-                    RecordingTimerBanner(elapsedSeconds = cameraUiState.recordingElapsed)
+                    RecordingTimerBanner(
+                        elapsedSeconds = cameraUiState.recordingElapsed
+                    )
                 }
 
                 CameraControlButtons(
@@ -191,7 +218,10 @@ fun CameraCaptureScreen(
                 )
 
                 if (!cameraUiState.isRecording) {
-                    CameraTipText(
+                    Text(
+                        "點擊以拍照，按住可錄影",
+                        color = AppColors.TextWhite.copy(alpha = 0.7f),
+                        fontSize = 14.sp,
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
                             .padding(bottom = 100.dp)
@@ -200,7 +230,7 @@ fun CameraCaptureScreen(
 
                 Text(
                     "取消",
-                    color = Color.White.copy(alpha = 0.8f),
+                    color = AppColors.TextWhite.copy(alpha = 0.8f),
                     fontSize = 16.sp,
                     modifier = Modifier
                         .align(Alignment.TopStart)
@@ -218,61 +248,91 @@ fun CameraCaptureScreen(
                     LaunchedEffect(focusPoint) {
                         alphaAnim.snapTo(1f)
                         scaleAnim.snapTo(1.4f)
-                        scaleAnim.animateTo(1f, animationSpec = tween(300))
+                        scaleAnim.animateTo(
+                            1f, animationSpec = tween(300)
+                        )
                         kotlinx.coroutines.delay(500)
-                        alphaAnim.animateTo(0f, animationSpec = tween(300))
+                        alphaAnim.animateTo(
+                            0f, animationSpec = tween(300)
+                        )
                     }
 
                     val boxSize = 70.dp
                     val offsetDp = with(density) {
-                        (fx - (boxSize.toPx() / 2)).toDp() to (fy - (boxSize.toPx() / 2)).toDp()
+                        (fx - (boxSize.toPx() / 2)).toDp() to
+                                (fy - (boxSize.toPx() / 2)).toDp()
                     }
+
+                    val focusColor = AppColors.StatusPending
 
                     Box(
                         modifier = Modifier
                             .offset(x = offsetDp.first, y = offsetDp.second)
                             .size(boxSize * scaleAnim.value)
                             .alpha(alphaAnim.value)
-                            .border(1.5.dp, Color(0xFFFFD600))
+                            .border(1.5.dp, focusColor)
                     ) {
-                        Box(modifier = Modifier.align(Alignment.TopCenter).size(1.dp, 6.dp).background(Color(0xFFFFD600)))
-                        Box(modifier = Modifier.align(Alignment.BottomCenter).size(1.dp, 6.dp).background(Color(0xFFFFD600)))
-                        Box(modifier = Modifier.align(Alignment.CenterStart).size(6.dp, 1.dp).background(Color(0xFFFFD600)))
-                        Box(modifier = Modifier.align(Alignment.CenterEnd).size(6.dp, 1.dp).background(Color(0xFFFFD600)))
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.TopCenter)
+                                .size(1.dp, 6.dp)
+                                .background(focusColor)
+                        )
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .size(1.dp, 6.dp)
+                                .background(focusColor)
+                        )
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.CenterStart)
+                                .size(6.dp, 1.dp)
+                                .background(focusColor)
+                        )
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.CenterEnd)
+                                .size(6.dp, 1.dp)
+                                .background(focusColor)
+                        )
                     }
                 }
             }
         }
     } else {
         Box(
-            modifier = Modifier.fillMaxSize().background(Color.Black),
+            modifier = Modifier
+                .fillMaxSize()
+                .background(AppColors.DarkBackground),
             contentAlignment = Alignment.Center
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("需要相機權限", color = Color.White, fontSize = 18.sp)
+                Text(
+                    "需要相機權限",
+                    color = AppColors.TextWhite,
+                    fontSize = 18.sp
+                )
                 Spacer(modifier = Modifier.height(16.dp))
-                Button(onClick = { permissionLauncher.launch(Manifest.permission.CAMERA) }) {
-                    Text("授予權限")
+                Button(
+                    onClick = {
+                        permissionLauncher.launch(Manifest.permission.CAMERA)
+                    },
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = AppColors.AccentGreen,
+                        contentColor = AppColors.DarkBackground
+                    )
+                ) {
+                    Text("授予權限", fontWeight = FontWeight.Bold)
                 }
                 Spacer(modifier = Modifier.height(12.dp))
                 TextButton(onClick = onDismiss) {
-                    Text("取消", color = Color.Gray)
+                    Text("取消", color = AppColors.TextGray)
                 }
             }
         }
     }
-}
-
-@Composable
-private fun CameraTipText(
-    modifier: Modifier = Modifier
-) {
-    Text(
-        "點擊以拍照，按住可錄影",
-        color = Color.White.copy(alpha = 0.7f),
-        fontSize = 14.sp,
-        modifier = modifier
-    )
 }
 
 @Composable
@@ -287,7 +347,10 @@ private fun RecordingTimerBanner(
         Box(
             modifier = Modifier
                 .padding(top = 48.dp)
-                .background(Color(0x80000000), RoundedCornerShape(20.dp))
+                .background(
+                    AppColors.DarkBackground.copy(alpha = 0.5f),
+                    RoundedCornerShape(20.dp)
+                )
                 .padding(horizontal = 16.dp, vertical = 8.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -295,12 +358,15 @@ private fun RecordingTimerBanner(
                     modifier = Modifier
                         .size(12.dp)
                         .clip(CircleShape)
-                        .background(Color.Red)
+                        .background(AppColors.StatusError)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    "%02d:%02d".format(elapsedSeconds / 60, elapsedSeconds % 60),
-                    color = Color.White,
+                    "%02d:%02d".format(
+                        elapsedSeconds / 60,
+                        elapsedSeconds % 60
+                    ),
+                    color = AppColors.TextWhite,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -316,12 +382,15 @@ private fun enterFullScreen(activity: Activity) {
         window.setDecorFitsSystemWindows(false)
         window.decorView.windowInsetsController?.let { c ->
             c.hide(android.view.WindowInsets.Type.statusBars())
-            c.systemBarsBehavior = WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            c.systemBarsBehavior =
+                WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         }
     } else {
         @Suppress("DEPRECATION")
-        window.decorView.systemUiVisibility = window.decorView.systemUiVisibility or
-            android.view.View.SYSTEM_UI_FLAG_FULLSCREEN or android.view.View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+        window.decorView.systemUiVisibility =
+            window.decorView.systemUiVisibility or
+                    android.view.View.SYSTEM_UI_FLAG_FULLSCREEN or
+                    android.view.View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
     }
 }
 
@@ -333,8 +402,9 @@ private fun exitFullScreen(activity: Activity) {
         }
     } else {
         @Suppress("DEPRECATION")
-        window.decorView.systemUiVisibility = window.decorView.systemUiVisibility and
-            android.view.View.SYSTEM_UI_FLAG_FULLSCREEN.inv() and android.view.View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY.inv()
+        window.decorView.systemUiVisibility =
+            window.decorView.systemUiVisibility and
+                    android.view.View.SYSTEM_UI_FLAG_FULLSCREEN.inv() and
+                    android.view.View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY.inv()
     }
 }
-
