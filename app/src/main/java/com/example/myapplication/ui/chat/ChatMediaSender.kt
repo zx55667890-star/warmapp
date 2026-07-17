@@ -41,6 +41,7 @@ class ChatMediaSender(
             withContext(Dispatchers.Main) {
                 if (success) {
                     pendingUploadJobs.remove(id)
+                    onPendingRemoved?.invoke(id)
                     val realMsg = pendingMsg.copy(id = "uploaded_$id")
                     onMessageAdded?.invoke(realMsg)
                 } else {
