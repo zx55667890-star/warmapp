@@ -167,3 +167,22 @@
 - [x] 約 53+ 次提交，已全部推送至 main
 - [x] 第 12 輪變更：13+ 個檔案（新增 9 檔、刪除 3 檔、修改 6+ 檔）
 
+### 第 13 輪：全面 AppColors 主題化（所有 UI 檔案移除硬編碼顏色）
+- [x] **AuthScreen.kt** — AnimatedContent 頁面切換 + `AppColors` 主題化
+- [x] **WelcomePanel.kt** — 5 階段進場動畫 + breathing logo + `AppColors`
+- [x] **LoginForm.kt** — `AnimatedVisibility` 註冊欄位展開 + gradient button + `AppColors`
+- [x] **ResetPasswordPanel.kt** — `ForgotPasswordPanel` + `NewPasswordForm` + `GradientButton` 三合一
+- [x] **NicknameSettingsDialog.kt** — `AppColors` 主題化 + `isSaving` 狀態 + 自動關閉
+- [x] **CompactTextField.kt** — focus 邊框/背景 `animateColorAsState` + `AppColors`
+- [x] **LoadingOverlay.kt** — `AnimatedVisibility` fade + 呼吸脈衝 `CircularProgressIndicator`
+- [x] **ToastOverlay.kt** — 頂部滑入/滑出動畫 + `statusBarsPadding` + `GlassStroke` 邊框
+- [x] **OfflineBanner.kt** — `AppColors.StatusPending` 配色
+- [x] **FullScreenImageDialog.kt** — 圓點（≤7）/ 數字（>7）頁碼指示器 + `AppColors`
+- [x] **RatingDialog.kt** — Material Icons Star + `animateColorAsState` 星星顏色
+- [x] **ScrollToBottomButton.kt** — `SurfaceMedium` + `AccentGreen` + FAB elevation
+- [x] **VideoPlayerDialog.kt** — `Icons.Default.PlayArrow`/`Close` + `AppColors` 全主題化
+
+### Git
+- [x] 約 267+ 次提交，已全部推送至 main
+- [x] 第 13 輪變更：13 個檔案修改
+

@@ -1,6 +1,6 @@
 # PROJECT_STRUCTURE.md — 專案目錄結構
 
-**總計：115 個 Kotlin 檔，215 次 Git 提交**
+**總計：125 個 Kotlin 檔，267 次 Git 提交**
 
 ```
 warmapp/
@@ -134,10 +134,10 @@ warmapp/
 │       │   │   │   │   │   ├── BackgroundGlow.kt
 │       │   │   │   │   │   ├── DrawerContent.kt
 │       │   │   │   │   │   └── FullSettingsScreen.kt
-│       │   │   │   ├── theme/
-│       │   │   │   │   ├── Color.kt
-│       │   │   │   │   ├── Theme.kt
-│       │   │   │   │   └── Type.kt
+│   │   │   │   ├── theme/
+│   │   │   │   │   ├── AppColors.kt
+│   │   │   │   │   ├── Theme.kt
+│   │   │   │   │   └── Type.kt
 │       │   │   │   └── voice/
 │       │   │   │       ├── VoiceRecordingScreen.kt
 │       │   │   │       └── VoiceRecordingViewModel.kt

@@ -46,6 +46,30 @@
 - `ui/theme/Color.kt`（合併進 AppColors.kt）
 - 根目錄 `CHANGELOG_OLD.md`、`get_sha1.md`（搬入 docs/）
 
+## 2026-07-17
+### 新增
+- `NicknameSettingsDialog` — AppColors 主題化 + isSaving loading 狀態 + 自動關閉
+- `GradientButton` 共用 composable（ForgotPasswordPanel + NewPasswordForm 共用漸層按鈕）
+
+### 變更
+- **AppColors 全面主題化** — 以下檔案移除所有硬編碼顏色，改用 AppColors：
+  - `ui/auth/AuthScreen.kt` — AnimatedContent 頁面切換 + AppColors
+  - `ui/auth/WelcomePanel.kt` — 5 階段進場動畫 + breathing logo + AppColors
+  - `ui/auth/LoginForm.kt` — AnimatedVisibility 註冊欄位 + gradient button + AppColors
+  - `ui/auth/ResetPasswordPanel.kt` — 合併 ForgotPasswordPanel + NewPasswordForm + GradientButton
+  - `ui/common/CompactTextField.kt` — focus 邊框/背景動畫 + AppColors
+  - `ui/common/LoadingOverlay.kt` — 呼吸脈衝 spinner + AnimatedVisibility
+  - `ui/common/ToastOverlay.kt` — 頂部滑入/滑出 + statusBarsPadding + GlassStroke
+  - `ui/common/OfflineBanner.kt` — StatusPending 配色
+  - `ui/components/FullScreenImageDialog.kt` — 圓點/數字頁碼指示器 + AppColors
+  - `ui/components/RatingDialog.kt` — Material Icons 星星 + animateColorAsState
+  - `ui/components/ScrollToBottomButton.kt` — SurfaceMedium + AccentGreen + elevation
+  - `ui/components/VideoPlayerDialog.kt` — PlayArrow/Close icons + AppColors
+- `isDarkTheme` 參數不再使用（強制深色主題），保留 API 相容
+
+### 刪除
+- `ui/theme/Color.kt`（已於之前合併進 AppColors.kt）
+
 ## 2026-07-16
 ### 新增
 - `docs/` 文件目錄（PROJECT_STRUCTURE, ARCHITECTURE, MODULE_MAP, etc.）
