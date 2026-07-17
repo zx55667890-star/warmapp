@@ -28,7 +28,7 @@ fun ChatTopBar(
     myNickname: String = ""
 ) {
     Surface(
-        color = AppColors.SurfaceDark,
+        color = AppColors.DarkBackground,
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
