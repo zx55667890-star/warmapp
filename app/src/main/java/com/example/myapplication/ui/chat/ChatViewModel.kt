@@ -40,10 +40,10 @@ class ChatViewModel(
         it.onPendingRemoved = { id ->
             _uiState.update { state -> state.copy(pendingMessages = state.pendingMessages.filter { p -> p.id != id }) }
         }
-        it.onMessageAdded = { realMsg ->
-            // Do nothing here. We rely entirely on the ObserveMessagesUseCase to atomically swap 
-            // the pending message with the confirmed server message. This prevents the UI from 
-            // temporarily collapsing when the pending message is removed before the observer fires.
+        it.onMessageAdded = { _ ->
+            // Keep pending message visible. When the Firebase observer fires,
+            // observeChatDataStreams matches pending→confirmed by timestamp and
+            // atomically swaps them, preventing a visual gap.
         }
         it.onScrollToBottom = { _events.tryEmit(ChatEvent.ScrollToBottom) }
         it.onShowSnackbar = { _events.tryEmit(ChatEvent.ShowSnackbar(it)) }

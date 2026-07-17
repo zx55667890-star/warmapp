@@ -40,9 +40,9 @@ class ChatMediaSender(
             }
             withContext(Dispatchers.Main) {
                 if (success) {
+                    pendingUploadJobs.remove(id)
                     val realMsg = pendingMsg.copy(id = "uploaded_$id")
                     onMessageAdded?.invoke(realMsg)
-                    onPendingRemoved?.invoke(id)
                 } else {
                     onPendingRemoved?.invoke(id)
                     onShowSnackbar?.invoke("上傳失敗")
