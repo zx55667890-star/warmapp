@@ -8,6 +8,7 @@ import com.example.myapplication.domain.chat.ObserveMessagesUseCase
 import com.example.myapplication.domain.chat.RecallMessageUseCase
 import com.example.myapplication.domain.chat.SendMediaUseCase
 import com.example.myapplication.domain.chat.SendTextMessageUseCase
+import android.util.Log
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -60,10 +61,11 @@ class ChatViewModel(
     }
 
     fun initChat(chatroomId: String, userId: String, role: String) {
-        if (_chatroomId.value == chatroomId) return
-        _chatroomId.value = chatroomId
         _userId.value = userId
         myRole = role
+        Log.d("ChatVM", "initChat chatroomId=$chatroomId userId=$userId role=$role currentRoom=${_chatroomId.value}")
+        if (_chatroomId.value == chatroomId) return
+        _chatroomId.value = chatroomId
         _uiState.update {
             it.copy(
                 messages = emptyList(), pendingMessages = emptyList(),
@@ -88,74 +90,82 @@ class ChatViewModel(
                         Triple(messagesResult, isTyping, isEnded)
                     }
                 }.collect { (messagesResult, isTyping, isEnded) ->
-                    val prevSize = _uiState.value.messages.size
-                    _uiState.update { state ->
-                        val uid = _userId.value ?: ""
-                        
-                        // 清除暫時性的 uploaded_ 佔位訊息，Firebase 真實資料為主
-                        val filteredMessages = state.messages.filter { !it.id.startsWith("uploaded_") }
-                        
-                        // 找出這次更新中「新增」的、且是我發送的多媒體訊息
-                        val newConfirmedMediaMsgs = messagesResult.messages.filter { newMsg ->
-                            filteredMessages.none { oldMsg -> oldMsg.id == newMsg.id } &&
-                            newMsg.senderId == uid && 
-                            (newMsg.imageUrl.isNotBlank() || newMsg.videoUrl.isNotBlank() || newMsg.voiceUrl.isNotBlank() || newMsg.imageUrls.isNotEmpty() || newMsg.text.isBlank())
-                        }.toMutableList()
-                        
-                        // 先將伺服器傳來的訊息繼承我們原本已經綁定好 localId 與 localImageUrls
-                        var mappedMessages = messagesResult.messages.map { newMsg ->
-                            val existingMsg = filteredMessages.find { it.id == newMsg.id }
-                            if (existingMsg != null && existingMsg.localId.isNotBlank()) {
-                                newMsg.copy(
-                                    localId = existingMsg.localId,
-                                    localImageUrls = existingMsg.localImageUrls
-                                )
-                            } else {
-                                newMsg
-                            }
-                        }
-                        
-                        val newPending = state.pendingMessages.filter { pending ->
-                            val match = newConfirmedMediaMsgs
-                                .filter { kotlin.math.abs(it.timestamp - pending.timestamp) < PENDING_MATCH_TIMEOUT_WINDOW_MS }
-                                .minByOrNull { kotlin.math.abs(it.timestamp - pending.timestamp) }
-                                
-                            if (match != null) {
-                                newConfirmedMediaMsgs.remove(match)
-                                mappedMessages = mappedMessages.map { 
-                                    if (it.id == match.id) {
-                                        it.copy(
-                                            localId = pending.localId.takeIf { id -> id.isNotBlank() } ?: pending.id,
-                                            localImageUrls = pending.localImageUrls,
-                                            isCameraCapture = pending.isCameraCapture
-                                        )
-                                    } else it 
+                    Log.d("ChatVM", "Observer fired: messages=${messagesResult.messages.size} isTyping=$isTyping isEnded=$isEnded")
+                    try {
+                        val prevSize = _uiState.value.messages.size
+                        _uiState.update { state ->
+                            val uid = _userId.value ?: ""
+                            
+                            // 清除暫時性的 uploaded_ 佔位訊息，Firebase 真實資料為主
+                            val filteredMessages = state.messages.filter { !it.id.startsWith("uploaded_") }
+                            
+                            // 找出這次更新中「新增」的、且是我發送的多媒體訊息
+                            val newConfirmedMediaMsgs = messagesResult.messages.filter { newMsg ->
+                                filteredMessages.none { oldMsg -> oldMsg.id == newMsg.id } &&
+                                newMsg.senderId == uid && 
+                                (newMsg.imageUrl.isNotBlank() || newMsg.videoUrl.isNotBlank() || newMsg.voiceUrl.isNotBlank() || newMsg.imageUrls.isNotEmpty() || newMsg.text.isBlank())
+                            }.toMutableList()
+                            
+                            // 先將伺服器傳來的訊息繼承我們原本已經綁定好 localId 與 localImageUrls
+                            var mappedMessages = messagesResult.messages.map { newMsg ->
+                                val existingMsg = filteredMessages.find { it.id == newMsg.id }
+                                if (existingMsg != null && existingMsg.localId.isNotBlank()) {
+                                    newMsg.copy(
+                                        localId = existingMsg.localId,
+                                        localImageUrls = existingMsg.localImageUrls
+                                    )
+                                } else {
+                                    newMsg
                                 }
-                                false
-                            } else {
-                                true
                             }
+                            
+                            val newPending = state.pendingMessages.filter { pending ->
+                                val match = newConfirmedMediaMsgs
+                                    .filter { kotlin.math.abs(it.timestamp - pending.timestamp) < PENDING_MATCH_TIMEOUT_WINDOW_MS }
+                                    .minByOrNull { kotlin.math.abs(it.timestamp - pending.timestamp) }
+                                    
+                                if (match != null) {
+                                    newConfirmedMediaMsgs.remove(match)
+                                    mappedMessages = mappedMessages.map { 
+                                        if (it.id == match.id) {
+                                            it.copy(
+                                                localId = pending.localId.takeIf { id -> id.isNotBlank() } ?: pending.id,
+                                                localImageUrls = pending.localImageUrls,
+                                                isCameraCapture = pending.isCameraCapture
+                                            )
+                                        } else it 
+                                    }
+                                    false
+                                } else {
+                                    true
+                                }
+                            }
+        
+                            state.copy(
+                                messages = mappedMessages,
+                                pendingMessages = newPending,
+                                hasMoreMessages = messagesResult.hasMore,
+                                isInitialLoading = false,
+                                isOtherTyping = isTyping,
+                                chatEndedByOther = if (state.isChatActive && isEnded) true else state.chatEndedByOther,
+                                isChatActive = !isEnded
+                            )
                         }
-
-                        state.copy(
-                            messages = mappedMessages,
-                            pendingMessages = newPending,
-                            hasMoreMessages = messagesResult.hasMore,
-                            isInitialLoading = false,
-                            isOtherTyping = isTyping,
-                            chatEndedByOther = if (state.isChatActive && isEnded) true else state.chatEndedByOther,
-                            isChatActive = !isEnded
-                        )
+                        if (isEnded) _events.tryEmit(ChatEvent.ChatEndedByOther)
+                        if (messagesResult.messages.size != prevSize && !_uiState.value.isLoadingMore) _events.tryEmit(ChatEvent.ScrollToBottom)
+                    } catch (e: Exception) {
+                        Log.e("ChatVM", "Observer collect failed", e)
                     }
-                    if (isEnded) _events.tryEmit(ChatEvent.ChatEndedByOther)
-                    if (messagesResult.messages.size != prevSize && !_uiState.value.isLoadingMore) _events.tryEmit(ChatEvent.ScrollToBottom)
                 }
         }
     }
 
     fun sendMessage(text: String) {
-        val id = _chatroomId.value ?: return
-        val uid = _userId.value ?: return
+        val id = _chatroomId.value
+        val uid = _userId.value
+        Log.d("ChatVM", "sendMessage id=$id uid=$uid text=$text isChatActive=${_uiState.value.isChatActive}")
+        if (id == null) { Log.w("ChatVM", "sendMessage: chatroomId is null"); return }
+        if (uid == null) { Log.w("ChatVM", "sendMessage: userId is null"); return }
         val s = _uiState.value
         if (text.isBlank()) return
         if (!s.isChatActive) {
