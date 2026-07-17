@@ -34,6 +34,7 @@ class ChatMediaSender(
                 if (success) {
                     val realMsg = pendingMsg.copy(id = "uploaded_$id")
                     onMessageAdded?.invoke(realMsg)
+                    onPendingRemoved?.invoke(id)
                 }
             }
         }
