@@ -26,6 +26,7 @@ class ChatMediaSender(
         upload: suspend () -> Boolean
     ) {
         onPendingAdded?.invoke(pendingMsg)
+        onScrollToBottom?.invoke()
 
         val id = pendingMsg.id
         val job = scope.launch {

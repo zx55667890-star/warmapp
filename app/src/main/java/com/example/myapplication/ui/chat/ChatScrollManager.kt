@@ -25,7 +25,7 @@ fun ChatScrollManager(
         events.collectLatest { event ->
             when (event) {
                 is ChatEvent.ScrollToBottom -> {
-                    if (totalItems > 0) listState.animateScrollToItem(0)
+                    listState.animateScrollToItem(0)
                 }
                 is ChatEvent.ShowSnackbar -> {}
                 is ChatEvent.ChatEndedByOther -> {}

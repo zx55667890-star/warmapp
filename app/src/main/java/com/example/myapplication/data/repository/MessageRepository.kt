@@ -157,7 +157,9 @@ class MessageRepository(
         val newMsgRef = messagesRef.push()
         val data = fields.toMutableMap()
         data.putAll(mapOf("senderId" to userId, "sender" to myRole))
-        newMsgRef.setValue(data)
+        newMsgRef.setValue(data).addOnFailureListener { e ->
+            Log.w("MessageRepo", "sendMessageWithFields failed", e)
+        }
     }
 
     override fun listenToStatus(onStatusChanged: (Boolean) -> Unit): ValueEventListener {
