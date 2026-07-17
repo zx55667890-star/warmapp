@@ -10,8 +10,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
+import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.myapplication.data.repository.UserRepository
 import com.example.myapplication.ui.theme.AppColors
@@ -45,6 +47,16 @@ fun ChatScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+
+    val context = LocalContext.current
+    val window = (context as? android.app.Activity)?.window
+    SideEffect {
+        window?.let {
+            it.navigationBarColor = android.graphics.Color.parseColor("#0F1117")
+            val controller = WindowCompat.getInsetsController(it, it.decorView)
+            controller.isAppearanceLightNavigationBars = false
+        }
+    }
 
     var showCameraCapture by remember { mutableStateOf(false) }
     var showVoiceRecording by remember { mutableStateOf(false) }
