@@ -26,99 +26,97 @@ fun BubbleContent(
     onQuoteClick: (String) -> Unit,
     onLongPress: () -> Unit
 ) {
-    if (msg.replyToId.isNotBlank()) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier
-                .padding(bottom = 4.dp)
-                .widthIn(max = 140.dp)
-                .clip(RoundedCornerShape(6.dp))
-                .background(
-                    if (isMine) AppColors.AccentGreen.copy(alpha = 0.4f)
-                    else AppColors.SurfaceDark
+    Box {
+        Column {
+            if (msg.replyToId.isNotBlank()) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .padding(bottom = 4.dp)
+                        .widthIn(max = 140.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(
+                            if (isMine) AppColors.AccentGreen.copy(alpha = 0.4f)
+                            else AppColors.SurfaceDark
+                        )
+                        .clickable { onQuoteClick(msg.replyToId) }
+                        .padding(horizontal = 8.dp, vertical = 3.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .width(3.dp)
+                            .height(16.dp)
+                            .clip(RoundedCornerShape(1.dp))
+                            .background(AppColors.AccentGreen)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = msg.replyToText,
+                        fontSize = 13.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        color = if (isMine) AppColors.DarkBackground
+                                else AppColors.TextGray
+                    )
+                }
+            }
+
+            if (msg.voiceUrl.isNotBlank()) {
+                VoiceMessageBubble(
+                    voiceUrl = msg.voiceUrl,
+                    durationMs = msg.voiceDuration,
+                    onLongPress = onLongPress,
+                    isMine = isMine
                 )
-                .clickable { onQuoteClick(msg.replyToId) }
-                .padding(horizontal = 8.dp, vertical = 3.dp)
-        ) {
-            Box(
-                modifier = Modifier
-                    .width(3.dp)
-                    .height(16.dp)
-                    .clip(RoundedCornerShape(1.dp))
-                    .background(AppColors.AccentGreen)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = msg.replyToText,
-                fontSize = 13.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                color = if (isMine) AppColors.DarkBackground
-                        else AppColors.TextGray
-            )
-        }
-    }
+            }
 
-    if (msg.voiceUrl.isNotBlank()) {
-        VoiceMessageBubble(
-            voiceUrl = msg.voiceUrl,
-            durationMs = msg.voiceDuration,
-            onLongPress = onLongPress,
-            isMine = isMine
-        )
-    }
+            if (msg.videoUrl.isNotBlank()) {
+                VideoThumbnail(
+                    url = msg.videoUrl,
+                    isDarkTheme = true,
+                    onVideoClick = onVideoClick,
+                    onLongPress = { if (isMine) onLongPress() },
+                    modifier = Modifier
+                        .width(160.dp)
+                        .height(160.dp)
+                )
+                if (msg.text.isNotBlank()) Spacer(modifier = Modifier.height(8.dp))
+            }
 
-    if (msg.videoUrl.isNotBlank()) {
-        Box {
-            VideoThumbnail(
-                url = msg.videoUrl,
-                isDarkTheme = true,
-                onVideoClick = onVideoClick,
-                onLongPress = { if (isMine) onLongPress() },
-                modifier = Modifier
-                    .width(160.dp)
-                    .height(160.dp)
-            )
-            if (isPending) {
-                PendingOverlay()
+            val allMediaUrls = mutableListOf<String>()
+            if (msg.imageUrls.isNotEmpty()) {
+                allMediaUrls.addAll(msg.imageUrls)
+            } else if (msg.localImageUrls.isNotEmpty()) {
+                allMediaUrls.addAll(msg.localImageUrls)
+            } else if (msg.imageUrl.isNotBlank()) {
+                allMediaUrls.add(msg.imageUrl)
+            }
+
+            if (allMediaUrls.isNotEmpty()) {
+                ImageGrid(
+                    urls = allMediaUrls,
+                    isDarkTheme = true,
+                    onImageClick = onImageClick,
+                    onVideoClick = onVideoClick,
+                    onLongPress = { if (isMine) onLongPress() }
+                )
+                if (msg.text.isNotBlank()) Spacer(modifier = Modifier.height(8.dp))
+            }
+
+            if (msg.text.isNotBlank()) {
+                Text(
+                    text = msg.text,
+                    color = if (isMine) AppColors.DarkBackground
+                            else AppColors.TextWhite,
+                    fontSize = 15.sp,
+                    lineHeight = 22.sp
+                )
             }
         }
-        if (msg.text.isNotBlank()) Spacer(modifier = Modifier.height(8.dp))
-    }
 
-    val allMediaUrls = mutableListOf<String>()
-    if (msg.imageUrls.isNotEmpty()) {
-        allMediaUrls.addAll(msg.imageUrls)
-    } else if (msg.localImageUrls.isNotEmpty()) {
-        allMediaUrls.addAll(msg.localImageUrls)
-    } else if (msg.imageUrl.isNotBlank()) {
-        allMediaUrls.add(msg.imageUrl)
-    }
-
-    if (allMediaUrls.isNotEmpty()) {
-        Box {
-            ImageGrid(
-                urls = allMediaUrls,
-                isDarkTheme = true,
-                onImageClick = onImageClick,
-                onVideoClick = onVideoClick,
-                onLongPress = { if (isMine) onLongPress() }
-            )
-            if (isPending) {
-                PendingOverlay()
-            }
+        if (isPending) {
+            PendingOverlay()
         }
-        if (msg.text.isNotBlank()) Spacer(modifier = Modifier.height(8.dp))
-    }
-
-    if (msg.text.isNotBlank()) {
-        Text(
-            text = msg.text,
-            color = if (isMine) AppColors.DarkBackground
-                    else AppColors.TextWhite,
-            fontSize = 15.sp,
-            lineHeight = 22.sp
-        )
     }
 }
 
