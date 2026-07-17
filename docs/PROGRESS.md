@@ -185,3 +185,17 @@
 - [x] 約 280+ 次提交，已全部推送至 main
 - [x] 第 13 輪變更：36+ 個 UI 檔案修改（已推送）
 
+### Round 13 復原修復（2026-07-18）
+- [x] **還原 17 個 `ui/chat/` 檔案** — 回到 Round 13 前狀態
+- [x] **ChatMediaSender 修復** — `onPendingRemoved` 成功觸發、try-catch、`onScrollToBottom`
+- [x] **ChatViewModel 修復** — `onMessageAdded` 實際插入、`filteredMessages` dedup、`isChatActive` Snackbar
+- [x] **ChatScrollManager 修復** — 移除 `totalItems > 0` 檢查
+- [x] **MessageRepository 修復** — `sendMessageWithFields` 加入 failure listener
+- [x] **ChatScreen 修復** — `isDarkTheme = true`、背景色、statusBarsPadding、imePadding、SnackbarHost
+- [x] **ChatTopBar/QuestionBanner 修復** — 硬編碼色碼改 AppColors
+- [x] **BubbleContent 修復** — Pending spinner 暗背景移除、置中
+- [x] **Firebase query listener bug** — `orderByChild("timestamp").limitToLast(N)` 不觸發，改用直接 `addValueEventListener`
+- [x] **`initChat` 總是更新 `_userId`** — ViewModel 重用時 userId 不再卡在舊值
+- [x] **文字樂觀更新** — `sendMessage` 直接插入 `optimistic_` 暫存訊息，繞過 observer 延遲
+- [x] **Observer try-catch** — 防止 collect block 崩潰殺死整體觀察協程
+

@@ -12,6 +12,25 @@
 - 新增 11 份專案文件（架構、依賴、已知問題、風格規範等）
 - 啟用 GitHub Pages
 
+## 2026-07-18
+### 修正
+- **Round 13 還原 + 選擇性修復** — 還原 17 個 `ui/chat/` 檔案為 Round 13 前狀態，再補上關鍵缺失功能：
+  - `ChatMediaSender` — `onPendingRemoved` 成功時觸發、try-catch 錯誤處理、`onScrollToBottom` 回呼
+  - `ChatViewModel` — `onMessageAdded` 改為實際插入訊息、`filteredMessages` dedup 邏輯、不活躍對話 Snackbar 提示
+  - `ChatScrollManager` — 移除 `totalItems > 0` 檢查
+  - `MessageRepository` — `sendMessageWithFields` 加入 `addOnFailureListener`
+  - `ChatScreen` — 強制 `isDarkTheme = true`、`background(AppColors.DarkBackground)`、`statusBarsPadding()`、`imePadding()`、`SnackbarHost`
+  - `ChatTopBar` / `QuestionBanner` — 硬編碼顏色替換為 `AppColors`
+  - `BubbleContent` — Pending spinner 暗色背景移除、置中於整個泡泡
+- **Firebase `orderByChild("timestamp").limitToLast(N)` query listener 永不觸發問題** — 改用直接 `messagesRef.addValueEventListener()`，不透過 query。此 bug 導致文字訊息不管送出幾次都永遠不會出現在畫面上
+- **`initChat` 總是更新 `_userId`** — ViewModel 被 Koin 重用（相同 `chatroomId` key）時，`_userId` 不再卡在第一次設的值（可能為空）
+- **文字樂觀更新** — `sendMessage` 直接建 `optimistic_` 暫存訊息插入列表，使用者立刻看到文字，等 Firebase observer 回覆後自動取代
+- **Observer `collect` try-catch** — 避免 collect block 拋例外導致整個觀察協程無聲死亡
+
+### 已知問題（新增）
+- **`combine` 三 flow 同步問題** — `flatMapLatest` 內的 `combine(observeMessages, observeTypingStatus, observeChatStatus)` 僅在三者皆有新值時才 emit。若只有 messages 變動（如 Firebase 刪除資料），UI 不會即時更新；需離開再進入聊天室或等待其他 flow 觸發
+- **`orderByChild("timestamp")` query listener 不觸發原因不明** — 改用 direct listener 後正常，非資料量或安全規則問題，可能為 Firebase Android SDK 低機率 bug
+
 ## 2026-07-17
 ### 新增
 - `searchOnSerper()` 函式 — 調用 `https://google.serper.dev/search`（取前 3 筆 organic），取代內建 googleSearch

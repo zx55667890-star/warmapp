@@ -65,3 +65,13 @@ AuthScreen.kt:37/95/101 使用 `GoogleSignIn` class，已標記 deprecated。
 
 ### 14. Constants.kt 集中式常數未拆分
 `data/Constants.kt` 包含所有 Firebase 路徑、欄位、狀態值。隨專案規模成長建議依 feature 拆分（ChatConstants.kt / ExpertConstants.kt）或內部用 object 命名空間隔離。
+
+### 15. `combine` 三 flow 同步導致 Firebase 刪除不即時反映
+`ChatViewModel.observeChatDataStreams()` 使用 `flatMapLatest` 內的 `combine(observeMessages, observeTypingStatus, observeChatStatus)`，僅在三 flow **全部有新值**時才 emit。若只從 Firebase 刪除 messages 資料（typing/status 不變），UI 畫面不會即時更新。需強制關閉 app 重開才會反映。
+- **影響**：低（正常使用不會刪 Firebase 資料，僅除錯時受影響）
+- **建議**：改用 `merge` 分拆或各自獨立 collect
+
+### 16. Firebase `orderByChild("timestamp").limitToLast(N)` query listener 低機率不觸發
+在 `chatrooms/{id}/messages` 節點上使用 `orderByChild("timestamp").limitToLast(100)` 時，`addValueEventListener` 的 `onDataChange` 偶爾完全不呼叫，即使同路徑的 `addValueEventListener`（無 query）正常運作。原因不明。
+- **影響**：低（已改用直接 `addMessagesListener` 繞過）
+- **建議**：若需分頁查詢，考慮用 `startAfter` / `endBefore` 搭配 direct listener 自行排序
