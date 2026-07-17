@@ -96,8 +96,8 @@ class ChatViewModel(
                         _uiState.update { state ->
                             val uid = _userId.value ?: ""
                             
-                            // 清除暫時性的 uploaded_ 佔位訊息，Firebase 真實資料為主
-                            val filteredMessages = state.messages.filter { !it.id.startsWith("uploaded_") }
+                            // 清除暫時性的 uploaded_ 和 optimistic_ 佔位訊息，Firebase 真實資料為主
+                            val filteredMessages = state.messages.filter { !it.id.startsWith("uploaded_") && !it.id.startsWith("optimistic_") }
                             
                             // 找出這次更新中「新增」的、且是我發送的多媒體訊息
                             val newConfirmedMediaMsgs = messagesResult.messages.filter { newMsg ->
@@ -172,14 +172,24 @@ class ChatViewModel(
             _events.tryEmit(ChatEvent.ShowSnackbar("對話已結束，無法發送訊息"))
             return
         }
+        // 樂觀更新：立刻顯示訊息
+        val tempId = "optimistic_${System.currentTimeMillis()}"
+        val optimisticMsg = ChatMessage(
+            id = tempId,
+            senderId = uid,
+            senderRole = myRole,
+            text = text,
+            timestamp = System.currentTimeMillis()
+        )
+        _uiState.update { it.copy(messages = it.messages + optimisticMsg, replyToMessage = null) }
+        _events.tryEmit(ChatEvent.ScrollToBottom)
+
         sendTextMessageUseCase(
             chatroomId = id, userId = uid, myRole = myRole,
             text = text,
             replyToId = s.replyToMessage?.id,
             replyToText = s.replyToMessage?.text
         ) { e -> _events.tryEmit(ChatEvent.ShowSnackbar(e)) }
-        _events.tryEmit(ChatEvent.ScrollToBottom)
-        _uiState.update { it.copy(replyToMessage = null) }
     }
 
     fun loadMoreMessages() {
