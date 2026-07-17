@@ -6,11 +6,14 @@ import android.view.WindowManager.LayoutParams
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
@@ -25,21 +28,24 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.myapplication.R
 import com.example.myapplication.ui.common.LoadingOverlay
 import com.example.myapplication.ui.common.ToastOverlay
 import com.example.myapplication.ui.common.UiText
+import com.example.myapplication.ui.theme.AppColors
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.ConnectionResult
 import com.google.android.gms.common.GoogleApiAvailability
 import com.google.android.gms.common.api.ApiException
 import kotlinx.coroutines.delay
+
+private const val TRANSITION_DURATION = 350
 
 @Composable
 fun AuthScreen(
@@ -59,7 +65,7 @@ fun AuthScreen(
 
     LaunchedEffect(uiState.error) {
         if (uiState.error != null) {
-            delay(2000)
+            delay(2500)
             viewModel.clearError()
         }
     }
@@ -84,6 +90,7 @@ fun AuthScreen(
         }
     }
 
+    // ── Google Sign-In ──
     val context = LocalContext.current
     val webClientId = stringResource(R.string.default_web_client_id)
     val googleSignInOptions = remember(webClientId) {
@@ -101,17 +108,11 @@ fun AuthScreen(
             val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
             try {
                 val account = task.getResult(ApiException::class.java)
-                Log.d("AuthScreen", "Google account: ${account.email}, idToken=${account.idToken?.take(20)}")
                 account.idToken?.let { viewModel.signInWithGoogle(it) }
-                    ?: run {
-                        viewModel.setError("ç„¡æ³•å–å¾— Google æ†‘è­‰ï$resetEmail，è«‹ç¢ºèª default_web_client_id æ˜¯å¦æ­£ç¢º")
-                    }
+                    ?: viewModel.setError("無法取得 Google 憑證，請確認 default_web_client_id 是否正確")
             } catch (e: ApiException) {
-                Log.w("AuthScreen", "Google Sign-In ApiException: ${e.statusCode}", e)
-                viewModel.setError("Google ç™»å…¥å¤±æ•—: ${e.localizedMessage}")
+                viewModel.setError("Google 登入失敗: ${e.localizedMessage}")
             }
-        } else {
-            Log.d("AuthScreen", "Google Sign-In cancelled: resultCode=$result.resultCode")
         }
     }
 
@@ -128,92 +129,165 @@ fun AuthScreen(
         if (viewModel.uiState.value.isLoggedIn) onLoggedIn()
     }
 
+    // ── 重設密碼確認彈窗 ──
     if (uiState.resetSent) {
         AlertDialog(
-            onDismissRequest = { viewModel.dismissResetSent(); showResetPassword = false; showLoginForm = true; viewModel.toggleMode(false) },
-            title = { Text("重設密碼") },
-            text = { Text("重設密碼信件已發送至 $resetEmail，請檢查信箱。") },
+            onDismissRequest = {
+                viewModel.dismissResetSent()
+                showResetPassword = false
+                showLoginForm = true
+                viewModel.toggleMode(false)
+            },
+            shape = RoundedCornerShape(20.dp),
+            containerColor = AppColors.SurfaceDark,
+            titleContentColor = AppColors.TextWhite,
+            textContentColor = AppColors.TextGray,
+            title = {
+                Text("重設密碼", fontWeight = FontWeight.Bold)
+            },
+            text = {
+                Text("重設密碼信件已發送至 $resetEmail，請檢查信箱。")
+            },
             confirmButton = {
-                TextButton(onClick = { viewModel.dismissResetSent(); showResetPassword = false; showLoginForm = true; viewModel.toggleMode(false) }) { Text("確定") }
+                TextButton(onClick = {
+                    viewModel.dismissResetSent()
+                    showResetPassword = false
+                    showLoginForm = true
+                    viewModel.toggleMode(false)
+                }) {
+                    Text("確定", color = AppColors.AccentGreen, fontWeight = FontWeight.Bold)
+                }
             }
         )
     }
 
+    // ── 主畫面 ──
     Box(
-        modifier = Modifier.fillMaxSize().background(Color.Black)
+        modifier = Modifier
+            .fillMaxSize()
+            .background(AppColors.DarkBackground)
     ) {
-        when {
-            uiState.showNewPasswordForm -> NewPasswordForm(
-                uiState = uiState,
-                onBack = { viewModel.dismissNewPasswordForm() },
-                onConfirm = { newPassword, confirmNewPassword ->
-                    viewModel.confirmResetPassword(resetEmail, resetVerificationCode, newPassword, confirmNewPassword)
-                }
-            )
-            showResetPassword -> ForgotPasswordPanel(
-                uiState = uiState,
-                onBack = { showResetPassword = false },
-                onSendCode = { email -> viewModel.sendResetVerificationCode(email) },
-                onNext = { email, code ->
-                    resetEmail = email
-                    resetVerificationCode = code
-                    viewModel.sendPasswordReset(email, code)
-                }
-            )
-            showLoginForm -> LoginForm(
-                uiState = uiState,
-                onBack = { showLoginForm = false },
-                onSendCode = { email -> viewModel.sendVerificationCode(email) },
-                onSubmit = { email, password, confirmPassword, nickname, verificationCode ->
-                    viewModel.submit(email, password, confirmPassword, nickname, verificationCode)
-                },
-                onForgotPassword = { showResetPassword = true }
-            )
-            else -> WelcomePanel(
-                isLoading = uiState.isLoading,
-                agreed = agreed,
-                onAgreedChange = { agreed = it },
-                onTermsClick = {
-                    val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(termsUrl))
-                    context.startActivity(intent)
-                },
-                onPrivacyClick = {
-                    val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(privacyUrl))
-                    context.startActivity(intent)
-                },
-                onGoogleSignIn = {
-                    val avail = GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(context)
-                    if (avail != ConnectionResult.SUCCESS) {
-                        viewModel.setError("Google æœå‹™ä¸å¯ç”¨ï$resetEmail，è«‹ç¢ºèªæ¨¡æ“¬å™¨å·²å®‰è£ Google Play æœå‹™")
-                    } else {
-                        try {
-                            googleSignInLauncher.launch(googleSignInClient.signInIntent)
-                        } catch (e: Exception) { if (e is kotlinx.coroutines.CancellationException) throw e;
-                            viewModel.setError("Google ç™»å…¥å¤±æ•—ï¼š${e.localizedMessage ?: "è«‹ç¢ºèª Google æœå‹™æ˜¯å¦æ­£å¸¸"}")
-                        }
+        AnimatedContent(
+            targetState = when {
+                uiState.showNewPasswordForm -> AuthPage.NEW_PASSWORD
+                showResetPassword -> AuthPage.RESET_PASSWORD
+                showLoginForm -> AuthPage.LOGIN
+                else -> AuthPage.WELCOME
+            },
+            transitionSpec = {
+                fadeIn(tween(TRANSITION_DURATION)) + slideInVertically(
+                    tween(TRANSITION_DURATION),
+                    initialOffsetY = { it / 8 }
+                ) togetherWith fadeOut(tween(TRANSITION_DURATION / 2))
+            },
+            label = "authPageTransition"
+        ) { page ->
+            when (page) {
+                AuthPage.NEW_PASSWORD -> NewPasswordForm(
+                    uiState = uiState,
+                    onBack = { viewModel.dismissNewPasswordForm() },
+                    onConfirm = { newPassword, confirmNewPassword ->
+                        viewModel.confirmResetPassword(
+                            resetEmail, resetVerificationCode, newPassword, confirmNewPassword
+                        )
                     }
-                },
-                onLoginClick = { viewModel.toggleMode(false); showLoginForm = true },
-                onRegisterClick = { viewModel.toggleMode(true); showLoginForm = true },
-                onSkip = onSkip
-            )
+                )
+
+                AuthPage.RESET_PASSWORD -> ForgotPasswordPanel(
+                    uiState = uiState,
+                    onBack = { showResetPassword = false },
+                    onSendCode = { email -> viewModel.sendResetVerificationCode(email) },
+                    onNext = { email, code ->
+                        resetEmail = email
+                        resetVerificationCode = code
+                        viewModel.sendPasswordReset(email, code)
+                    }
+                )
+
+                AuthPage.LOGIN -> LoginForm(
+                    uiState = uiState,
+                    onBack = { showLoginForm = false },
+                    onSendCode = { email -> viewModel.sendVerificationCode(email) },
+                    onSubmit = { email, password, confirmPassword, nickname, verificationCode ->
+                        viewModel.submit(email, password, confirmPassword, nickname, verificationCode)
+                    },
+                    onForgotPassword = { showResetPassword = true }
+                )
+
+                AuthPage.WELCOME -> WelcomePanel(
+                    isLoading = uiState.isLoading,
+                    agreed = agreed,
+                    onAgreedChange = { agreed = it },
+                    onTermsClick = {
+                        context.startActivity(
+                            android.content.Intent(
+                                android.content.Intent.ACTION_VIEW,
+                                android.net.Uri.parse(termsUrl)
+                            )
+                        )
+                    },
+                    onPrivacyClick = {
+                        context.startActivity(
+                            android.content.Intent(
+                                android.content.Intent.ACTION_VIEW,
+                                android.net.Uri.parse(privacyUrl)
+                            )
+                        )
+                    },
+                    onGoogleSignIn = {
+                        val avail = GoogleApiAvailability.getInstance()
+                            .isGooglePlayServicesAvailable(context)
+                        if (avail != ConnectionResult.SUCCESS) {
+                            viewModel.setError("Google 服務不可用，請確認已安裝 Google Play 服務")
+                        } else {
+                            try {
+                                googleSignInLauncher.launch(googleSignInClient.signInIntent)
+                            } catch (e: Exception) {
+                                if (e is kotlinx.coroutines.CancellationException) throw e
+                                viewModel.setError("Google 登入失敗：${e.localizedMessage ?: "請確認 Google 服務是否正常"}")
+                            }
+                        }
+                    },
+                    onLoginClick = {
+                        viewModel.toggleMode(false)
+                        showLoginForm = true
+                    },
+                    onRegisterClick = {
+                        viewModel.toggleMode(true)
+                        showLoginForm = true
+                    },
+                    onSkip = onSkip
+                )
+            }
         }
 
         BackHandler(enabled = showLoginForm) { showLoginForm = false }
         BackHandler(enabled = showResetPassword) { showResetPassword = false }
 
-        uiState.error?.let {
-            Surface(
-                modifier = Modifier.align(Alignment.Center).padding(horizontal = 40.dp),
-                shape = RoundedCornerShape(16.dp),
-                color = Color(0xFF333333),
-                shadowElevation = 8.dp
-            ) {
-                Text(
-                    text = it.asString(),
-                    color = Color.White,
-                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 14.dp)
-                )
+        // ── 錯誤浮層 ──
+        AnimatedVisibility(
+            visible = uiState.error != null,
+            enter = fadeIn(tween(200)) + slideInVertically(tween(300)) { -it / 2 },
+            exit = fadeOut(tween(200)),
+            modifier = Modifier.align(Alignment.TopCenter).padding(top = 48.dp)
+        ) {
+            uiState.error?.let {
+                Surface(
+                    shape = RoundedCornerShape(14.dp),
+                    color = AppColors.StatusErrorBg,
+                    border = androidx.compose.foundation.BorderStroke(
+                        1.dp, AppColors.StatusError.copy(alpha = 0.2f)
+                    ),
+                    shadowElevation = 8.dp
+                ) {
+                    Text(
+                        text = it.asString(),
+                        color = AppColors.StatusError,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp)
+                    )
+                }
             }
         }
 
@@ -222,3 +296,7 @@ fun AuthScreen(
     }
 }
 
+/** Auth 頁面狀態枚舉，用於 AnimatedContent 切換 */
+private enum class AuthPage {
+    WELCOME, LOGIN, RESET_PASSWORD, NEW_PASSWORD
+}
