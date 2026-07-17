@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
@@ -126,105 +127,112 @@ fun ChatScreen(
             }
         })
 
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(AppColors.DarkBackground)
-                .statusBarsPadding()
-                .imePadding()
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null
-                ) { focusManager.clearFocus() }
-
-        ) {
+        Box(modifier = Modifier.fillMaxSize()) {
             Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .wrapContentHeight()
+                    .fillMaxSize()
+                    .background(AppColors.DarkBackground)
+                    .statusBarsPadding()
+                    .imePadding()
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) { focusManager.clearFocus() }
             ) {
-                ChatTopBar(
-                    myRole = myRole,
-                    isChatActive = uiState.isChatActive,
-                    isDarkTheme = isDarkTheme,
-                    onEndChat = { viewModel.updateUiState { it.copy(showEndConfirmDialog = true) } },
-                    onBack = onBack,
-                    opponentNickname = opponentNickname,
-                    myNickname = myNickname
-                )
-                QuestionBanner(
-                    questionText = chatQuestionText,
-                    isDarkTheme = isDarkTheme
-                )
-            }
-
-            val globalImageUrls by viewModel.globalImageUrls.collectAsStateWithLifecycle()
-            val allMessages by remember { derivedStateOf { uiState.messages + uiState.pendingMessages } }
-            Box(modifier = Modifier.weight(1f)) {
-                MessageList(
-                    listState = listState,
-                    allMessages = allMessages,
-                    confirmedMessagesCount = uiState.messages.size,
-                    isLoadingMore = uiState.isLoadingMore,
-                    hasMoreMessages = uiState.hasMoreMessages,
-                    isInitialLoading = uiState.isInitialLoading,
-                    globalImageUrls = globalImageUrls,
-                    userId = userId,
-                    isDarkTheme = isDarkTheme,
-                    isChatActive = uiState.isChatActive,
-                    isOtherTyping = uiState.isOtherTyping,
-                    highlightedMsgId = highlightedMsgId,
-                    onLoadMore = { viewModel.loadMoreMessages() },
-                    onRecall = { viewModel.recallMessage(it) },
-                    onReply = { msg -> viewModel.updateUiState { it.copy(replyToMessage = msg) } },
-                    onImageClick = { urls, idx ->
-                        val url = urls.getOrNull(idx)
-                        val globalIdx = if (url != null) globalImageUrls.indexOf(url) else -1
-                        val chosenUrls = if (globalIdx >= 0) globalImageUrls else urls
-                        val cameraFlags = chosenUrls.map { u ->
-                            allMessages.any { msg ->
-                                msg.isCameraCapture && (msg.imageUrls.contains(u) || msg.localImageUrls.contains(
-                                    u
-                                ) || msg.imageUrl == u)
-                            }
-                        }
-                        viewModel.updateUiState {
-                            it.copy(
-                                fullScreenImageUrls = chosenUrls,
-                                fullScreenImageIndex = if (globalIdx >= 0) globalIdx else idx,
-                                fullScreenImageIsCameraCapture = cameraFlags
-                            )
-                        }
-                    },
-                    onVideoClick = { url -> viewModel.updateUiState { s -> s.copy(videoUrl = url) } },
-                    onAvatarClick = { msg ->
-                        if (msg.senderId != userId) {
-                            val targetId = if (myRole == "user") expertId else msg.senderId
-                            viewModel.fetchOpponentProfile(targetId)
-                        }
-                    },
-                    onQuoteClick = { highlightedMsgId = it }
-                )
-            }
-
-            ChatBottomArea(
-                uiState = uiState,
-                isDarkTheme = isDarkTheme,
-                onSendMessage = { text -> viewModel.sendMessage(text) },
-                onSendImage = { uris ->
-                    viewModel.mediaSender.sendImages(
-                        chatroomId,
-                        userId,
-                        myRole,
-                        uris
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .wrapContentHeight()
+                ) {
+                    ChatTopBar(
+                        myRole = myRole,
+                        isChatActive = uiState.isChatActive,
+                        isDarkTheme = isDarkTheme,
+                        onEndChat = { viewModel.updateUiState { it.copy(showEndConfirmDialog = true) } },
+                        onBack = onBack,
+                        opponentNickname = opponentNickname,
+                        myNickname = myNickname
                     )
-                },
-                onTypingStatusChange = { viewModel.updateTypingStatus(it) },
-                onCameraClick = { viewModel.openCamera() },
-                onMicClick = { viewModel.openVoiceRecorder() },
-                onDismissReply = { viewModel.updateUiState { it.copy(replyToMessage = null) } }
-            )
-        }
+                    QuestionBanner(
+                        questionText = chatQuestionText,
+                        isDarkTheme = isDarkTheme
+                    )
+                }
+
+                val globalImageUrls by viewModel.globalImageUrls.collectAsStateWithLifecycle()
+                val allMessages by remember { derivedStateOf { uiState.messages + uiState.pendingMessages } }
+                Box(modifier = Modifier.weight(1f)) {
+                    MessageList(
+                        listState = listState,
+                        allMessages = allMessages,
+                        confirmedMessagesCount = uiState.messages.size,
+                        isLoadingMore = uiState.isLoadingMore,
+                        hasMoreMessages = uiState.hasMoreMessages,
+                        isInitialLoading = uiState.isInitialLoading,
+                        globalImageUrls = globalImageUrls,
+                        userId = userId,
+                        isDarkTheme = isDarkTheme,
+                        isChatActive = uiState.isChatActive,
+                        isOtherTyping = uiState.isOtherTyping,
+                        highlightedMsgId = highlightedMsgId,
+                        onLoadMore = { viewModel.loadMoreMessages() },
+                        onRecall = { viewModel.recallMessage(it) },
+                        onReply = { msg -> viewModel.updateUiState { it.copy(replyToMessage = msg) } },
+                        onImageClick = { urls, idx ->
+                            val url = urls.getOrNull(idx)
+                            val globalIdx = if (url != null) globalImageUrls.indexOf(url) else -1
+                            val chosenUrls = if (globalIdx >= 0) globalImageUrls else urls
+                            val cameraFlags = chosenUrls.map { u ->
+                                allMessages.any { msg ->
+                                    msg.isCameraCapture && (msg.imageUrls.contains(u) || msg.localImageUrls.contains(
+                                        u
+                                    ) || msg.imageUrl == u)
+                                }
+                            }
+                            viewModel.updateUiState {
+                                it.copy(
+                                    fullScreenImageUrls = chosenUrls,
+                                    fullScreenImageIndex = if (globalIdx >= 0) globalIdx else idx,
+                                    fullScreenImageIsCameraCapture = cameraFlags
+                                )
+                            }
+                        },
+                        onVideoClick = { url -> viewModel.updateUiState { s -> s.copy(videoUrl = url) } },
+                        onAvatarClick = { msg ->
+                            if (msg.senderId != userId) {
+                                val targetId = if (myRole == "user") expertId else msg.senderId
+                                viewModel.fetchOpponentProfile(targetId)
+                            }
+                        },
+                        onQuoteClick = { highlightedMsgId = it }
+                    )
+                }
+
+                ChatBottomArea(
+                    uiState = uiState,
+                    isDarkTheme = isDarkTheme,
+                    onSendMessage = { text -> viewModel.sendMessage(text) },
+                    onSendImage = { uris ->
+                        viewModel.mediaSender.sendImages(
+                            chatroomId,
+                            userId,
+                            myRole,
+                            uris
+                        )
+                    },
+                    onTypingStatusChange = { viewModel.updateTypingStatus(it) },
+                    onCameraClick = { viewModel.openCamera() },
+                    onMicClick = { viewModel.openVoiceRecorder() },
+                    onDismissReply = { viewModel.updateUiState { it.copy(replyToMessage = null) } }
+                )
+            }
+
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 80.dp)
+        )
 
         ChatDialogHost(
             uiState = uiState,
@@ -242,3 +250,4 @@ fun ChatScreen(
             onBack = onBack
         )
     }
+}
