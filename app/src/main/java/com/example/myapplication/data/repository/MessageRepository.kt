@@ -57,8 +57,10 @@ class MessageRepository(
         onHasMore: (Boolean) -> Unit
     ): ValueEventListener {
         val query = messagesRef.orderByChild("timestamp").limitToLast(PAGE_SIZE)
+        Log.d("MessageRepo", "listenToRecentMessages: adding listener to ${messagesRef.path} query=${query.ref.path}")
         val listener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
+                Log.d("MessageRepo", "listenToRecentMessages onDataChange: children=${snapshot.childrenCount}")
                 val realTimeMessages = mutableListOf<ChatMessage>()
                 for (child in snapshot.children) {
                     if (child.key == "typing_status") continue
@@ -71,10 +73,11 @@ class MessageRepository(
             }
 
             override fun onCancelled(error: DatabaseError) {
-                Log.w("MessageRepo", "Recent messages listener cancelled", error.toException())
+                Log.e("MessageRepo", "listenToRecentMessages onCancelled: ${error.message}", error.toException())
             }
         }
         query.addValueEventListener(listener)
+        Log.d("MessageRepo", "listenToRecentMessages: listener added")
         return listener
     }
 
