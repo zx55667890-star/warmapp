@@ -125,7 +125,7 @@ class ChatViewModel(
                                     if (it.id == match.id) {
                                         it.copy(
                                             localId = pending.localId.takeIf { id -> id.isNotBlank() } ?: pending.id,
-                                            localImageUrls = pending.localImageUrls,
+                                            localImageUrls = if (pending.videoUrl.isNotBlank()) emptyList() else pending.localImageUrls,
                                             isCameraCapture = pending.isCameraCapture
                                         )
                                     } else it 

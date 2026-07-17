@@ -29,12 +29,23 @@ class ChatMediaSender(
 
         val id = pendingMsg.id
         val job = scope.launch {
-            val success = upload()
+            val success = try {
+                upload()
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    onPendingRemoved?.invoke(id)
+                    onShowSnackbar?.invoke(e.message ?: "上傳失敗")
+                }
+                return@launch
+            }
             withContext(Dispatchers.Main) {
                 if (success) {
                     val realMsg = pendingMsg.copy(id = "uploaded_$id")
                     onMessageAdded?.invoke(realMsg)
                     onPendingRemoved?.invoke(id)
+                } else {
+                    onPendingRemoved?.invoke(id)
+                    onShowSnackbar?.invoke("上傳失敗")
                 }
             }
         }
@@ -43,7 +54,7 @@ class ChatMediaSender(
 
     fun sendVideo(chatroomId: String, userId: String, myRole: String, uri: Uri, isCameraCapture: Boolean = false, onError: (String) -> Unit = {}) {
         val basePendingMsg = sendMediaUseCase.createPendingMessage(userId, myRole, uri, isVideo = true, isCameraCapture = isCameraCapture)
-        val pendingMsg = basePendingMsg.copy(localId = basePendingMsg.id, localImageUrls = listOf(uri.toString()))
+        val pendingMsg = basePendingMsg.copy(localId = basePendingMsg.id)
         sendMedia(pendingMsg) {
             sendMediaUseCase.sendVideo(chatroomId, userId, myRole, uri, onProgress = {}, onError = onError)
         }
