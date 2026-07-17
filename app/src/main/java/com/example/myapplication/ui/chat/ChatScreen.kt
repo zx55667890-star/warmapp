@@ -2,6 +2,7 @@ package com.example.myapplication.ui.chat
 
 import android.util.Log
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
@@ -14,6 +15,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.myapplication.data.model.ChatMessage
 import com.example.myapplication.data.repository.UserRepository
+import com.example.myapplication.ui.theme.AppColors
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import com.example.myapplication.ui.chat.components.ChatBottomArea
@@ -40,7 +42,7 @@ fun ChatScreen(
     LaunchedEffect(Unit) { viewModel.initChat(chatroomId, userId, myRole) }
 
     val listState = rememberLazyListState()
-    val isDarkTheme = androidx.compose.foundation.isSystemInDarkTheme()
+    val isDarkTheme = true
     val focusManager = LocalFocusManager.current
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -127,6 +129,7 @@ fun ChatScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .background(AppColors.DarkBackground)
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null
