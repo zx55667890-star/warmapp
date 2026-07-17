@@ -151,6 +151,7 @@ fun AppNavigation() {
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .background(AppColors.DarkBackground)
             .drawBackgroundGlow()
     ) {
         NavHost(
