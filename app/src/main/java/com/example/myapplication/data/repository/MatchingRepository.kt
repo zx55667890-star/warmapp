@@ -68,7 +68,7 @@ class MatchingRepository(
                                 val best = sorted.first().first
                                 qRef.updateChildren(mapOf(
                                     "expertId" to best.authorId,
-                                    "status" to "pending_acceptance",
+                                    "status" to "taken",
                                     "matchedExpTimestamp" to best.timestamp,
                                     "matchedExpText" to best.text
                                 ))

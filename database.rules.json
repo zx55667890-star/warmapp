@@ -20,7 +20,7 @@
         ".write": "auth.uid !== null",
         "expertId": { ".validate": "newData.isString() || newData.val() === ''" },
         "text": { ".validate": "newData.isString() && newData.val().length <= 2000" },
-        "status": { ".validate": "newData.isString() && (newData.val() == 'matching' || newData.val() == 'pending_acceptance' || newData.val() == 'expert_accepted' || newData.val() == 'taken' || newData.val() == 'active' || newData.val() == 'completed' || newData.val() == 'cancelled' || newData.val() == 'no_experts')" },
+        "status": { ".validate": "newData.isString() && (newData.val() == 'matching' || newData.val() == 'taken' || newData.val() == 'active' || newData.val() == 'completed' || newData.val() == 'cancelled' || newData.val() == 'no_experts')" },
         "rejectedExperts": {
           "$expertId": { ".validate": "newData.isBoolean()" }
         }

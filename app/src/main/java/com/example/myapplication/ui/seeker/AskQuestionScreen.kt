@@ -198,14 +198,5 @@ fun AskQuestionScreen(
             )
         }
 
-        if (seekerUiState.showSeekerConfirmDialog) {
-            SeekerConfirmDialog(
-                expertName = seekerUiState.matchedExpertId,
-                expertText = seekerUiState.matchedExpertText,
-                expertDate = seekerUiState.matchedExpertDate,
-                onConfirm = { viewModel.acceptExpertMatch() },
-                onDismiss = { viewModel.rejectExpertMatch() }
-            )
-        }
     }
 }

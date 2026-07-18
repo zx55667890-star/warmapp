@@ -82,8 +82,8 @@ class ChatViewModel(
                 .flatMapLatest { (roomId, uid) ->
                     combine(
                         observeMessagesUseCase.observeMessagesDirect(roomId),
-                        observeMessagesUseCase.observeTypingStatus(roomId, uid),
-                        observeMessagesUseCase.observeChatStatus(roomId)
+                        observeMessagesUseCase.observeTypingStatus(roomId, uid).onStart { emit(false) },
+                        observeMessagesUseCase.observeChatStatus(roomId).onStart { emit(false) }
                     ) { messagesResult, isTyping, isEnded ->
                         Triple(messagesResult, isTyping, isEnded)
                     }

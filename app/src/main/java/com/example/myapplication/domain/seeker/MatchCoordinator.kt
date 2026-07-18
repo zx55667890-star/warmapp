@@ -15,7 +15,6 @@ class MatchCoordinator(
     private val aiRepository: AiRepository,
 ) {
     companion object {
-        private val ACTIVE_USER_STATUSES = setOf("matching", "pending_acceptance", "expert_accepted")
         private const val MATCH_TIMEOUT_MS = 300_000L
         private const val AI_PREVIEW_DELAY_MS = 3_000L
     }
@@ -23,7 +22,6 @@ class MatchCoordinator(
     private var matchTimeoutJob: Job? = null
 
     var onAiChatroomReady: ((chatroomId: String, questionText: String) -> Unit)? = null
-    var onCancelUserMatching: (() -> Unit)? = null
 
     fun matchAndAssignExpert(questionId: String, text: String, userId: String) {
         matchingRepository.matchAndAssignExpert(questionId, text, userId)
@@ -36,9 +34,8 @@ class MatchCoordinator(
             val ref = firebaseDb.getReference("questions").child(questionId)
             ref.child("status").get().addOnSuccessListener { status ->
                 val s = status.value?.toString()
-                if (s in ACTIVE_USER_STATUSES) {
+                if (s == "matching") {
                     ref.child("status").setValue("cancelled")
-                    onCancelUserMatching?.invoke()
                 }
             }
         }

@@ -95,15 +95,40 @@ async function searchOnSerper(query) {
 const REPAIR_BATCH_SIZE = 5;
 const PENDING_STALE_MS = 10 * 60 * 1000;
 
-async function healOrphanedPending() {
-  const cursorSnapshot = await db.ref('config/repair_cursor').once('value');
-  const cursor = cursorSnapshot.val() || '';
+async function releaseStuckProcessing(path) {
+  const snapshot = await db.ref(path).once('value');
+  if (!snapshot.exists()) return;
+  const now = Date.now();
+  const updates = {};
+  snapshot.forEach(child => {
+    const proc = child.val().processing;
+    if (proc && (now - proc) >= PROCESSING_TIMEOUT_MS) {
+      updates[`${path}/${child.key}/processing`] = null;
+    }
+  });
+  const keys = Object.keys(updates);
+  if (keys.length > 0) {
+    await db.ref().update(updates);
+    console.log(`Released ${keys.length} stuck entries from ${path}`);
+  }
+}
 
-  const usersSnapshot = await db.ref('users')
-    .orderByKey()
-    .startAfter(cursor)
-    .limitToFirst(REPAIR_BATCH_SIZE)
-    .once('value');
+async function healOrphanedPending() {
+  let usersSnapshot;
+  try {
+    const cursorSnapshot = await db.ref('config/repair_cursor').once('value');
+    const cursor = cursorSnapshot.val() || '';
+
+    let query = db.ref('users').orderByKey().limitToFirst(REPAIR_BATCH_SIZE);
+    if (cursor) {
+      query = query.startAfter(cursor);
+    }
+    usersSnapshot = await query.once('value');
+  } catch (err) {
+    console.error('Repair scan query failed, resetting cursor:', err.message);
+    await db.ref('config/repair_cursor').set('');
+    return;
+  }
 
   const users = usersSnapshot.val();
   if (!users) {
@@ -146,167 +171,134 @@ async function healOrphanedPending() {
   console.log(`Repair scan: checked ${uids.length} users, cursor=${lastKey}, repaired=${repaired}`);
 }
 
-exports.batchProcessPendingSkills = onSchedule(
-  {
-    schedule: '* * * * *',
-    secrets: [geminiApiKey, serperApiKey],
-    minInstances: 1,
-  },
-  async () => {
-    console.log('batchProcessPendingSkills started');
-    try {
+// ─────────────────────────────────────────────
+// 單一排程：依序處理 pending_skills → pending_questions
+// 合併兩個 CF 減少 API 競爭 (原 batchProcessPendingSkills + batchProcessPendingQuestions)
+// ─────────────────────────────────────────────
 
-    try {
-      await healOrphanedPending();
-      console.log('Self-heal scan completed');
-    } catch (err) {
-      console.error('Self-heal scan failed, continuing main processing:', err.message);
-    }
+async function processSkills() {
+  console.log('[Skills] start');
+  try {
+    await healOrphanedPending();
+    console.log('[Skills] self-heal scan completed');
+  } catch (err) {
+    console.error('[Skills] self-heal scan failed:', err.message);
+  }
 
-    const snapshot = await db
-      .ref('pending_skills')
-      .orderByChild('timestamp')
-      .limitToFirst(BATCH_LIMIT_SKILLS)
-      .once('value');
+  try {
+    await releaseStuckProcessing('pending_skills');
+  } catch (err) {
+    console.error('[Skills] releaseStuckProcessing failed:', err.message);
+  }
 
-    const entries = [];
-    snapshot.forEach((child) => {
-      entries.push({ id: child.key, ...child.val() });
+  const snapshot = await db.ref('pending_skills')
+    .orderByChild('timestamp')
+    .limitToFirst(BATCH_LIMIT_SKILLS)
+    .once('value');
+
+  const entries = [];
+  snapshot.forEach(child => entries.push({ id: child.key, ...child.val() }));
+  if (entries.length === 0) { console.log('[Skills] none found'); return; }
+
+  const now = Date.now();
+  const claimResults = await Promise.all(entries.map(async (entry) => {
+    let claimed = false;
+    await db.ref(`pending_skills/${entry.id}`).transaction(cur => {
+      if (cur === null) return cur;
+      if (cur.processing && (now - cur.processing) < PROCESSING_TIMEOUT_MS) return;
+      cur.processing = now;
+      claimed = true;
+      return cur;
     });
+    return { entry, claimed };
+  }));
 
-    if (entries.length === 0) {
-      console.log('No pending skills found');
-      return;
+  const processable = claimResults.filter(r => r.claimed).map(r => r.entry);
+  if (processable.length === 0) { console.log('[Skills] all in progress'); return; }
+  console.log(`[Skills] claimed ${processable.length}`);
+
+  // Step 1: blacklist
+  const blResults = await Promise.all(processable.map(async (entry) => {
+    const bl = await db.ref(`tags_blacklist/${encodePath(entry.text)}`).once('value');
+    return { entry, isBlacklisted: bl.exists() };
+  }));
+
+  const updates = {};
+  let aiEntries = [];
+  const lockTrackers = {};
+
+  for (const { entry, isBlacklisted } of blResults) {
+    if (isBlacklisted) {
+      updates[`solutions/${entry.userId}/${entry.id}/status`] = 'REJECTED';
+      updates[`solutions/${entry.userId}/${entry.id}/tags`] = [];
+      updates[`pending_skills/${entry.id}`] = null;
+      const t = lockTrackers[entry.userId] || (lockTrackers[entry.userId] = { rejectedCount: 0, hasActive: false });
+      t.rejectedCount = (t.rejectedCount || 0) + 1;
+    } else {
+      aiEntries.push(entry);
     }
+  }
 
-    // Atomically claim entries via transaction (race-condition-safe)
-    const now = Date.now();
-    const claimResults = await Promise.all(entries.map(async (entry) => {
-      let claimed = false;
-      await db.ref(`pending_skills/${entry.id}`).transaction((currentData) => {
-        if (currentData === null) return currentData;
-        if (currentData.processing && (now - currentData.processing) < PROCESSING_TIMEOUT_MS) {
-          return;
+  // Step 2: whitelist
+  const wlResults = await Promise.all(aiEntries.map(async (entry) => {
+    const wl = await db.ref(`tags_whitelist/${encodePath(entry.text)}/tags`).once('value');
+    const tags = wl.val();
+    return { entry, cachedTags: Array.isArray(tags) && tags.length > 0 ? tags : null };
+  }));
+
+  let remaining = [];
+
+  for (const { entry, cachedTags } of wlResults) {
+    if (cachedTags) {
+      updates[`solutions/${entry.userId}/${entry.id}/status`] = 'ACTIVE';
+      updates[`solutions/${entry.userId}/${entry.id}/tags`] = cachedTags;
+      updates[`pending_skills/${entry.id}`] = null;
+      const t = lockTrackers[entry.userId] || (lockTrackers[entry.userId] = { rejectedCount: 0, hasActive: false });
+      t.hasActive = true;
+    } else {
+      remaining.push(entry);
+    }
+  }
+
+  if (remaining.length === 0) {
+    await db.ref().update(updates);
+    console.log(`[Skills] all ${processable.length} resolved via cache`);
+    return;
+  }
+
+  // Step 3: AI 5-model pipeline
+  const modelStatus = (await db.ref('config/model_status').once('value')).val() || {};
+  let candidates = MODELS.filter(m => modelStatus[encodePath(m.name)] !== 'EXHAUSTED');
+  if (candidates.length === 0) {
+    console.warn('[Skills] all models EXHAUSTED');
+    const lastReset = (await db.ref('config/last_reset').once('value')).val();
+    if (lastReset && (Date.now() - lastReset) < 300000) { console.error('[Skills] aborting'); return; }
+    await db.ref('config/last_reset').set(Date.now());
+    await db.ref('config/model_status').set({});
+    candidates = MODELS;
+  }
+
+  for (const model of candidates) {
+    if (remaining.length === 0) break;
+    console.log(`[Skills] model ${model.name} (${model.label}), ${remaining.length} entries`);
+
+    const localMapping = new Map();
+    const slimmed = remaining.map((e, i) => { const v = i.toString(); localMapping.set(v, e); return { id: v, text: e.text }; });
+
+    let searchContext = '';
+    if (model.useWebFetch) {
+      const sr = await Promise.all(slimmed.map(async (se) => {
+        try {
+          const snippets = await searchOnSerper(se.text);
+          return `Entry "${se.id}": "${se.text}"\n搜尋結果：\n${snippets}`;
+        } catch (err) {
+          return `Entry "${se.id}": "${se.text}"\n搜尋結果：（搜尋失敗）`;
         }
-        currentData.processing = now;
-        claimed = true;
-        return currentData;
-      });
-      return { entry, claimed };
-    }));
-
-    const processableEntries = claimResults.filter(r => r.claimed).map(r => r.entry);
-
-    if (processableEntries.length === 0) {
-      console.log('All entries are currently being processed by another invocation');
-      return;
+      }));
+      searchContext = '以下是網路搜尋結果，請仔細參考這些資訊來輔助判斷技能的真實性：\n\n' + sr.join('\n\n') + '\n\n';
     }
 
-    console.log(`Claimed ${processableEntries.length} entries via atomic transaction`);
-
-    // Step 1: Check blacklist for each entry in parallel
-    const blacklistChecks = processableEntries.map(async (entry) => {
-      const blSnapshot = await db.ref(`tags_blacklist/${encodePath(entry.text)}`).once('value');
-      return { entry, isBlacklisted: blSnapshot.exists() };
-    });
-    const blacklistResults = await Promise.all(blacklistChecks);
-
-    const updates = {};
-    const aiEntries = [];
-
-    // Track consecutive rejection count per user for submission lock
-    const lockTrackers = {};
-
-    for (const { entry, isBlacklisted } of blacklistResults) {
-      if (isBlacklisted) {
-        updates[`solutions/${entry.userId}/${entry.id}/status`] = 'REJECTED';
-        updates[`solutions/${entry.userId}/${entry.id}/tags`] = [];
-        updates[`pending_skills/${entry.id}`] = null;
-        const t = lockTrackers[entry.userId] || (lockTrackers[entry.userId] = { rejectedCount: 0, hasActive: false });
-        t.rejectedCount = (t.rejectedCount || 0) + 1;
-      } else {
-        aiEntries.push(entry);
-      }
-    }
-
-    // Step 2: Check whitelist for remaining entries in parallel
-    const whitelistChecks = aiEntries.map(async (entry) => {
-      const wlSnapshot = await db.ref(`tags_whitelist/${encodePath(entry.text)}/tags`).once('value');
-      const tags = wlSnapshot.val();
-      return { entry, cachedTags: Array.isArray(tags) && tags.length > 0 ? tags : null };
-    });
-    const whitelistResults = await Promise.all(whitelistChecks);
-
-    let remainingEntries = [];
-
-    for (const { entry, cachedTags } of whitelistResults) {
-      if (cachedTags) {
-        updates[`solutions/${entry.userId}/${entry.id}/status`] = 'ACTIVE';
-        updates[`solutions/${entry.userId}/${entry.id}/tags`] = cachedTags;
-        updates[`pending_skills/${entry.id}`] = null;
-        const t = lockTrackers[entry.userId] || (lockTrackers[entry.userId] = { rejectedCount: 0, hasActive: false });
-        t.hasActive = true;
-      } else {
-        remainingEntries.push(entry);
-      }
-    }
-
-    if (remainingEntries.length === 0) {
-      await db.ref().update(updates);
-      console.log(`All ${processableEntries.length} entries resolved via blacklist/whitelist cache, no AI call needed`);
-      return;
-    }
-
-    // Normal mode: check model_status
-    const statusSnapshot = await db.ref('config/model_status').once('value');
-    const modelStatus = statusSnapshot.val() || {};
-
-    let candidates = MODELS.filter(m => modelStatus[encodePath(m.name)] !== 'EXHAUSTED');
-    if (candidates.length === 0) {
-      console.warn('All models EXHAUSTED');
-      const resetSnapshot = await db.ref('config/last_reset').once('value');
-      const lastReset = resetSnapshot.val();
-      const RESET_COOLDOWN_MS = 10 * 60 * 1000;
-      if (lastReset && (Date.now() - lastReset) < RESET_COOLDOWN_MS) {
-        console.error('Models exhausted and recently reset; aborting to avoid infinite retry loop');
-        return;
-      }
-      await db.ref('config/last_reset').set(Date.now());
-      await db.ref('config/model_status').set({});
-      console.log('Model status reset after cooldown');
-      candidates = MODELS;
-    }
-
-    let lastError = null;
-
-    for (const model of candidates) {
-      if (remainingEntries.length === 0) break;
-
-      console.log(`Processing ${remainingEntries.length} skills with model: ${model.name} (${model.label})`);
-
-      const localMapping = new Map();
-      const slimmedEntries = remainingEntries.map((entry, index) => {
-        const virtualId = index.toString();
-        localMapping.set(virtualId, entry);
-        return { id: virtualId, text: entry.text };
-      });
-
-      // 若 useWebFetch，先對每筆 entry 做 Serper 搜尋
-      let searchContext = '';
-      if (model.useWebFetch) {
-        const searchResults = await Promise.all(slimmedEntries.map(async (se) => {
-          try {
-            const snippets = await searchOnSerper(se.text);
-            return `Entry "${se.id}": "${se.text}"\n搜尋結果：\n${snippets}`;
-          } catch (err) {
-            console.warn(`Search failed for "${se.text}": ${err.message}`);
-            return `Entry "${se.id}": "${se.text}"\n搜尋結果：（搜尋失敗）`;
-          }
-        }));
-        searchContext = '以下是網路搜尋結果，請仔細參考這些資訊來輔助判斷技能的真實性：\n\n' + searchResults.join('\n\n') + '\n\n';
-      }
-
-      const prompt = searchContext + `請判斷以下每筆資料是否為真實、有意義的專業技能描述。
+    const prompt = searchContext + `請判斷以下每筆資料是否為真實、有意義的專業技能描述。
 判斷原則：
 - 如果內容是具體、可理解的專業技能，請提取 4 個最能描述該技能的核心關鍵字（例如具體名詞、工具或平台名稱，而非抽象分類詞如「跨境物流」「客服」等）
 - 如果內容是無意義的胡言亂語或無法對應到真實場景，請將 status 設為 "REJECTED"
@@ -315,98 +307,257 @@ exports.batchProcessPendingSkills = onSchedule(
 - 標籤必須使用與技能描述相同的語言（若描述為中文，標籤也必須是中文）
 
  以 JSON Array 格式回傳，每個物件包含 id、tags 和 status 欄位。status 為 "ACTIVE"（接受）或 "REJECTED"（拒絕）。
-資料：${JSON.stringify(slimmedEntries)}`;
+資料：${JSON.stringify(slimmed)}`;
 
-      try {
-        const apiModel = model.useWebFetch ? { ...model, useSearch: false } : model;
-        const { response, elapsed } = await generateContentWithRetry(apiModel, prompt);
-        console.log(`Model ${model.name} responded in ${elapsed}ms`);
-        const text = response.text || '';
-        if (!text) throw new Error('AI 回傳空內容');
+    try {
+      const apiModel = model.useWebFetch ? { ...model, useSearch: false } : model;
+      const { response, elapsed } = await generateContentWithRetry(apiModel, prompt);
+      console.log(`[Skills] ${model.name} responded in ${elapsed}ms`);
+      const text = response.text || '';
+      if (!text) throw new Error('AI 回傳空內容');
 
-        let parsed;
-        try {
-          parsed = JSON.parse(text);
-        } catch {
-          const jsonMatch = text.match(/\[[\s\S]*\]/);
-          if (jsonMatch) parsed = JSON.parse(jsonMatch[0]);
-          else throw new Error('無法解析 AI 回應為 JSON');
-        }
+      let parsed;
+      try { parsed = JSON.parse(text); } catch {
+        const m = text.match(/\[[\s\S]*\]/);
+        if (m) parsed = JSON.parse(m[0]); else throw new Error('無法解析 AI 回應為 JSON');
+      }
 
-        const newlyRejectedEntries = [];
-        const acceptedEntries = [];
+      const newRejected = [];
+      for (const item of parsed) {
+        const entry = localMapping.get(item.id?.toString());
+        if (!entry) continue;
+        const isReject = item.status === 'REJECTED' || (Array.isArray(item.tags) && item.tags.includes('REJECT'));
+        const tags = Array.isArray(item.tags) ? item.tags.filter(t => t !== 'REJECT').slice(0, 4) : [];
 
-        for (const item of parsed) {
-          const entry = localMapping.get(item.id?.toString());
-          if (!entry) continue;
-
-          const isReject = item.status === 'REJECTED' ||
-            (Array.isArray(item.tags) && item.tags.includes('REJECT'));
-          const tags = Array.isArray(item.tags)
-            ? item.tags.filter(t => t !== 'REJECT').slice(0, 4)
-            : [];
-
-          if (isReject) {
-            newlyRejectedEntries.push(entry);
-          } else {
-            acceptedEntries.push({ text: entry.text, tags });
-            const skillRef = `solutions/${entry.userId}/${entry.id}`;
-            const t = lockTrackers[entry.userId] || (lockTrackers[entry.userId] = { rejectedCount: 0, hasActive: false });
-
-            updates[`${skillRef}/status`] = 'ACTIVE';
-            updates[`${skillRef}/tags`] = tags;
-            updates[`tags_whitelist/${encodePath(entry.text)}/tags`] = tags;
-            updates[`pending_skills/${entry.id}`] = null;
-            t.hasActive = true;
-          }
-        }
-
-        console.log(`${model.label} accepted:`, JSON.stringify(acceptedEntries.map(e => e.text)));
-        console.log(`${model.label} rejected:`, JSON.stringify(newlyRejectedEntries.map(e => e.text)));
-        remainingEntries = newlyRejectedEntries;
-
-      } catch (err) {
-        console.error(`Model ${model.name} (${model.label}) failed:`, err);
-        lastError = err;
-        if (err.status === 429 || (err.message && err.message.includes('RESOURCE_EXHAUSTED'))) {
-          try {
-            await db.ref(`config/model_status/${encodePath(model.name)}`).set('EXHAUSTED');
-          } catch (pathErr) {
-            console.error(`Failed to mark ${model.name} as EXHAUSTED:`, pathErr);
-          }
+        if (isReject) { newRejected.push(entry); } else {
+          const sr = `solutions/${entry.userId}/${entry.id}`;
+          const t = lockTrackers[entry.userId] || (lockTrackers[entry.userId] = { rejectedCount: 0, hasActive: false });
+          updates[`${sr}/status`] = 'ACTIVE';
+          updates[`${sr}/tags`] = tags;
+          updates[`tags_whitelist/${encodePath(entry.text)}/tags`] = tags;
+          updates[`pending_skills/${entry.id}`] = null;
+          t.hasActive = true;
         }
       }
-    }
-
-    if (remainingEntries.length > 0) {
-      console.log(`Final reject for ${remainingEntries.length} items:`, JSON.stringify(remainingEntries.map(e => e.text)));
-      for (const entry of remainingEntries) {
-        const skillRef = `solutions/${entry.userId}/${entry.id}`;
-        const t = lockTrackers[entry.userId] || (lockTrackers[entry.userId] = { rejectedCount: 0, hasActive: false });
-
-        updates[`${skillRef}/status`] = 'REJECTED';
-        updates[`${skillRef}/tags`] = [];
-        updates[`tags_blacklist/${encodePath(entry.text)}`] = true;
-        updates[`pending_skills/${entry.id}`] = null;
-        t.rejectedCount = (t.rejectedCount || 0) + 1;
-      }
-    }
-
-    for (const [uid, t] of Object.entries(lockTrackers)) {
-      const finalCount = t.hasActive ? 0 : (t.rejectedCount || 0);
-      updates[`users/${uid}/submissionLock/rejectedCount`] = finalCount;
-      if (finalCount >= 3) {
-        updates[`users/${uid}/submissionLock/lockedUntil`] = Date.now() + 86400000;
-      } else {
-        updates[`users/${uid}/submissionLock/lockedUntil`] = 0;
-      }
-    }
-
-    await db.ref().update(updates);
-    console.log('Batch process complete. Updated database.');
+      remaining = newRejected;
     } catch (err) {
-      console.error('batchProcessPendingSkills failed:', err.message, err.stack);
+      console.error(`[Skills] model ${model.name} failed:`, err.message);
+      if (err.status === 429 || (err.message && err.message.includes('RESOURCE_EXHAUSTED'))) {
+        try { await db.ref(`config/model_status/${encodePath(model.name)}`).set('EXHAUSTED'); } catch (_) {}
+      }
     }
+  }
+
+  // Final reject
+  if (remaining.length > 0) {
+    for (const entry of remaining) {
+      const sr = `solutions/${entry.userId}/${entry.id}`;
+      const t = lockTrackers[entry.userId] || (lockTrackers[entry.userId] = { rejectedCount: 0, hasActive: false });
+      updates[`${sr}/status`] = 'REJECTED';
+      updates[`${sr}/tags`] = [];
+      updates[`tags_blacklist/${encodePath(entry.text)}`] = true;
+      updates[`pending_skills/${entry.id}`] = null;
+      t.rejectedCount = (t.rejectedCount || 0) + 1;
+    }
+  }
+
+  for (const [uid, t] of Object.entries(lockTrackers)) {
+    const prev = (await db.ref(`users/${uid}/submissionLock/rejectedCount`).once('value')).val() || 0;
+    const total = prev + (t.rejectedCount || 0);
+    updates[`users/${uid}/submissionLock/rejectedCount`] = total;
+    updates[`users/${uid}/submissionLock/lockedUntil`] = (!t.hasActive && total >= 3) ? Date.now() + 86400000 : 0;
+  }
+
+  await db.ref().update(updates);
+  console.log('[Skills] complete');
+}
+
+async function processQuestions() {
+  console.log('[Questions] start');
+  try {
+    await releaseStuckProcessing('pending_questions');
+  } catch (err) {
+    console.error('[Questions] releaseStuckProcessing failed:', err.message);
+  }
+
+  const snapshot = await db.ref('pending_questions')
+    .orderByChild('timestamp')
+    .limitToFirst(BATCH_LIMIT_QUESTIONS)
+    .once('value');
+
+  const entries = [];
+  snapshot.forEach(child => entries.push({ id: child.key, ...child.val() }));
+  if (entries.length === 0) { console.log('[Questions] none found'); return; }
+
+  const now = Date.now();
+  const claimResults = await Promise.all(entries.map(async (entry) => {
+    let claimed = false;
+    await db.ref(`pending_questions/${entry.id}`).transaction(cur => {
+      if (cur === null) return cur;
+      if (cur.processing && (now - cur.processing) < PROCESSING_TIMEOUT_MS) return;
+      cur.processing = now;
+      claimed = true;
+      return cur;
+    });
+    return { entry, claimed };
+  }));
+
+  const processable = claimResults.filter(r => r.claimed).map(r => r.entry);
+  if (processable.length === 0) { console.log('[Questions] all in progress'); return; }
+  console.log(`[Questions] claimed ${processable.length}`);
+
+  // Step 1: blacklist
+  const blResults = await Promise.all(processable.map(async (entry) => {
+    const bl = await db.ref(`tags_blacklist/${encodePath(entry.text)}`).once('value');
+    return { entry, isBlacklisted: bl.exists() };
+  }));
+
+  const updates = {};
+  let aiEntries = [];
+
+  for (const { entry, isBlacklisted } of blResults) {
+    if (isBlacklisted) {
+      updates[`questions/${entry.id}/status`] = 'cancelled';
+      updates[`pending_questions/${entry.id}`] = null;
+    } else {
+      aiEntries.push(entry);
+    }
+  }
+
+  // Step 2: whitelist
+  const wlResults = await Promise.all(aiEntries.map(async (entry) => {
+    const wl = await db.ref(`tags_whitelist/${encodePath(entry.text)}/tags`).once('value');
+    const cached = wl.val();
+    return { entry, cachedTags: Array.isArray(cached) && cached.length > 0 ? cached : null };
+  }));
+
+  let remaining = [];
+
+  for (const { entry, cachedTags } of wlResults) {
+    if (cachedTags) {
+      updates[`questions/${entry.id}/tags`] = cachedTags;
+      updates[`pending_questions/${entry.id}`] = null;
+    } else {
+      remaining.push(entry);
+    }
+  }
+
+  if (Object.keys(updates).length > 0) {
+    await db.ref().update(updates);
+    for (const { entry, cachedTags } of wlResults.filter(r => r.cachedTags)) {
+      await matchQuestionByTags(entry.id, cachedTags);
+    }
+  }
+
+  if (remaining.length === 0) { console.log('[Questions] all resolved via cache'); return; }
+
+  // Step 3: AI pipeline
+  const modelStatus = (await db.ref('config/model_status').once('value')).val() || {};
+  let candidates = MODELS.filter(m => modelStatus[encodePath(m.name)] !== 'EXHAUSTED');
+  if (candidates.length === 0) {
+    console.warn('[Questions] all models EXHAUSTED');
+    const lastReset = (await db.ref('config/last_reset').once('value')).val();
+    if (lastReset && (Date.now() - lastReset) < 300000) { console.error('[Questions] aborting'); return; }
+    await db.ref('config/last_reset').set(Date.now());
+    await db.ref('config/model_status').set({});
+    candidates = MODELS;
+  }
+
+  const allAcceptedQuestions = [];
+
+  for (const model of candidates) {
+    if (remaining.length === 0) break;
+    console.log(`[Questions] model ${model.name} (${model.label}), ${remaining.length} entries`);
+
+    const localMapping = new Map();
+    const slimmed = remaining.map((e, i) => { const v = i.toString(); localMapping.set(v, e); return { id: v, text: e.text }; });
+
+    let searchContext = '';
+    if (model.useWebFetch) {
+      const sr = await Promise.all(slimmed.map(async (se) => {
+        try {
+          const snippets = await searchOnSerper(se.text);
+          return `Entry "${se.id}": "${se.text}"\n搜尋結果：\n${snippets}`;
+        } catch (err) {
+          return `Entry "${se.id}": "${se.text}"\n搜尋結果：（搜尋失敗）`;
+        }
+      }));
+      searchContext = '以下是網路搜尋結果：\n\n' + sr.join('\n\n') + '\n\n';
+    }
+
+    const prompt = searchContext + `請判斷以下每筆資料是否為真實、有意義的提問描述。
+判斷原則：
+- 如果內容是具體、可理解的提問，請提取 4 個最能描述該問題的核心關鍵字（例如具體名詞、工具或平台名稱，而非抽象分類詞）
+- 如果內容是無意義內容，請將 status 設為 "REJECTED"
+- 請仔細參考上述網路搜尋結果（若有提供）來協助判斷
+- 遇到無法明確判斷時，寧可 REJECTED 也不要勉強給標籤
+- 標籤必須使用與提問相同的語言
+
+以 JSON Array 格式回傳，每個物件包含 id、tags 和 status 欄位。status 為 "ACTIVE"（接受）或 "REJECTED"（拒絕）。
+資料：${JSON.stringify(slimmed)}`;
+
+    try {
+      const apiModel = model.useWebFetch ? { ...model, useSearch: false } : model;
+      const { response, elapsed } = await generateContentWithRetry(apiModel, prompt);
+      console.log(`[Questions] ${model.name} responded in ${elapsed}ms`);
+      const text = response.text || '';
+      if (!text) throw new Error('AI 回傳空內容');
+
+      let parsed;
+      try { parsed = JSON.parse(text); } catch {
+        const m = text.match(/\[[\s\S]*\]/);
+        if (m) parsed = JSON.parse(m[0]); else throw new Error('無法解析 AI 回應為 JSON');
+      }
+
+      const newRejected = [];
+      for (const item of parsed) {
+        const entry = localMapping.get(item.id?.toString());
+        if (!entry) continue;
+        const isReject = item.status === 'REJECTED' || (Array.isArray(item.tags) && item.tags.includes('REJECT'));
+        const tags = Array.isArray(item.tags) ? item.tags.filter(t => t !== 'REJECT').slice(0, 4) : [];
+
+        if (isReject) { newRejected.push(entry); } else {
+          allAcceptedQuestions.push({ entry, tags });
+          updates[`questions/${entry.id}/tags`] = tags;
+          updates[`tags_whitelist/${encodePath(entry.text)}/tags`] = tags;
+          updates[`pending_questions/${entry.id}`] = null;
+        }
+      }
+      remaining = newRejected;
+    } catch (err) {
+      console.error(`[Questions] model ${model.name} failed:`, err.message);
+      if (err.status === 429 || (err.message && err.message.includes('RESOURCE_EXHAUSTED'))) {
+        try { await db.ref(`config/model_status/${encodePath(model.name)}`).set('EXHAUSTED'); } catch (_) {}
+      }
+    }
+  }
+
+  if (remaining.length > 0) {
+    for (const entry of remaining) {
+      updates[`questions/${entry.id}/status`] = 'cancelled';
+      updates[`tags_blacklist/${encodePath(entry.text)}`] = true;
+      updates[`pending_questions/${entry.id}`] = null;
+    }
+  }
+
+  await db.ref().update(updates);
+  for (const item of allAcceptedQuestions) {
+    await matchQuestionByTags(item.entry.id, item.tags);
+  }
+  console.log('[Questions] complete');
+}
+
+exports.batchProcess = onSchedule(
+  {
+    schedule: '* * * * *',
+    secrets: [geminiApiKey, serperApiKey],
+    minInstances: 1,
+  },
+  async () => {
+    console.log('batchProcess started (skills → questions)');
+    try { await processSkills(); } catch (err) { console.error('processSkills failed:', err.message, err.stack); }
+    try { await processQuestions(); } catch (err) { console.error('processQuestions failed:', err.message, err.stack); }
+    console.log('batchProcess complete');
   }
 );
 
@@ -446,7 +597,7 @@ async function matchQuestionByTags(questionId, questionTags) {
   const qSnap = await db.ref(`questions/${questionId}`).once('value');
   if (!qSnap.exists()) return false;
   const currentStatus = qSnap.child('status').val();
-  if (currentStatus !== 'matching' && currentStatus !== 'pending_acceptance') return false;
+  if (currentStatus !== 'matching') return false;
   const questionText = qSnap.child('text').val();
 
   const rejectedExperts = new Set();
@@ -482,7 +633,7 @@ async function matchQuestionByTags(questionId, questionTags) {
     const best = matches[0];
     await db.ref(`questions/${questionId}`).update({
       expertId: best.exp.authorId,
-      status: 'pending_acceptance',
+      status: 'taken',
       matchedExpText: best.exp.text,
       matchedExpTimestamp: best.exp.timestamp,
     });
@@ -494,218 +645,4 @@ async function matchQuestionByTags(questionId, questionTags) {
   return false;
 }
 
-exports.batchProcessPendingQuestions = onSchedule(
-  {
-    schedule: '* * * * *',
-    secrets: [geminiApiKey, serperApiKey],
-    minInstances: 1,
-  },
-  async () => {
-    console.log('batchProcessPendingQuestions started');
-    try {
-      const snapshot = await db
-        .ref('pending_questions')
-        .orderByChild('timestamp')
-        .limitToFirst(BATCH_LIMIT_QUESTIONS)
-        .once('value');
 
-      const entries = [];
-      snapshot.forEach(child => entries.push({ id: child.key, ...child.val() }));
-      if (entries.length === 0) { console.log('No pending questions found'); return; }
-
-      const now = Date.now();
-      const claimResults = await Promise.all(entries.map(async (entry) => {
-        let claimed = false;
-        await db.ref(`pending_questions/${entry.id}`).transaction((cur) => {
-          if (cur === null) return cur;
-          if (cur.processing && (now - cur.processing) < PROCESSING_TIMEOUT_MS) return;
-          cur.processing = now;
-          claimed = true;
-          return cur;
-        });
-        return { entry, claimed };
-      }));
-
-      const processable = claimResults.filter(r => r.claimed).map(r => r.entry);
-      if (processable.length === 0) { console.log('All pending questions already being processed'); return; }
-      console.log(`Claimed ${processable.length} pending questions`);
-
-      // Step 1: Blacklist check
-      const blResults = await Promise.all(processable.map(async (entry) => {
-        const bl = await db.ref(`tags_blacklist/${encodePath(entry.text)}`).once('value');
-        return { entry, isBlacklisted: bl.exists() };
-      }));
-
-      const updates = {};
-      let aiEntries = [];
-
-      for (const { entry, isBlacklisted } of blResults) {
-        if (isBlacklisted) {
-          updates[`questions/${entry.id}/status`] = 'cancelled';
-          updates[`pending_questions/${entry.id}`] = null;
-        } else {
-          aiEntries.push(entry);
-        }
-      }
-
-      // Step 2: Whitelist check
-      const wlResults = await Promise.all(aiEntries.map(async (entry) => {
-        const wl = await db.ref(`tags_whitelist/${encodePath(entry.text)}/tags`).once('value');
-        const cached = wl.val();
-        return { entry, cachedTags: Array.isArray(cached) && cached.length > 0 ? cached : null };
-      }));
-
-      let remaining = [];
-
-      for (const { entry, cachedTags } of wlResults) {
-        if (cachedTags) {
-          updates[`questions/${entry.id}/tags`] = cachedTags;
-          updates[`pending_questions/${entry.id}`] = null;
-        } else {
-          remaining.push(entry);
-        }
-      }
-
-      // Apply cached updates before AI
-      if (Object.keys(updates).length > 0) {
-        await db.ref().update(updates);
-        // Run tag-based matching for whitelist-resolved questions
-        for (const { entry, cachedTags } of wlResults.filter(r => r.cachedTags)) {
-          await matchQuestionByTags(entry.id, cachedTags);
-        }
-      }
-
-      if (remaining.length === 0) {
-        console.log('All questions resolved via blacklist/whitelist cache');
-        return;
-      }
-
-      // Step 3: AI 5-model analysis
-      const statusSnapshot = await db.ref('config/model_status').once('value');
-      const modelStatus = statusSnapshot.val() || {};
-      let candidates = MODELS.filter(m => modelStatus[encodePath(m.name)] !== 'EXHAUSTED');
-      if (candidates.length === 0) {
-        console.warn('All models EXHAUSTED');
-        const resetSnap = await db.ref('config/last_reset').once('value');
-        const lastReset = resetSnap.val();
-        if (lastReset && (Date.now() - lastReset) < 600000) { console.error('Models exhausted, aborting'); return; }
-        await db.ref('config/last_reset').set(Date.now());
-        await db.ref('config/model_status').set({});
-        candidates = MODELS;
-      }
-
-      let lastError = null;
-      const allAcceptedQuestions = [];
-
-      for (const model of candidates) {
-        if (remaining.length === 0) break;
-        console.log(`Processing ${remaining.length} questions with model: ${model.name} (${model.label})`);
-
-        const localMapping = new Map();
-        const slimmed = remaining.map((entry, idx) => {
-          const vid = idx.toString();
-          localMapping.set(vid, entry);
-          return { id: vid, text: entry.text };
-        });
-
-        let searchContext = '';
-        if (model.useWebFetch) {
-          const sr = await Promise.all(slimmed.map(async (se) => {
-            try {
-              const snippets = await searchOnSerper(se.text);
-              return `Entry "${se.id}": "${se.text}"\n搜尋結果：\n${snippets}`;
-            } catch (err) {
-              return `Entry "${se.id}": "${se.text}"\n搜尋結果：（搜尋失敗）`;
-            }
-          }));
-          searchContext = '以下是網路搜尋結果：\n\n' + sr.join('\n\n') + '\n\n';
-        }
-
-        const prompt = searchContext + `請判斷以下每筆資料是否為真實、有意義的提問描述。
-判斷原則：
-- 如果內容是具體、可理解的提問，請提取 4 個最能描述該問題的核心關鍵字（例如具體名詞、工具或平台名稱，而非抽象分類詞）
-- 如果內容是無意義內容，請將 status 設為 "REJECTED"
-- 請仔細參考上述網路搜尋結果（若有提供）來協助判斷
-- 遇到無法明確判斷時，寧可 REJECTED 也不要勉強給標籤
-- 標籤必須使用與提問相同的語言
-
-以 JSON Array 格式回傳，每個物件包含 id、tags 和 status 欄位。status 為 "ACTIVE"（接受）或 "REJECTED"（拒絕）。
-資料：${JSON.stringify(slimmed)}`;
-
-        try {
-          const apiModel = model.useWebFetch ? { ...model, useSearch: false } : model;
-          const { response, elapsed } = await generateContentWithRetry(apiModel, prompt);
-          console.log(`Model ${model.name} responded in ${elapsed}ms`);
-          const text = response.text || '';
-          if (!text) throw new Error('AI 回傳空內容');
-
-          let parsed;
-          try { parsed = JSON.parse(text); }
-          catch {
-            const match = text.match(/\[[\s\S]*\]/);
-            if (match) parsed = JSON.parse(match[0]);
-            else throw new Error('無法解析 AI 回應為 JSON');
-          }
-
-          const newlyRejected = [];
-          const modelAccepted = [];
-
-          for (const item of parsed) {
-            const entry = localMapping.get(item.id?.toString());
-            if (!entry) continue;
-
-            const isReject = item.status === 'REJECTED' ||
-              (Array.isArray(item.tags) && item.tags.includes('REJECT'));
-            const tags = Array.isArray(item.tags)
-              ? item.tags.filter(t => t !== 'REJECT').slice(0, 4)
-              : [];
-
-            if (isReject) {
-              newlyRejected.push(entry);
-            } else {
-              modelAccepted.push({ entry, tags });
-              allAcceptedQuestions.push({ entry, tags });
-              const qRef = `questions/${entry.id}`;
-              updates[`${qRef}/tags`] = tags;
-              updates[`tags_whitelist/${encodePath(entry.text)}/tags`] = tags;
-              updates[`pending_questions/${entry.id}`] = null;
-            }
-          }
-
-          console.log(`${model.label} accepted ${parsed.length - newlyRejected.length}, rejected ${newlyRejected.length}`);
-          remaining = newlyRejected;
-
-        } catch (err) {
-          console.error(`Model ${model.name} (${model.label}) failed:`, err);
-          lastError = err;
-          if (err.status === 429 || (err.message && err.message.includes('RESOURCE_EXHAUSTED'))) {
-            try { await db.ref(`config/model_status/${encodePath(model.name)}`).set('EXHAUSTED'); }
-            catch (pe) { console.error('Failed to mark model EXHAUSTED:', pe); }
-          }
-        }
-      }
-
-      // Final reject for remaining
-      if (remaining.length > 0) {
-        console.log(`Final reject for ${remaining.length} questions`);
-        for (const entry of remaining) {
-          updates[`questions/${entry.id}/status`] = 'cancelled';
-          updates[`tags_blacklist/${encodePath(entry.text)}`] = true;
-          updates[`pending_questions/${entry.id}`] = null;
-        }
-      }
-
-      await db.ref().update(updates);
-      console.log('Tag updates written.');
-
-      // Step 4: Tag-based matching for AI-resolved questions
-      for (const item of allAcceptedQuestions) {
-        await matchQuestionByTags(item.entry.id, item.tags);
-      }
-
-      console.log('batchProcessPendingQuestions complete');
-    } catch (err) {
-      console.error('batchProcessPendingQuestions failed:', err.message, err.stack);
-    }
-  }
-);

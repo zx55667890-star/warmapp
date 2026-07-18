@@ -28,7 +28,6 @@ import kotlinx.coroutines.delay
 @Composable
 fun QuickLogCard(
     onPublish: (String) -> Unit,
-    onPublishExperience: ((String) -> Unit)? = null,
     onClearFeedback: () -> Unit,
     onButtonLayoutChanged: (LayoutCoordinates) -> Unit,
     clearInputSignal: Int
@@ -163,25 +162,7 @@ fun QuickLogCard(
                 }
             }
 
-            if (onPublishExperience != null && expertise.isNotBlank()) {
-                Spacer(modifier = Modifier.height(8.dp))
-                TextButton(
-                    onClick = {
-                        val trimmed = expertise.trim()
-                        onClearFeedback()
-                        onPublishExperience(trimmed)
-                    },
-                    modifier = Modifier.fillMaxWidth().height(36.dp),
-                    shape = RoundedCornerShape(10.dp)
-                ) {
-                    Text(
-                        text = stringResource(R.string.expert_label_experience_sync),
-                        color = AppColors.AccentBlue.copy(alpha = 0.7f),
-                        fontWeight = FontWeight.Medium,
-                        fontSize = 13.sp
-                    )
-                }
-            }
+
         }
     }
 }

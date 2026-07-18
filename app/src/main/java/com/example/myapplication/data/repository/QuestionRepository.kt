@@ -74,8 +74,8 @@ class QuestionRepository(private val firebaseDb: FirebaseDatabase) {
                 override fun onDataChange(snapshot: DataSnapshot) {
                     val hasActive = snapshot.children.any { child ->
                         val status = child.child("status").value?.toString()
-                        // 正在媒合、專家已接受、或是已進入聊天室(taken)都算進行中
-                        status == "matching" || status == "expert_accepted" || status == "taken"
+                        // 正在媒合或是已進入聊天室(taken)都算進行中
+                        status == "matching" || status == "taken"
                     }
                     continuation.resume(hasActive)
                 }
@@ -123,8 +123,6 @@ class QuestionRepository(private val firebaseDb: FirebaseDatabase) {
     // Listen to Question Status
     // =============================================================
     interface QuestionStatusListener {
-        fun onPendingAcceptance(expertId: String, matchedExpText: String, matchedExpTimestamp: Long)
-        fun onExpertAccepted()
         fun onTaken(expertId: String, questionText: String)
         fun onNoExperts()
         fun onCancelled()
@@ -141,15 +139,6 @@ class QuestionRepository(private val firebaseDb: FirebaseDatabase) {
             override fun onDataChange(snapshot: DataSnapshot) {
                 if (!snapshot.exists()) return
                 when (snapshot.child("status").value?.toString()) {
-                    "pending_acceptance" -> {
-                        val expertId = snapshot.child("expertId").value?.toString().orEmpty()
-                        val matchedExpText = snapshot.child("matchedExpText").value?.toString().orEmpty()
-                        val matchedExpTimestamp = (snapshot.child("matchedExpTimestamp").value as? Long) ?: 0L
-                        listener.onPendingAcceptance(expertId, matchedExpText, matchedExpTimestamp)
-                    }
-                    "expert_accepted" -> {
-                        listener.onExpertAccepted()
-                    }
                     "taken" -> {
                         val expertId = snapshot.child("expertId").value?.toString().orEmpty()
                         val text = snapshot.child("text").value?.toString().orEmpty()
@@ -174,29 +163,6 @@ class QuestionRepository(private val firebaseDb: FirebaseDatabase) {
         }
         statusRef = null
         statusListener = null
-    }
-
-    // =============================================================
-    // Accept / Reject Expert Match
-    // =============================================================
-    fun acceptExpertMatch(questionId: String, onSuccess: () -> Unit, onError: (String) -> Unit) {
-        firebaseDb.getReference("questions").child(questionId).updateChildren(
-            mapOf("status" to "taken")
-        ).addOnSuccessListener { onSuccess() }
-            .addOnFailureListener { e -> onError(e.message ?: "接受匹配失敗") }
-    }
-
-    fun rejectExpertMatch(questionId: String, userId: String, onSuccess: () -> Unit, onError: (String) -> Unit) {
-        val qRef = firebaseDb.getReference("questions").child(questionId)
-        qRef.child("rejectedExperts").child(userId).setValue(true).addOnSuccessListener {
-            qRef.updateChildren(mapOf(
-                "status" to "matching",
-                "expertId" to "",
-                "matchedExpText" to "",
-                "matchedExpTimestamp" to 0
-            )).addOnSuccessListener { onSuccess() }
-                .addOnFailureListener { e -> onError(e.message ?: "拒絕匹配失敗") }
-        }.addOnFailureListener { e -> onError(e.message ?: "拒絕匹配失敗") }
     }
 
     // =============================================================

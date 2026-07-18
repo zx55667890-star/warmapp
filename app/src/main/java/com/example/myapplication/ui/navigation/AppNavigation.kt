@@ -43,7 +43,6 @@ import com.example.myapplication.ui.chat.ChatScreen
 import com.example.myapplication.ui.expert.ExpertAssignDialog
 import com.example.myapplication.ui.expert.ExpertScreen
 import com.example.myapplication.ui.expert.ExpertViewModel
-import com.example.myapplication.ui.expert.ExpertWaitingDialog
 import com.example.myapplication.ui.seeker.AskQuestionScreen
 import com.example.myapplication.ui.seeker.RoleSelectScreen
 import com.example.myapplication.ui.seeker.SeekerViewModel
@@ -321,9 +320,7 @@ fun AppNavigation() {
                     onReject = { expertViewModel.rejectGlobalAssignment(userId) }
                 )
             }
-            if (expertUiState.isExpertWaitingForSeeker) {
-                ExpertWaitingDialog(onCancel = { expertViewModel.cancelWaiting(userId) })
-            }
+
             if (showNicknameSettings) {
                 NicknameSettingsDialog(
                     userId = userId,

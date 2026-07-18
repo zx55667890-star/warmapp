@@ -59,6 +59,12 @@ fun VoiceMessageBubble(
         }
     }
 
+    fun releasePlayer(p: android.media.MediaPlayer?) {
+        try {
+            p?.apply { if (isPlaying) stop(); release() }
+        } catch (_: Exception) { }
+    }
+
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -67,14 +73,14 @@ fun VoiceMessageBubble(
                 isPlaying = false
             }
             if (event == Lifecycle.Event.ON_STOP) {
-                player?.release()
+                releasePlayer(player)
                 player = null
                 isPlaying = false
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {
-            player?.release()
+            releasePlayer(player)
             player = null
             lifecycleOwner.lifecycle.removeObserver(observer)
         }
@@ -97,16 +103,20 @@ fun VoiceMessageBubble(
                         player?.pause()
                         isPlaying = false
                     } else {
-                        val p = player ?: android.media.MediaPlayer().apply {
-                            setDataSource(voiceUrl)
-                            setOnPreparedListener { start() }
-                            setOnCompletionListener {
-                                isPlaying = false
-                                currentPositionMs = duration
+                        val p = player ?: try {
+                            android.media.MediaPlayer().apply {
+                                setDataSource(voiceUrl)
+                                setOnPreparedListener { start() }
+                                setOnCompletionListener {
+                                    isPlaying = false
+                                    currentPositionMs = duration
+                                }
+                                setOnErrorListener { _, _, _ -> true }
+                                prepareAsync()
                             }
-                            setOnErrorListener { _, _, _ -> true }
-                            prepareAsync()
-                        }
+                        } catch (e: Exception) {
+                            null
+                        } ?: return@combinedClickable
                         if (!p.isPlaying) {
                             if (p.currentPosition >= p.duration - 100) p.seekTo(0)
                             p.start()

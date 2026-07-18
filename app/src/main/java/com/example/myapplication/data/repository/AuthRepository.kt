@@ -2,8 +2,6 @@ package com.example.myapplication.data.repository
 
 import android.content.Context
 import android.util.Log
-import com.google.android.gms.auth.api.signin.GoogleSignIn
-import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.GoogleAuthProvider
@@ -147,11 +145,6 @@ class AuthRepository(
 
     fun logout() {
         firebaseAuth.signOut()
-        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-            .requestIdToken(appContext.getString(com.example.myapplication.R.string.default_web_client_id))
-            .requestEmail()
-            .build()
-        GoogleSignIn.getClient(appContext, gso).signOut()
     }
 
     suspend fun generateVerificationCode(email: String, prefix: String = "") {

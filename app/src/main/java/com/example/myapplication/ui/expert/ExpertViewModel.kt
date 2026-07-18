@@ -32,18 +32,11 @@ data class ExpertUiState(
     val helpCount: Long = 0L,
     val solutionHistory: List<SolutionItem> = emptyList(),
     val isSubmittingSolution: Boolean = false,
-    val activeExperienceId: String = "",
-    val activeExperienceText: String = "",
-
-    val isEditing: Boolean = false,
     val editText: String = "",
     @StringRes val editErrorRes: Int? = null,
     val isSubmitting: Boolean = false,
-
     val skillEditTarget: SolutionItem? = null,
-
     val showGlobalAssignDialog: Boolean = false,
-    val isExpertWaitingForSeeker: Boolean = false,
     val globalAssignedQId: String = "",
     val globalAssignedQText: String = "",
     val activeChatRoomId: String = "",
@@ -158,7 +151,7 @@ class ExpertViewModel(
     }
 
     fun setExpertOnline(online: Boolean, userId: String) {
-        expertRepository.setExpertOnline(online, userId, _uiState.value.activeExperienceId)
+        expertRepository.setExpertOnline(online, userId, "")
     }
 
     private fun observeSubmissionLock(userId: String) {
@@ -173,84 +166,6 @@ class ExpertViewModel(
             override fun onCancelled(error: DatabaseError) { }
         }
         lockRef?.addValueEventListener(lockListener!!)
-    }
-
-    fun publishExperience(userId: String, text: String) {
-        if (userId.isBlank()) {
-            sendEvent(ExpertUiEvent.ShowToast(R.string.expert_toast_login_required))
-            return
-        }
-        val trimmed = text.trim()
-        if (trimmed.isBlank()) {
-            sendEvent(ExpertUiEvent.ShowToast(R.string.expert_toast_experience_blank))
-            return
-        }
-        viewModelScope.launch {
-            try {
-                val experienceId = expertRepository.publishExperience(userId, trimmed)
-                _uiState.update { it.copy(activeExperienceId = experienceId, activeExperienceText = trimmed) }
-            } catch (e: Exception) {
-                if (e is kotlinx.coroutines.CancellationException) throw e
-                sendEvent(ExpertUiEvent.ShowToast(R.string.expert_toast_publish_failed))
-            }
-        }
-    }
-
-    fun startEditing() {
-        _uiState.update {
-            it.copy(isEditing = true, editText = it.activeExperienceText, editErrorRes = null)
-        }
-    }
-
-    fun cancelEditing() {
-        _uiState.update { it.copy(isEditing = false, editErrorRes = null) }
-    }
-
-    fun updateEditText(newText: String) {
-        _uiState.update { it.copy(editText = newText, editErrorRes = null) }
-    }
-
-    fun submitEdit() {
-        val currentState = _uiState.value
-        val trimmed = currentState.editText.trim()
-
-        if (trimmed.isBlank()) {
-            _uiState.update { it.copy(editErrorRes = R.string.expert_error_experience_blank) }
-            return
-        }
-        if (trimmed.length > 200) {
-            _uiState.update { it.copy(editErrorRes = R.string.expert_error_experience_too_long) }
-            return
-        }
-
-        _uiState.update { it.copy(isSubmitting = true) }
-        viewModelScope.launch {
-            try {
-                expertRepository.editExperience(
-                    experienceId = currentState.activeExperienceId,
-                    newText = trimmed
-                )
-                _uiState.update {
-                    it.copy(
-                        isSubmitting = false,
-                        isEditing = false,
-                        activeExperienceText = trimmed,
-                        editErrorRes = null
-                    )
-                }
-            } catch (e: Exception) {
-                if (e is kotlinx.coroutines.CancellationException) throw e
-                sendEvent(ExpertUiEvent.ShowToastRaw(e.message ?: "更新失敗"))
-                _uiState.update { it.copy(isSubmitting = false) }
-            }
-        }
-    }
-
-    fun stopExperience() {
-        expertRepository.stopExperience(_uiState.value.activeExperienceId)
-        _uiState.update {
-            it.copy(activeExperienceId = "", activeExperienceText = "", isEditing = false)
-        }
     }
 
     fun startSkillEdit(solution: SolutionItem) {
@@ -333,32 +248,25 @@ class ExpertViewModel(
                     val qId = child.key.orEmpty()
 
                     when (status) {
-                        StatusValues.PENDING_ACCEPTANCE -> {
-                            _uiState.update {
-                                it.copy(
-                                    globalAssignedQId = qId,
-                                    globalAssignedQText = child.child("text").value?.toString().orEmpty(),
-                                    showGlobalAssignDialog = true
-                                )
-                            }
-                            foundActiveAssignment = true
-                            return
-                        }
-                        StatusValues.EXPERT_ACCEPTED -> {
-                            if (qId == currentState.globalAssignedQId || currentState.globalAssignedQId.isBlank()) {
-                                _uiState.update { it.copy(isExpertWaitingForSeeker = true, showGlobalAssignDialog = false) }
-                                foundActiveAssignment = true
-                                return
-                            }
-                        }
                         StatusValues.TAKEN -> {
                             if (qId == currentState.globalAssignedQId) {
+                                val chatroomId = "ai_$qId"
                                 _uiState.update {
                                     it.copy(
-                                        activeChatRoomId = qId,
+                                        activeChatRoomId = chatroomId,
                                         myRole = "expert",
                                         activeChatQuestionText = child.child("text").value?.toString().orEmpty(),
-                                        isExpertWaitingForSeeker = false
+                                        showGlobalAssignDialog = false
+                                    )
+                                }
+                                foundActiveAssignment = true
+                                return
+                            } else if (currentState.globalAssignedQId.isBlank()) {
+                                _uiState.update {
+                                    it.copy(
+                                        globalAssignedQId = qId,
+                                        globalAssignedQText = child.child("text").value?.toString().orEmpty(),
+                                        showGlobalAssignDialog = true
                                     )
                                 }
                                 foundActiveAssignment = true
@@ -376,8 +284,7 @@ class ExpertViewModel(
                             it.copy(
                                 globalAssignedQId = "",
                                 globalAssignedQText = "",
-                                showGlobalAssignDialog = false,
-                                isExpertWaitingForSeeker = false
+                                showGlobalAssignDialog = false
                             )
                         }
                     }
@@ -394,18 +301,21 @@ class ExpertViewModel(
     fun acceptGlobalAssignment() {
         val qId = _uiState.value.globalAssignedQId
         if (qId.isNotBlank()) {
-            firebaseDb.getReference(FirebasePaths.QUESTIONS).child(qId).child("status").setValue(StatusValues.EXPERT_ACCEPTED)
+            val chatroomId = "ai_$qId"
+            _uiState.update {
+                it.copy(
+                    showGlobalAssignDialog = false,
+                    activeChatRoomId = chatroomId,
+                    myRole = "expert"
+                )
+            }
+        } else {
+            _uiState.update { it.copy(showGlobalAssignDialog = false) }
         }
-        _uiState.update { it.copy(showGlobalAssignDialog = false) }
     }
 
     fun rejectGlobalAssignment(userId: String) {
         handleRejection(userId)
-    }
-
-    fun cancelWaiting(userId: String) {
-        handleRejection(userId)
-        _uiState.update { it.copy(isExpertWaitingForSeeker = false) }
     }
 
     private fun handleRejection(userId: String) {
@@ -445,7 +355,6 @@ class ExpertViewModel(
     fun cleanup() {
         cleanupGlobalListener()
         cleanupLockListener()
-        expertRepository.cleanup(_uiState.value.activeExperienceId)
     }
 
     private fun cleanupLockListener() {

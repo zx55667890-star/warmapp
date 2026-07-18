@@ -11,7 +11,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Lightbulb
 import androidx.compose.material.icons.outlined.Star
-import androidx.compose.material.icons.outlined.TrendingUp
+import androidx.compose.material.icons.automirrored.outlined.TrendingUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -69,7 +69,6 @@ fun ExpertScreen(viewModel: ExpertViewModel, userId: String, onNavigateToInput: 
         uiState = uiState,
         snackbarHostState = snackbarHostState,
         onPublishSkill = { viewModel.publishSkill(userId, it) },
-        onPublishExperience = { viewModel.publishExperience(userId, it) },
         onClearPublishFeedback = { viewModel.clearPublishFeedback() },
         onStartSkillEdit = { viewModel.startSkillEdit(it) },
         onEditSkillConfirm = { viewModel.submitSkillEdit(userId) },
@@ -84,7 +83,6 @@ fun ExpertScreenContent(
     uiState: ExpertUiState,
     snackbarHostState: SnackbarHostState,
     onPublishSkill: (String) -> Unit,
-    onPublishExperience: ((String) -> Unit)? = null,
     onClearPublishFeedback: () -> Unit,
     onStartSkillEdit: (SolutionItem) -> Unit,
     onEditSkillConfirm: () -> Unit,
@@ -142,7 +140,6 @@ fun ExpertScreenContent(
                 item {
                     QuickLogCard(
                         onPublish = onPublishSkill,
-                        onPublishExperience = onPublishExperience,
                         onClearFeedback = onClearPublishFeedback,
                         onButtonLayoutChanged = { coords -> buttonCoords = coords },
                         clearInputSignal = successVersion
@@ -290,7 +287,7 @@ private fun StatsCard(helpCount: Long, rating: Double) {
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
                 StatItem(
-                    icon = Icons.Outlined.TrendingUp,
+                    icon = Icons.AutoMirrored.Outlined.TrendingUp,
                     label = "已解決問題",
                     value = "$helpCount",
                     accentColor = AppColors.AccentGreen

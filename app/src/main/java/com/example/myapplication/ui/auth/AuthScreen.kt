@@ -4,8 +4,6 @@ import android.app.Activity
 import android.util.Log
 import android.view.WindowManager.LayoutParams
 import androidx.activity.compose.BackHandler
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -24,6 +22,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -32,18 +31,19 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.credentials.CredentialManager
+import androidx.credentials.GetCredentialRequest
+import androidx.credentials.exceptions.GetCredentialCancellationException
+import com.google.android.libraries.identity.googleid.GetGoogleIdOption
+import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.myapplication.R
 import com.example.myapplication.ui.common.LoadingOverlay
 import com.example.myapplication.ui.common.ToastOverlay
 import com.example.myapplication.ui.common.UiText
 import com.example.myapplication.ui.theme.AppColors
-import com.google.android.gms.auth.api.signin.GoogleSignIn
-import com.google.android.gms.auth.api.signin.GoogleSignInOptions
-import com.google.android.gms.common.ConnectionResult
-import com.google.android.gms.common.GoogleApiAvailability
-import com.google.android.gms.common.api.ApiException
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 private const val TRANSITION_DURATION = 350
 
@@ -90,31 +90,11 @@ fun AuthScreen(
         }
     }
 
-    // ── Google Sign-In ──
+    // ── Google Sign-In (Credential Manager) ──
     val context = LocalContext.current
     val webClientId = stringResource(R.string.default_web_client_id)
-    val googleSignInOptions = remember(webClientId) {
-        GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-            .requestIdToken(webClientId)
-            .requestEmail()
-            .build()
-    }
-    val googleSignInClient = remember { GoogleSignIn.getClient(context, googleSignInOptions) }
-
-    val googleSignInLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        if (result.resultCode == Activity.RESULT_OK) {
-            val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
-            try {
-                val account = task.getResult(ApiException::class.java)
-                account.idToken?.let { viewModel.signInWithGoogle(it) }
-                    ?: viewModel.setError("無法取得 Google 憑證，請確認 default_web_client_id 是否正確")
-            } catch (e: ApiException) {
-                viewModel.setError("Google 登入失敗: ${e.localizedMessage}")
-            }
-        }
-    }
+    val credentialManager = remember { CredentialManager.create(context) }
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) { viewModel.refreshLoggedInState() }
 
@@ -235,13 +215,23 @@ fun AuthScreen(
                         )
                     },
                     onGoogleSignIn = {
-                        val avail = GoogleApiAvailability.getInstance()
-                            .isGooglePlayServicesAvailable(context)
-                        if (avail != ConnectionResult.SUCCESS) {
-                            viewModel.setError("Google 服務不可用，請確認已安裝 Google Play 服務")
-                        } else {
+                        scope.launch {
                             try {
-                                googleSignInLauncher.launch(googleSignInClient.signInIntent)
+                                val googleIdOption = GetGoogleIdOption.Builder()
+                                    .setServerClientId(webClientId)
+                                    .setFilterByAuthorizedAccounts(false)
+                                    .build()
+                                val request = GetCredentialRequest.Builder()
+                                    .addCredentialOption(googleIdOption)
+                                    .build()
+                                val result = credentialManager.getCredential(context, request)
+                                val credentialData = result.credential.data
+                                val googleIdTokenCredential = GoogleIdTokenCredential.createFrom(credentialData)
+                                googleIdTokenCredential.idToken?.let {
+                                    viewModel.signInWithGoogle(it)
+                                } ?: viewModel.setError("無法取得 Google 憑證，請確認 default_web_client_id 是否正確")
+                            } catch (e: GetCredentialCancellationException) {
+                                // user cancelled
                             } catch (e: Exception) {
                                 if (e is kotlinx.coroutines.CancellationException) throw e
                                 viewModel.setError("Google 登入失敗：${e.localizedMessage ?: "請確認 Google 服務是否正常"}")

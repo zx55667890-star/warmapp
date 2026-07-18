@@ -15,6 +15,7 @@ object ExpertInputValidator {
     private const val ADJACENT_CHECK_MIN_LENGTH = 5
     private const val PURE_ENGLISH_MIN_LENGTH = 6
     private const val BIGRAM_REPEAT_THRESHOLD = 2
+    private const val MAX_CHAR_FREQUENCY = 3
     private val VOWELS = setOf('a', 'e', 'i', 'o', 'u')
     private val SKILL_UNLIKELY_CHARS = setOf('哦', '呢', '嗎', '吧', '額', '喔', '誒', '欸', '啦', '嘛', '呀', '喲', '嘅', '誰', '該')
 
@@ -66,6 +67,10 @@ object ExpertInputValidator {
         }
 
         if (trimmed.any { it in SKILL_UNLIKELY_CHARS }) {
+            return ValidationError.GIBBERISH
+        }
+
+        if (trimmed.groupingBy { it }.eachCount().any { it.value > MAX_CHAR_FREQUENCY }) {
             return ValidationError.GIBBERISH
         }
 

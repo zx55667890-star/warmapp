@@ -91,33 +91,20 @@ class SeekerViewModelTest {
     fun `observeStatus with taken status sets navigation state`() {
         val questionId = "testQuestion123"
         val questionText = "Hello, this is a test question"
-
-        viewModel.observeStatus(questionId)
-        statusFlow.tryEmit(QuestionStatus.Taken(questionId = questionId, questionText = questionText))
-
-        assertEquals(questionId, viewModel.activeChatRoomId)
-        assertEquals("user", viewModel.uiState.value.myRole)
-        assertEquals(questionText, viewModel.uiState.value.activeChatQuestionText)
-        assertFalse(viewModel.uiState.value.isUserMatching)
-        assertFalse(viewModel.uiState.value.showSeekerConfirmDialog)
-    }
-
-    @Test
-    fun `observeStatus with expert_accepted status shows confirm dialog`() {
-        val questionId = "testQuestion456"
-        val expertId = "expert789"
-        val expertText = "I can help with this"
+        val expertId = "expert456"
+        val expertText = "I can help"
         val timestamp = System.currentTimeMillis()
 
         viewModel.observeStatus(questionId)
-        statusFlow.tryEmit(QuestionStatus.ExpertAccepted(
+        statusFlow.tryEmit(QuestionStatus.Taken(
+            questionId = questionId, questionText = questionText,
             expertId = expertId, expertText = expertText, timestamp = timestamp
         ))
 
-        assertTrue(viewModel.uiState.value.showSeekerConfirmDialog)
+        assertEquals("ai_$questionId", viewModel.activeChatRoomId)
+        assertEquals("user", viewModel.uiState.value.myRole)
+        assertEquals(questionText, viewModel.uiState.value.activeChatQuestionText)
         assertFalse(viewModel.uiState.value.isUserMatching)
-        assertEquals(expertId, viewModel.matchedExpertId)
-        assertEquals(expertText, viewModel.matchedExpertText)
     }
 
     @Test
@@ -138,6 +125,5 @@ class SeekerViewModelTest {
         statusFlow.tryEmit(QuestionStatus.Cancelled(authorId = ""))
 
         assertFalse(viewModel.uiState.value.isUserMatching)
-        assertFalse(viewModel.uiState.value.showSeekerConfirmDialog)
     }
 }

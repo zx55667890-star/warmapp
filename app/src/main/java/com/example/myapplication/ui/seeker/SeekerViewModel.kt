@@ -30,7 +30,6 @@ import java.util.Locale
 data class SeekerUiState(
     val isUserMatching: Boolean = false,
     val noExpertsMessage: String = "",
-    val showSeekerConfirmDialog: Boolean = false,
     val matchedExpertDate: String = "",
     val matchedExpertText: String = "",
     val matchedExpertId: String = "",
@@ -55,11 +54,8 @@ class SeekerViewModel(
 
     private val matchCoordinator = MatchCoordinator(firebaseDb, matchingRepository, aiRepository).apply {
         onAiChatroomReady = { _, _ -> }
-        onCancelUserMatching = { cancelUserMatching() }
     }
 
-    val showSeekerConfirmDialog: Boolean
-        get() = _uiState.value.showSeekerConfirmDialog
     private val _uiState = MutableStateFlow(SeekerUiState())
     val uiState: StateFlow<SeekerUiState> = _uiState.asStateFlow()
 
@@ -167,76 +163,33 @@ class SeekerViewModel(
                 when (status) {
                     is QuestionStatus.Taken -> {
                         val chatroomId = "ai_$questionId"
+                        val dateStr = if (status.timestamp > 0) {
+                            SimpleDateFormat("yyyy/MM/dd HH:mm", Locale.getDefault()).format(Date(status.timestamp))
+                        } else ""
                         _uiState.update { it.copy(
                             activeChatRoomId = chatroomId,
                             myRole = "user",
                             activeChatQuestionText = status.questionText,
-                            isUserMatching = false,
-                            showSeekerConfirmDialog = false
+                            matchedExpertId = status.expertId,
+                            matchedExpertText = status.expertText,
+                            matchedExpertDate = dateStr,
+                            isUserMatching = false
                         ) }
                         cleanupListeners()
                         prefs.edit().putString("lastQuestionId", questionId).apply()
-                    }
-                    is QuestionStatus.PendingAcceptance -> {
-                        val dateStr = if (status.timestamp > 0) {
-                            SimpleDateFormat("yyyy/MM/dd HH:mm", Locale.getDefault()).format(Date(status.timestamp))
-                        } else ""
-                        _uiState.update { it.copy(
-                            matchedExpertId = status.expertId,
-                            matchedExpertText = status.expertText,
-                            matchedExpertDate = dateStr,
-                            showSeekerConfirmDialog = true,
-                            isUserMatching = false
-                        ) }
-                        matchCoordinator.cancelMatchTimeout()
-                    }
-                    is QuestionStatus.ExpertAccepted -> {
-                        val dateStr = if (status.timestamp > 0) {
-                            SimpleDateFormat("yyyy/MM/dd HH:mm", Locale.getDefault()).format(Date(status.timestamp))
-                        } else ""
-                        _uiState.update { it.copy(
-                            matchedExpertId = status.expertId,
-                            matchedExpertText = status.expertText,
-                            matchedExpertDate = dateStr,
-                            showSeekerConfirmDialog = true,
-                            isUserMatching = false
-                        ) }
-                        matchCoordinator.cancelMatchTimeout()
                     }
                     is QuestionStatus.NoExperts -> {
                         _uiState.update { it.copy(isUserMatching = false) }
                         cleanupListeners()
                     }
                     is QuestionStatus.Cancelled -> {
-                        _uiState.update { it.copy(isUserMatching = false, showSeekerConfirmDialog = false) }
+                        _uiState.update { it.copy(isUserMatching = false) }
                         cleanupListeners()
                         refreshQuota(status.authorId)
                     }
                     is QuestionStatus.Matching -> { /* no-op */ }
                 }
             }
-        }
-    }
-
-    fun acceptExpertMatch() {
-        if (currentUserQuestionId.isBlank()) return
-        questionRepository.acceptExpertMatch(currentUserQuestionId, onSuccess = {
-            _uiState.update { it.copy(showSeekerConfirmDialog = false) }
-        }, onError = { msg ->
-            Log.w("SeekerViewModel", "acceptExpertMatch error: $msg")
-        })
-    }
-
-    fun rejectExpertMatch() {
-        if (currentUserQuestionId.isBlank()) return
-        val expertId = _uiState.value.matchedExpertId
-        if (expertId.isNotBlank()) {
-            questionRepository.rejectExpertMatch(currentUserQuestionId, expertId,
-                onSuccess = { _uiState.update { it.copy(showSeekerConfirmDialog = false) } },
-                onError = { _uiState.update { it.copy(showSeekerConfirmDialog = false) } }
-            )
-        } else {
-            _uiState.update { it.copy(showSeekerConfirmDialog = false) }
         }
     }
 
