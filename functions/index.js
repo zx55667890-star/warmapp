@@ -308,7 +308,7 @@ exports.batchProcessPendingSkills = onSchedule(
 
       const prompt = searchContext + `請判斷以下每筆資料是否為真實、有意義的專業技能描述。
 判斷原則：
-- 如果內容是具體、可理解的專業技能，請提取 4 個最核心的關鍵字標籤
+- 如果內容是具體、可理解的專業技能，請提取 4 個最能描述該技能的核心關鍵字（例如具體名詞、工具或平台名稱，而非抽象分類詞如「跨境物流」「客服」等）
 - 如果內容是無意義的胡言亂語或無法對應到真實場景，請將 status 設為 "REJECTED"
 - 請仔細參考上述網路搜尋結果（若有提供）來協助判斷
 - 遇到無法明確判斷時，寧可 REJECTED 也不要勉強給標籤
@@ -425,11 +425,29 @@ function computeTagJaccard(tagsA, tagsB) {
 
 const MATCH_TAG_THRESHOLD = 0.15;
 
+function getBigrams(text) {
+  const clean = String(text).replace(/\s+/g, '');
+  if (clean.length < 2) return new Set([clean]);
+  const set = new Set();
+  for (let i = 0; i < clean.length - 1; i++) set.add(clean.substring(i, i + 2));
+  return set;
+}
+
+function computeTextJaccard(textA, textB) {
+  const setA = getBigrams(textA);
+  const setB = getBigrams(textB);
+  if (setA.size === 0 || setB.size === 0) return 0;
+  const intersect = new Set([...setA].filter(b => setB.has(b)));
+  const union = new Set([...setA, ...setB]);
+  return intersect.size / union.size;
+}
+
 async function matchQuestionByTags(questionId, questionTags) {
   const qSnap = await db.ref(`questions/${questionId}`).once('value');
   if (!qSnap.exists()) return false;
   const currentStatus = qSnap.child('status').val();
   if (currentStatus !== 'matching' && currentStatus !== 'pending_acceptance') return false;
+  const questionText = qSnap.child('text').val();
 
   const rejectedExperts = new Set();
   qSnap.child('rejectedExperts').forEach(child => rejectedExperts.add(child.key));
@@ -449,8 +467,10 @@ async function matchQuestionByTags(questionId, questionTags) {
         const tags = sol.child('tags').val();
         if (Array.isArray(tags)) tags.forEach(t => expertTags.add(t));
       });
-      const jaccard = computeTagJaccard(questionTags, [...expertTags]);
-      return { exp, jaccard };
+      const tagJaccard = computeTagJaccard(questionTags, [...expertTags]);
+      const textJaccard = questionText ? computeTextJaccard(questionText, exp.text || '') : 0;
+      const combined = Math.max(tagJaccard, textJaccard);
+      return { exp, jaccard: combined, tagJaccard, textJaccard };
     })());
   });
 
@@ -466,10 +486,11 @@ async function matchQuestionByTags(questionId, questionTags) {
       matchedExpText: best.exp.text,
       matchedExpTimestamp: best.exp.timestamp,
     });
-    console.log(`[QMatch] ${questionId} → expert ${best.exp.authorId} (jaccard=${best.jaccard.toFixed(3)})`);
+    console.log(`[QMatch] ${questionId} → expert ${best.exp.authorId} (combined=${best.jaccard.toFixed(3)}, tagJ=${best.tagJaccard.toFixed(3)}, textJ=${best.textJaccard.toFixed(3)})`);
     return true;
   }
-  console.log(`[QMatch] ${questionId}: no match above threshold ${MATCH_TAG_THRESHOLD}`);
+  const details = matches.length > 0 ? `best=${matches[0].jaccard.toFixed(3)}` : 'no candidates above threshold';
+  console.log(`[QMatch] ${questionId}: ${details} (tagJ_best=${matches.length > 0 ? matches[0].tagJaccard.toFixed(3) : 'N/A'})`);
   return false;
 }
 
@@ -602,7 +623,7 @@ exports.batchProcessPendingQuestions = onSchedule(
 
         const prompt = searchContext + `請判斷以下每筆資料是否為真實、有意義的提問描述。
 判斷原則：
-- 如果內容是具體、可理解的提問，請提取 4 個最核心的關鍵字標籤
+- 如果內容是具體、可理解的提問，請提取 4 個最能描述該問題的核心關鍵字（例如具體名詞、工具或平台名稱，而非抽象分類詞）
 - 如果內容是無意義內容，請將 status 設為 "REJECTED"
 - 請仔細參考上述網路搜尋結果（若有提供）來協助判斷
 - 遇到無法明確判斷時，寧可 REJECTED 也不要勉強給標籤
