@@ -176,6 +176,19 @@ class SeekerViewModel(
                         cleanupListeners()
                         prefs.edit().putString("lastQuestionId", questionId).apply()
                     }
+                    is QuestionStatus.PendingAcceptance -> {
+                        val dateStr = if (status.timestamp > 0) {
+                            SimpleDateFormat("yyyy/MM/dd HH:mm", Locale.getDefault()).format(Date(status.timestamp))
+                        } else ""
+                        _uiState.update { it.copy(
+                            matchedExpertId = status.expertId,
+                            matchedExpertText = status.expertText,
+                            matchedExpertDate = dateStr,
+                            showSeekerConfirmDialog = true,
+                            isUserMatching = false
+                        ) }
+                        cleanupListeners()
+                    }
                     is QuestionStatus.ExpertAccepted -> {
                         val dateStr = if (status.timestamp > 0) {
                             SimpleDateFormat("yyyy/MM/dd HH:mm", Locale.getDefault()).format(Date(status.timestamp))

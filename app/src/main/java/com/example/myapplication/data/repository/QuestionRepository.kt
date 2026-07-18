@@ -123,7 +123,7 @@ class QuestionRepository(private val firebaseDb: FirebaseDatabase) {
     // Listen to Question Status
     // =============================================================
     interface QuestionStatusListener {
-        fun onPendingAcceptance()
+        fun onPendingAcceptance(expertId: String, matchedExpText: String, matchedExpTimestamp: Long)
         fun onExpertAccepted()
         fun onTaken(expertId: String, questionText: String)
         fun onNoExperts()
@@ -141,6 +141,12 @@ class QuestionRepository(private val firebaseDb: FirebaseDatabase) {
             override fun onDataChange(snapshot: DataSnapshot) {
                 if (!snapshot.exists()) return
                 when (snapshot.child("status").value?.toString()) {
+                    "pending_acceptance" -> {
+                        val expertId = snapshot.child("expertId").value?.toString().orEmpty()
+                        val matchedExpText = snapshot.child("matchedExpText").value?.toString().orEmpty()
+                        val matchedExpTimestamp = (snapshot.child("matchedExpTimestamp").value as? Long) ?: 0L
+                        listener.onPendingAcceptance(expertId, matchedExpText, matchedExpTimestamp)
+                    }
                     "expert_accepted" -> {
                         listener.onExpertAccepted()
                     }

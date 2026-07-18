@@ -16,7 +16,7 @@ class MatchCoordinator(
 ) {
     companion object {
         private val ACTIVE_USER_STATUSES = setOf("matching", "pending_acceptance", "expert_accepted")
-        private const val MATCH_TIMEOUT_MS = 60_000L
+        private const val MATCH_TIMEOUT_MS = 300_000L
         private const val AI_PREVIEW_DELAY_MS = 3_000L
     }
 
