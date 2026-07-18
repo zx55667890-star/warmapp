@@ -14,7 +14,8 @@ function encodePath(text) {
   return Buffer.from(text, 'utf8').toString('base64url');
 }
 
-const BATCH_LIMIT = 20;
+const BATCH_LIMIT_SKILLS = 50;
+const BATCH_LIMIT_QUESTIONS = 50;
 const PROCESSING_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
 
 const MODELS = [
@@ -147,7 +148,7 @@ async function healOrphanedPending() {
 
 exports.batchProcessPendingSkills = onSchedule(
   {
-    schedule: 'every 5 minutes',
+    schedule: '* * * * *',
     secrets: [geminiApiKey, serperApiKey],
     minInstances: 1,
   },
@@ -165,7 +166,7 @@ exports.batchProcessPendingSkills = onSchedule(
     const snapshot = await db
       .ref('pending_skills')
       .orderByChild('timestamp')
-      .limitToFirst(BATCH_LIMIT)
+      .limitToFirst(BATCH_LIMIT_SKILLS)
       .once('value');
 
     const entries = [];
@@ -405,6 +406,285 @@ exports.batchProcessPendingSkills = onSchedule(
     console.log('Batch process complete. Updated database.');
     } catch (err) {
       console.error('batchProcessPendingSkills failed:', err.message, err.stack);
+    }
+  }
+);
+
+// ─────────────────────────────────────────────
+// 提問端：標籤生成 + Tag 相似度配對
+// ─────────────────────────────────────────────
+
+function computeTagJaccard(tagsA, tagsB) {
+  const setA = new Set(tagsA.filter(t => t && typeof t === 'string'));
+  const setB = new Set(tagsB.filter(t => t && typeof t === 'string'));
+  if (setA.size === 0 || setB.size === 0) return 0;
+  const intersect = new Set([...setA].filter(t => setB.has(t)));
+  const union = new Set([...setA, ...setB]);
+  return intersect.size / union.size;
+}
+
+const MATCH_TAG_THRESHOLD = 0.15;
+
+async function matchQuestionByTags(questionId, questionTags) {
+  const qSnap = await db.ref(`questions/${questionId}`).once('value');
+  if (!qSnap.exists()) return false;
+  const currentStatus = qSnap.child('status').val();
+  if (currentStatus !== 'matching' && currentStatus !== 'pending_acceptance') return false;
+
+  const rejectedExperts = new Set();
+  qSnap.child('rejectedExperts').forEach(child => rejectedExperts.add(child.key));
+
+  const expSnap = await db.ref('experiences')
+    .orderByChild('status').equalTo('active').once('value');
+
+  const matchPromises = [];
+  expSnap.forEach(child => {
+    const exp = child.val();
+    if (!exp || !exp.isOnline || rejectedExperts.has(exp.authorId)) return;
+    matchPromises.push((async () => {
+      const solSnap = await db.ref(`solutions/${exp.authorId}`)
+        .orderByChild('status').equalTo('ACTIVE').once('value');
+      const expertTags = new Set();
+      solSnap.forEach(sol => {
+        const tags = sol.child('tags').val();
+        if (Array.isArray(tags)) tags.forEach(t => expertTags.add(t));
+      });
+      const jaccard = computeTagJaccard(questionTags, [...expertTags]);
+      return { exp, jaccard };
+    })());
+  });
+
+  const matches = (await Promise.all(matchPromises))
+    .filter(m => m.jaccard >= MATCH_TAG_THRESHOLD)
+    .sort((a, b) => b.jaccard - a.jaccard || b.exp.timestamp - a.exp.timestamp);
+
+  if (matches.length > 0) {
+    const best = matches[0];
+    await db.ref(`questions/${questionId}`).update({
+      expertId: best.exp.authorId,
+      status: 'pending_acceptance',
+      matchedExpText: best.exp.text,
+      matchedExpTimestamp: best.exp.timestamp,
+    });
+    console.log(`[QMatch] ${questionId} → expert ${best.exp.authorId} (jaccard=${best.jaccard.toFixed(3)})`);
+    return true;
+  }
+  console.log(`[QMatch] ${questionId}: no match above threshold ${MATCH_TAG_THRESHOLD}`);
+  return false;
+}
+
+exports.batchProcessPendingQuestions = onSchedule(
+  {
+    schedule: '* * * * *',
+    secrets: [geminiApiKey, serperApiKey],
+    minInstances: 1,
+  },
+  async () => {
+    console.log('batchProcessPendingQuestions started');
+    try {
+      const snapshot = await db
+        .ref('pending_questions')
+        .orderByChild('timestamp')
+        .limitToFirst(BATCH_LIMIT_QUESTIONS)
+        .once('value');
+
+      const entries = [];
+      snapshot.forEach(child => entries.push({ id: child.key, ...child.val() }));
+      if (entries.length === 0) { console.log('No pending questions found'); return; }
+
+      const now = Date.now();
+      const claimResults = await Promise.all(entries.map(async (entry) => {
+        let claimed = false;
+        await db.ref(`pending_questions/${entry.id}`).transaction((cur) => {
+          if (cur === null) return cur;
+          if (cur.processing && (now - cur.processing) < PROCESSING_TIMEOUT_MS) return;
+          cur.processing = now;
+          claimed = true;
+          return cur;
+        });
+        return { entry, claimed };
+      }));
+
+      const processable = claimResults.filter(r => r.claimed).map(r => r.entry);
+      if (processable.length === 0) { console.log('All pending questions already being processed'); return; }
+      console.log(`Claimed ${processable.length} pending questions`);
+
+      // Step 1: Blacklist check
+      const blResults = await Promise.all(processable.map(async (entry) => {
+        const bl = await db.ref(`tags_blacklist/${encodePath(entry.text)}`).once('value');
+        return { entry, isBlacklisted: bl.exists() };
+      }));
+
+      const updates = {};
+      let aiEntries = [];
+
+      for (const { entry, isBlacklisted } of blResults) {
+        if (isBlacklisted) {
+          updates[`questions/${entry.id}/status`] = 'cancelled';
+          updates[`pending_questions/${entry.id}`] = null;
+        } else {
+          aiEntries.push(entry);
+        }
+      }
+
+      // Step 2: Whitelist check
+      const wlResults = await Promise.all(aiEntries.map(async (entry) => {
+        const wl = await db.ref(`tags_whitelist/${encodePath(entry.text)}/tags`).once('value');
+        const cached = wl.val();
+        return { entry, cachedTags: Array.isArray(cached) && cached.length > 0 ? cached : null };
+      }));
+
+      let remaining = [];
+
+      for (const { entry, cachedTags } of wlResults) {
+        if (cachedTags) {
+          updates[`questions/${entry.id}/tags`] = cachedTags;
+          updates[`pending_questions/${entry.id}`] = null;
+        } else {
+          remaining.push(entry);
+        }
+      }
+
+      // Apply cached updates before AI
+      if (Object.keys(updates).length > 0) {
+        await db.ref().update(updates);
+        // Run tag-based matching for whitelist-resolved questions
+        for (const { entry, cachedTags } of wlResults.filter(r => r.cachedTags)) {
+          await matchQuestionByTags(entry.id, cachedTags);
+        }
+      }
+
+      if (remaining.length === 0) {
+        console.log('All questions resolved via blacklist/whitelist cache');
+        return;
+      }
+
+      // Step 3: AI 5-model analysis
+      const statusSnapshot = await db.ref('config/model_status').once('value');
+      const modelStatus = statusSnapshot.val() || {};
+      let candidates = MODELS.filter(m => modelStatus[encodePath(m.name)] !== 'EXHAUSTED');
+      if (candidates.length === 0) {
+        console.warn('All models EXHAUSTED');
+        const resetSnap = await db.ref('config/last_reset').once('value');
+        const lastReset = resetSnap.val();
+        if (lastReset && (Date.now() - lastReset) < 600000) { console.error('Models exhausted, aborting'); return; }
+        await db.ref('config/last_reset').set(Date.now());
+        await db.ref('config/model_status').set({});
+        candidates = MODELS;
+      }
+
+      let lastError = null;
+      const allAcceptedQuestions = [];
+
+      for (const model of candidates) {
+        if (remaining.length === 0) break;
+        console.log(`Processing ${remaining.length} questions with model: ${model.name} (${model.label})`);
+
+        const localMapping = new Map();
+        const slimmed = remaining.map((entry, idx) => {
+          const vid = idx.toString();
+          localMapping.set(vid, entry);
+          return { id: vid, text: entry.text };
+        });
+
+        let searchContext = '';
+        if (model.useWebFetch) {
+          const sr = await Promise.all(slimmed.map(async (se) => {
+            try {
+              const snippets = await searchOnSerper(se.text);
+              return `Entry "${se.id}": "${se.text}"\n搜尋結果：\n${snippets}`;
+            } catch (err) {
+              return `Entry "${se.id}": "${se.text}"\n搜尋結果：（搜尋失敗）`;
+            }
+          }));
+          searchContext = '以下是網路搜尋結果：\n\n' + sr.join('\n\n') + '\n\n';
+        }
+
+        const prompt = searchContext + `請判斷以下每筆資料是否為真實、有意義的提問描述。
+判斷原則：
+- 如果內容是具體、可理解的提問，請提取 4 個最核心的關鍵字標籤
+- 如果內容是無意義內容，請將 status 設為 "REJECTED"
+- 請仔細參考上述網路搜尋結果（若有提供）來協助判斷
+- 遇到無法明確判斷時，寧可 REJECTED 也不要勉強給標籤
+- 標籤必須使用與提問相同的語言
+
+以 JSON Array 格式回傳，每個物件包含 id、tags 和 status 欄位。status 為 "ACTIVE"（接受）或 "REJECTED"（拒絕）。
+資料：${JSON.stringify(slimmed)}`;
+
+        try {
+          const apiModel = model.useWebFetch ? { ...model, useSearch: false } : model;
+          const { response, elapsed } = await generateContentWithRetry(apiModel, prompt);
+          console.log(`Model ${model.name} responded in ${elapsed}ms`);
+          const text = response.text || '';
+          if (!text) throw new Error('AI 回傳空內容');
+
+          let parsed;
+          try { parsed = JSON.parse(text); }
+          catch {
+            const match = text.match(/\[[\s\S]*\]/);
+            if (match) parsed = JSON.parse(match[0]);
+            else throw new Error('無法解析 AI 回應為 JSON');
+          }
+
+          const newlyRejected = [];
+          const modelAccepted = [];
+
+          for (const item of parsed) {
+            const entry = localMapping.get(item.id?.toString());
+            if (!entry) continue;
+
+            const isReject = item.status === 'REJECTED' ||
+              (Array.isArray(item.tags) && item.tags.includes('REJECT'));
+            const tags = Array.isArray(item.tags)
+              ? item.tags.filter(t => t !== 'REJECT').slice(0, 4)
+              : [];
+
+            if (isReject) {
+              newlyRejected.push(entry);
+            } else {
+              modelAccepted.push({ entry, tags });
+              allAcceptedQuestions.push({ entry, tags });
+              const qRef = `questions/${entry.id}`;
+              updates[`${qRef}/tags`] = tags;
+              updates[`tags_whitelist/${encodePath(entry.text)}/tags`] = tags;
+              updates[`pending_questions/${entry.id}`] = null;
+            }
+          }
+
+          console.log(`${model.label} accepted ${parsed.length - newlyRejected.length}, rejected ${newlyRejected.length}`);
+          remaining = newlyRejected;
+
+        } catch (err) {
+          console.error(`Model ${model.name} (${model.label}) failed:`, err);
+          lastError = err;
+          if (err.status === 429 || (err.message && err.message.includes('RESOURCE_EXHAUSTED'))) {
+            try { await db.ref(`config/model_status/${encodePath(model.name)}`).set('EXHAUSTED'); }
+            catch (pe) { console.error('Failed to mark model EXHAUSTED:', pe); }
+          }
+        }
+      }
+
+      // Final reject for remaining
+      if (remaining.length > 0) {
+        console.log(`Final reject for ${remaining.length} questions`);
+        for (const entry of remaining) {
+          updates[`questions/${entry.id}/status`] = 'cancelled';
+          updates[`tags_blacklist/${encodePath(entry.text)}`] = true;
+          updates[`pending_questions/${entry.id}`] = null;
+        }
+      }
+
+      await db.ref().update(updates);
+      console.log('Tag updates written.');
+
+      // Step 4: Tag-based matching for AI-resolved questions
+      for (const item of allAcceptedQuestions) {
+        await matchQuestionByTags(item.entry.id, item.tags);
+      }
+
+      console.log('batchProcessPendingQuestions complete');
+    } catch (err) {
+      console.error('batchProcessPendingQuestions failed:', err.message, err.stack);
     }
   }
 );

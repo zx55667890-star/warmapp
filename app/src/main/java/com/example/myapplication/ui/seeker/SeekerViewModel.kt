@@ -127,7 +127,6 @@ class SeekerViewModel(
 
                     refreshQuota(userId)
 
-                    matchCoordinator.matchAndAssignExpert(questionId, text, userId)
                     matchCoordinator.startAiPreview(questionId, text, viewModelScope)
                     matchCoordinator.startMatchTimeout(questionId, viewModelScope)
                     observeStatus(questionId)

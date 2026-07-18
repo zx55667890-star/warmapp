@@ -26,11 +26,16 @@
 │  Realtime Database  │  Auth  │  Storage  │  Functions    │
 │  Cloud Messaging    │  Hosting                           │
 ├─────────────────────────────────────────────────────────┤
-│              Cloud Function (Node.js 24)                  │
-│  batchProcessPendingSkills (scheduler, every 5 min)      │
+│              Cloud Function (Node.js 22)                  │
+│  batchProcessPendingSkills (scheduler, every 1 min)      │
 │    └─ Blacklist check → Whitelist check → Gemini AI      │
-│    └─ 5 model fallback chain with Google Search          │
-│    └─ Submission Lock management                         │
+│    └─ 5 model fallback chain (Serper/Google Search)      │
+│    └─ Submission Lock management                          │
+│                                                          │
+│  batchProcessPendingQuestions (scheduler, every 1 min)    │
+│    └─ Blacklist check → Whitelist check → Gemini AI      │
+│    └─ 5 model fallback chain (same as skills)            │
+│    └─ Tag-based matching → expert assignment              │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -83,6 +88,46 @@ ExpertViewModel.publishSkill(userId, text)
                             pending_skills/{id} = null (刪除)
                             tags_whitelist or tags_blacklist (快取)
                             users/{uid}/submissionLock (連續拒絕計數)
+```
+
+## 資料流 — 提問標籤生成與配對
+
+```
+AskQuestionInputBar (AskQuestionScreen.kt)
+    │ onSendClick
+    ▼
+SeekerViewModel.sendQuestion(text, userId, media)
+    │
+    ├─ [Guard] ValidateQuestionQuotaUseCase (hasActive + 每日上限)
+    │
+    └─ QuestionRepository.sendQuestion()
+          │
+          ├─ Firebase: questions/{pushId}
+          │     { text, status:"matching", timestamp, authorId, expertId:"" }
+          │
+          └─ Firebase: pending_questions/{pushId}  ← 🆕
+                { userId, text, timestamp }
+                │
+                ▼  (排程，最長等 1 分鐘)
+          batchProcessPendingQuestions (Cloud Function)
+                │
+                ├─ 1. Blacklist 檢查 (tags_blacklist/{base64(text)})
+                │     └─ 命中 → cancelled
+                │
+                ├─ 2. Whitelist 檢查 (tags_whitelist/{base64(text)}/tags)
+                │     └─ 命中 → 快取標籤 + Tag 配對
+                │
+                ├─ 3. AI 5 模型降級分析 → 題目標籤
+                │     PRIMARY: gemini-3.1-flash-lite (無搜尋)
+                │     FALLBACK_1~5: Serper / Google Search
+                │
+                └─ 4. Tag 相似度配對 (matchQuestionByTags)
+                      ├─ 讀取所有 active experiences
+                      ├─ 讀取各專家的 ACTIVE solutions 合併標籤集
+                      ├─ Jaccard 相似度 (門檻 0.15)
+                      └─ 最佳匹配 → questions/{id}:
+                            expertId, status:"pending_acceptance"
+                            matchedExpText, matchedExpTimestamp
 ```
 
 ## 資料流 — 聊天

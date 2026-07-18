@@ -1,6 +1,8 @@
 package com.example.myapplication.data.repository
 
 import android.util.Log
+import com.example.myapplication.data.FirebaseFields
+import com.example.myapplication.data.FirebasePaths
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
@@ -96,14 +98,21 @@ class QuestionRepository(private val firebaseDb: FirebaseDatabase) {
     fun sendQuestion(text: String, userId: String, callback: SendQuestionCallback) {
         val newRef = firebaseDb.getReference("questions").push()
         val id = newRef.key ?: return
+        val now = System.currentTimeMillis()
         val data = mapOf(
             "text" to text,
             "status" to "matching",
-            "timestamp" to System.currentTimeMillis(),
+            "timestamp" to now,
             "authorId" to userId,
             "expertId" to ""
         )
         newRef.setValue(data).addOnSuccessListener {
+            firebaseDb.getReference(FirebasePaths.PENDING_QUESTIONS).child(id)
+                .setValue(mapOf(
+                    FirebaseFields.USER_ID to userId,
+                    FirebaseFields.TEXT to text,
+                    FirebaseFields.TIMESTAMP to now
+                ))
             callback.onSent(id)
         }.addOnFailureListener { e ->
             callback.onError(e.message ?: "問題發送失敗")
@@ -190,6 +199,8 @@ class QuestionRepository(private val firebaseDb: FirebaseDatabase) {
     fun cancelMatching(questionId: String, onComplete: () -> Unit) {
         val questionRef = firebaseDb.getReference("questions").child(questionId)
         val chatroomRef = firebaseDb.getReference("chatrooms").child("ai_$questionId")
+        val pendingRef = firebaseDb.getReference(FirebasePaths.PENDING_QUESTIONS).child(questionId)
+        pendingRef.removeValue()
         questionRef.removeValue()
             .addOnSuccessListener {
                 chatroomRef.removeValue()

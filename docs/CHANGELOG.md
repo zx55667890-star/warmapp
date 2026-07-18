@@ -13,6 +13,18 @@
 - 啟用 GitHub Pages
 
 ## 2026-07-18
+### 新增
+- **提問端 AI 標籤生成管線** — 仿照專家端 `pending_skills` 模式，新增 `pending_questions` 路徑 + `batchProcessPendingQuestions` Cloud Function。提問送出後非同步生成題目標籤
+- **Tag 相似度配對** — Cloud Function 生成題目標籤後，讀取各專家 ACTIVE solutions 的標籤集，以 Jaccard 相似度（門檻 0.15）進行配對，取代 client 端即時 bigram Jaccard
+- **`Constants.kt`** — 新增 `PENDING_QUESTIONS` 路徑常數、`FirebaseFields` 擴充（`MATCHED_EXP_TEXT`, `MATCHED_EXP_TIMESTAMP`, `AUTHOR_ID`）
+
+### 變更
+- **`batchProcessPendingSkills`** — 排程 `5min→1min`，批量上限 `20→50`
+- **`QuestionRepository.kt`** — `sendQuestion()` 寫入問題後同步入隊 `pending_questions/{id}`；`cancelMatching()` 一併清除佇列
+- **`SeekerViewModel.kt`** — 移除 `matchCoordinator.matchAndAssignExpert()` 調用，配對由後端非同步處理
+- **`database.rules.json`** — 新增 `pending_questions` 路徑安全規則 + `.indexOn: ["timestamp"]`
+- **`constants.kt`** — FirebaseFields 新增 `PENDING_QUESTION`, `MATCHED_EXP_TEXT`, `MATCHED_EXP_TIMESTAMP`, `AUTHOR_ID`
+
 ### 修正
 - **Round 13 還原 + 選擇性修復** — 還原 17 個 `ui/chat/` 檔案為 Round 13 前狀態，再補上關鍵缺失功能：
   - `ChatMediaSender` — `onPendingRemoved` 成功時觸發、try-catch 錯誤處理、`onScrollToBottom` 回呼

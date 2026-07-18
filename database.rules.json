@@ -101,6 +101,13 @@
         ".write": "auth.uid !== null && (!data.exists() || data.child('userId').val() === auth.uid) && (newData.child('userId').val() === auth.uid)"
       }
     },
+    "pending_questions": {
+      ".indexOn": ["timestamp"],
+      "$qid": {
+        ".read": "auth.uid !== null",
+        ".write": "auth.uid !== null && (!data.exists() || data.child('userId').val() === auth.uid) && (newData.child('userId').val() === auth.uid)"
+      }
+    },
     "tags_blacklist": {
       "$text": {
         ".read": false,

@@ -199,3 +199,14 @@
 - [x] **文字樂觀更新** — `sendMessage` 直接插入 `optimistic_` 暫存訊息，繞過 observer 延遲
 - [x] **Observer try-catch** — 防止 collect block 崩潰殺死整體觀察協程
 
+### Round 14：提問端 AI 標籤生成管線 + 非同步 Tag 配對（2026-07-18）
+- [x] **`Constants.kt` 擴充** — `FirebasePaths.PENDING_QUESTIONS` + `FirebaseFields` 新欄位（`MATCHED_EXP_TEXT`, `MATCHED_EXP_TIMESTAMP`, `AUTHOR_ID`）
+- [x] **`QuestionRepository.kt`** — `sendQuestion()` 寫入問題後同步寫入 `pending_questions/{id}`；`cancelMatching()` 清除佇列
+- [x] **`SeekerViewModel.kt`** — 移除 `matchCoordinator.matchAndAssignExpert()`，配對由後端非同步處理
+- [x] **`database.rules.json`** — 新增 `pending_questions` 路徑規則 + `.indexOn: ["timestamp"]`
+- [x] **`functions/index.js` — `batchProcessPendingSkills` 提速** — 排程 `5min→1min`、批量 `20→50`
+- [x] **`functions/index.js` — 新增 `batchProcessPendingQuestions`** — 讀取 `pending_questions` → 黑/白名單檢查 → 五模型標籤生成 → Tag 相似度配對（Jaccard 門檻 0.15）
+- [x] **`functions/index.js` — `matchQuestionByTags()` 輔助函數** — 讀取專家 ACTIVE solutions 合併標籤集，計算 Jaccard，指派最佳匹配
+- [x] **Cloud Function 部署成功** — `batchProcessPendingSkills` 更新 + `batchProcessPendingQuestions` 建立
+- [x] **文件更新** — ARCHITECTURE.md（新增提問資料流）、CHANGELOG.md、KNOWN_ISSUES.md（新增 4 條）、PROGRESS.md
+

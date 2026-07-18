@@ -10,6 +10,7 @@ object FirebasePaths {
     const val TAGS_WHITELIST = "tags_whitelist"
     const val CONFIG = "config"
     const val MODEL_STATUS = "config/model_status"
+    const val PENDING_QUESTIONS = "pending_questions"
 }
 
 object StatusValues {
@@ -36,4 +37,8 @@ object FirebaseFields {
     const val HELP_COUNT = "helpCount"
     const val IS_ONLINE = "isOnline"
     const val REJECTED_EXPERTS = "rejectedExperts"
+    const val PENDING_QUESTION = "pending_question"
+    const val MATCHED_EXP_TEXT = "matchedExpText"
+    const val MATCHED_EXP_TIMESTAMP = "matchedExpTimestamp"
+    const val AUTHOR_ID = "authorId"
 }

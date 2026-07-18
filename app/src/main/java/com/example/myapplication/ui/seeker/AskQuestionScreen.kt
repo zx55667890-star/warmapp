@@ -20,9 +20,6 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.myapplication.ui.seeker.components.drawBackgroundGlow
-import androidx.camera.lifecycle.ProcessCameraProvider
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.platform.LocalDensity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.myapplication.domain.seeker.SendMedia
 import com.example.myapplication.ui.camera.CameraCaptureScreen
@@ -49,7 +46,6 @@ fun AskQuestionScreen(
     val focusRequester = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
     val context = LocalContext.current
-    val cameraProviderFuture = remember { ProcessCameraProvider.getInstance(context) }
     val snackbarHostState = remember { SnackbarHostState() }
 
     BackHandler(onBack = onBack)
@@ -102,14 +98,9 @@ fun AskQuestionScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            val imeInsets = WindowInsets.ime
-            val density = LocalDensity.current
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .graphicsLayer {
-                        translationY = -imeInsets.getBottom(density).toFloat()
-                    }
                     .drawBackgroundGlow()
             )
 
@@ -117,6 +108,7 @@ fun AskQuestionScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .windowInsetsPadding(WindowInsets.safeDrawing)
+                    .imePadding()
             ) {
                 AskQuestionHeader(
                     nickname = nickname,
@@ -173,8 +165,7 @@ fun AskQuestionScreen(
                     selectedMediaList = selectedMediaList +
                             SelectedMedia(uri, isVideo, isVoice = false)
                 },
-                onDismiss = { showCameraCapture = false },
-                preWarmFuture = cameraProviderFuture
+                onDismiss = { showCameraCapture = false }
             )
         }
 

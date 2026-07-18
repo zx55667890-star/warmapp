@@ -71,7 +71,28 @@ AuthScreen.kt:37/95/101 使用 `GoogleSignIn` class，已標記 deprecated。
 - **影響**：低（正常使用不會刪 Firebase 資料，僅除錯時受影響）
 - **建議**：改用 `merge` 分拆或各自獨立 collect
 
-### 16. Firebase `orderByChild("timestamp").limitToLast(N)` query listener 低機率不觸發
+### 16. `pending_questions` 孤立風險（與 pending_skills 相同）
+同 `pending_skills` 問題：Cloud Function crash 在 claim 之後、寫回結果之前，entry 會標記 `processing` 而擱置最多 5 分鐘。
+- **影響**：該筆提問永遠不會被生成標籤與配對
+- **現狀**：`PROCESSING_TIMEOUT_MS = 5 min` 會超時釋放
+- **建議**：實作異常 cleanup 或手動清除腳本
+
+### 17. 非同步配對延遲
+配對從 client 端即時執行（< 1s）改為 Cloud Function 非同步（最長 1 分鐘），提問者需等待最長 1 分鐘才能看到「配對中」狀態轉變。
+- **影響**：使用者體驗略有延遲，但換取更準確的語義配對
+- **現狀**：可接受（提問後 60 秒 timeout 前有多次配對機會）
+
+### 18. `pending_skills` 與 `pending_questions` 共用模型配額
+兩個 Cloud Function 各自獨立排程（皆為每分鐘執行），但共用相同 Gemini API key 與 RPD 配額。
+- **影響**：當兩者皆有大量待處理項目時，可能更快觸發 429/RESOURCE_EXHAUSTED
+- **建議**：考慮合併為單一函數批次處理，或監控配額使用情況
+
+### 19. 標籤空集合無法配對
+若專家所有 ACTIVE skills 皆無標籤（例如尚未被 AI 分析過的舊資料），`matchQuestionByTags()` 的 Jaccard 為 0，永遠無法配對到該專家。
+- **影響**：剛部署時部分專家無法被配對，直到其技能通過 AI 分析產生標籤
+- **現狀**：`batchProcessPendingSkills` 同樣每分鐘執行，1 分鐘後會補上標籤
+
+### 20. Firebase `orderByChild("timestamp").limitToLast(N)` query listener 低機率不觸發
 在 `chatrooms/{id}/messages` 節點上使用 `orderByChild("timestamp").limitToLast(100)` 時，`addValueEventListener` 的 `onDataChange` 偶爾完全不呼叫，即使同路徑的 `addValueEventListener`（無 query）正常運作。原因不明。
 - **影響**：低（已改用直接 `addMessagesListener` 繞過）
 - **建議**：若需分頁查詢，考慮用 `startAfter` / `endBefore` 搭配 direct listener 自行排序
