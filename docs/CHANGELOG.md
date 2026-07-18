@@ -26,6 +26,7 @@
 - **`constants.kt`** — FirebaseFields 新增 `PENDING_QUESTION`, `MATCHED_EXP_TEXT`, `MATCHED_EXP_TIMESTAMP`, `AUTHOR_ID`
 
 ### 修正
+- **`database.rules.json` — 新增 `/experiences` 路徑規則與 `.indexOn: ["status"]`** — Cloud Function `matchQuestionByTags()` 讀取 `/experiences` 並 `orderByChild('status')`，缺少 index 導致全量下載客戶端過濾的警告
 - **Round 13 還原 + 選擇性修復** — 還原 17 個 `ui/chat/` 檔案為 Round 13 前狀態，再補上關鍵缺失功能：
   - `ChatMediaSender` — `onPendingRemoved` 成功時觸發、try-catch 錯誤處理、`onScrollToBottom` 回呼
   - `ChatViewModel` — `onMessageAdded` 改為實際插入訊息、`filteredMessages` dedup 邏輯、不活躍對話 Snackbar 提示
@@ -42,6 +43,15 @@
 ### 已知問題（新增）
 - **`combine` 三 flow 同步問題** — `flatMapLatest` 內的 `combine(observeMessages, observeTypingStatus, observeChatStatus)` 僅在三者皆有新值時才 emit。若只有 messages 變動（如 Firebase 刪除資料），UI 不會即時更新；需離開再進入聊天室或等待其他 flow 觸發
 - **`orderByChild("timestamp")` query listener 不觸發原因不明** — 改用 direct listener 後正常，非資料量或安全規則問題，可能為 Firebase Android SDK 低機率 bug
+
+### 測試驗證（2026-07-18）
+- ✅ **`batchProcessPendingQuestions` 端到端測試通過**
+  - 提問「淘寶要怎麼樣從台灣退貨回去？」入隊 `pending_questions`
+  - PRIMARY 模型 `gemini-3.1-flash-lite`：751ms 完成分析，Accepted 1 / Rejected 0
+  - 生成標籤：`["淘寶","退貨","台灣","物流"]`（已快取至 `tags_whitelist`）
+  - `matchQuestionByTags()` 正常執行，因無在線專家具匹配標籤，回報 `no match above threshold 0.15`
+- ⚠️ `batchProcessPendingSkills` 自癒掃描持續報錯 `invalid_parameters at /users` — 不影響主流程，但需調查
+- ⚠️ `questions/{id}` 節點在處理後不出現在資料庫中 — 可能被 app 端 `startMatchTimeout()` 在 60 秒後設為 `cancelled` 後清理
 
 ## 2026-07-17
 ### 新增

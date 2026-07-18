@@ -122,12 +122,15 @@ SeekerViewModel.sendQuestion(text, userId, media)
                 │     FALLBACK_1~5: Serper / Google Search
                 │
                 └─ 4. Tag 相似度配對 (matchQuestionByTags)
-                      ├─ 讀取所有 active experiences
+                      ├─ 讀取所有 active experiences (`experiences` 路徑)
                       ├─ 讀取各專家的 ACTIVE solutions 合併標籤集
                       ├─ Jaccard 相似度 (門檻 0.15)
                       └─ 最佳匹配 → questions/{id}:
                             expertId, status:"pending_acceptance"
                             matchedExpText, matchedExpTimestamp
+
+> ⚠️ **注意**：`matchQuestionByTags()` 讀取 `/experiences`，但專家端上線寫入 `/active_experiences`
+> （`FirebasePaths.ACTIVE_EXPERIENCES`）。兩路徑不一致需釐清。
 ```
 
 ## 資料流 — 聊天

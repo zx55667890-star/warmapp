@@ -166,8 +166,9 @@ class SeekerViewModel(
             observeQuestionStatusUseCase(questionId).collectLatest { status ->
                 when (status) {
                     is QuestionStatus.Taken -> {
+                        val chatroomId = "ai_$questionId"
                         _uiState.update { it.copy(
-                            activeChatRoomId = questionId,
+                            activeChatRoomId = chatroomId,
                             myRole = "user",
                             activeChatQuestionText = status.questionText,
                             isUserMatching = false,
@@ -187,7 +188,7 @@ class SeekerViewModel(
                             showSeekerConfirmDialog = true,
                             isUserMatching = false
                         ) }
-                        cleanupListeners()
+                        matchCoordinator.cancelMatchTimeout()
                     }
                     is QuestionStatus.ExpertAccepted -> {
                         val dateStr = if (status.timestamp > 0) {
@@ -200,7 +201,7 @@ class SeekerViewModel(
                             showSeekerConfirmDialog = true,
                             isUserMatching = false
                         ) }
-                        cleanupListeners()
+                        matchCoordinator.cancelMatchTimeout()
                     }
                     is QuestionStatus.NoExperts -> {
                         _uiState.update { it.copy(isUserMatching = false) }
@@ -261,8 +262,9 @@ class SeekerViewModel(
     fun checkReconnection(userId: String) {
         questionRepository.checkReconnection(userId, object : QuestionRepository.ReconnectionListener {
             override fun onExpertChatActive(chatId: String, questionText: String) {
+                val chatroomId = "ai_$chatId"
                 _uiState.update { it.copy(
-                    activeChatRoomId = chatId,
+                    activeChatRoomId = chatroomId,
                     myRole = "user",
                     activeChatQuestionText = questionText
                 ) }
@@ -270,8 +272,9 @@ class SeekerViewModel(
 
             override fun onUserReconnected(questionId: String, status: String, questionText: String) {
                 if (questionId.isNotBlank() && status == "taken") {
+                    val chatroomId = "ai_$questionId"
                     _uiState.update { it.copy(
-                        activeChatRoomId = questionId,
+                        activeChatRoomId = chatroomId,
                         myRole = "user",
                         activeChatQuestionText = questionText
                     ) }
@@ -321,8 +324,9 @@ class SeekerViewModel(
                 if (!snapshot.exists()) return
                 val status = snapshot.child("status").value?.toString()
                 if (status == StatusValues.TAKEN) {
+                    val chatroomId = "ai_$lastQuestionId"
                     _uiState.update { it.copy(
-                        activeChatRoomId = lastQuestionId,
+                        activeChatRoomId = chatroomId,
                         myRole = "user",
                         activeChatQuestionText = snapshot.child("text").value?.toString().orEmpty()
                     ) }

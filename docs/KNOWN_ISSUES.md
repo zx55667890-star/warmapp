@@ -96,3 +96,20 @@ AuthScreen.kt:37/95/101 使用 `GoogleSignIn` class，已標記 deprecated。
 在 `chatrooms/{id}/messages` 節點上使用 `orderByChild("timestamp").limitToLast(100)` 時，`addValueEventListener` 的 `onDataChange` 偶爾完全不呼叫，即使同路徑的 `addValueEventListener`（無 query）正常運作。原因不明。
 - **影響**：低（已改用直接 `addMessagesListener` 繞過）
 - **建議**：若需分頁查詢，考慮用 `startAfter` / `endBefore` 搭配 direct listener 自行排序
+
+### 21. `batchProcessPendingSkills` 自癒掃描持續報錯 `invalid_parameters at /users`
+每次執行 `healOrphanedPending()` 時皆報錯 `invalid_parameters at /users: Unknown Error`，不影響主流程但產生 stderr 雜訊。
+- **影響**：低（主流程正常，僅掃描階段失敗）
+- **現狀**：try-catch 包覆，失敗後繼續主處理
+
+### 22. `questions/{id}` 節點在處理後從資料庫消失
+`batchProcessPendingQuestions` 寫入 `tags` 與 `tags_whitelist` 後，`questions/{id}` 節點在 `database:get /` 中不再出現。推測為 app 端 `startMatchTimeout()` 在 60 秒後將 `status` 設為 `cancelled`，後續被某個清理邏輯刪除。但 `chatrooms/ai_{id}` 與 `tags_whitelist` 仍存在。
+- **影響**：中（無法在資料庫中查閱已處理完成之問題記錄）
+- **建議**：檢查 `startMatchTimeout()` 及相關監聽器是否有刪除 question node 的行為
+
+### 23. `experiences` vs `active_experiences` 路徑不一致
+Cloud Function `matchQuestionByTags()` 讀取 `db.ref('experiences')`，但專家端寫入行為使用 `active_experiences`（`FirebasePaths.ACTIVE_EXPERIENCES`）。目前 `experiences` 路徑可能為空，導致配對永遠找不到匹配。
+- **影響**：高（若 `experiences` 沒有資料，所有 tag 配對將回傳 no match）
+- **建議**：確認 `experiences` 的寫入來源，或將 `matchQuestionByTags()` 改讀取 `active_experiences`
+
+
