@@ -127,11 +127,26 @@
         ".write": "auth.uid !== null"
       }
     },
-    "active_experiences": {
+    "experiences": {
+      ".indexOn": ["status"],
       "$expId": {
         ".read": "auth.uid !== null",
         ".write": "auth.uid !== null",
+        "authorId": { ".validate": "newData.isString()" },
         "text": { ".validate": "newData.isString() && newData.val().length <= 200" },
+        "timestamp": { ".validate": "newData.isNumber()" },
+        "status": { ".validate": "newData.isString() && (newData.val() == 'active' || newData.val() == 'offline')" },
+        "isOnline": { ".validate": "newData.isBoolean()" }
+      }
+    },
+    "active_experiences": {
+      ".indexOn": ["status"],
+      "$expId": {
+        ".read": "auth.uid !== null",
+        ".write": "auth.uid !== null",
+        "authorId": { ".validate": "newData.isString()" },
+        "text": { ".validate": "newData.isString() && newData.val().length <= 200" },
+        "timestamp": { ".validate": "newData.isNumber()" },
         "status": { ".validate": "newData.isString() && (newData.val() == 'active' || newData.val() == 'offline')" },
         "isOnline": { ".validate": "newData.isBoolean()" }
       }

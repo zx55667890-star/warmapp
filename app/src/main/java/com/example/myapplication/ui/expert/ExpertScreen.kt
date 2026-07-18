@@ -69,6 +69,7 @@ fun ExpertScreen(viewModel: ExpertViewModel, userId: String, onNavigateToInput: 
         uiState = uiState,
         snackbarHostState = snackbarHostState,
         onPublishSkill = { viewModel.publishSkill(userId, it) },
+        onPublishExperience = { viewModel.publishExperience(userId, it) },
         onClearPublishFeedback = { viewModel.clearPublishFeedback() },
         onStartSkillEdit = { viewModel.startSkillEdit(it) },
         onEditSkillConfirm = { viewModel.submitSkillEdit(userId) },
@@ -83,6 +84,7 @@ fun ExpertScreenContent(
     uiState: ExpertUiState,
     snackbarHostState: SnackbarHostState,
     onPublishSkill: (String) -> Unit,
+    onPublishExperience: ((String) -> Unit)? = null,
     onClearPublishFeedback: () -> Unit,
     onStartSkillEdit: (SolutionItem) -> Unit,
     onEditSkillConfirm: () -> Unit,
@@ -140,6 +142,7 @@ fun ExpertScreenContent(
                 item {
                     QuickLogCard(
                         onPublish = onPublishSkill,
+                        onPublishExperience = onPublishExperience,
                         onClearFeedback = onClearPublishFeedback,
                         onButtonLayoutChanged = { coords -> buttonCoords = coords },
                         clearInputSignal = successVersion

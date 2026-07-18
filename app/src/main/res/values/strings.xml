@@ -21,6 +21,8 @@
     <string name="expert_ai_analyzing">AI 分析中...</string>
     <string name="expert_content_unrecognized">內容無法辨識</string>
     <string name="expert_edit_content_desc">編輯</string>
+    <string name="expert_label_experience_sync">也設為配對經驗</string>
+    <string name="expert_toast_experience_published">經驗已發布，您現在可見於配對搜尋</string>
     <string name="expert_toast_already_exists">您已經新增過這項技能囉！</string>
     <string name="expert_toast_skill_submitted">技能已送出，AI 正在為您精準配對標籤…</string>
     <string name="expert_toast_save_failed">記錄失敗：%1$s</string>

@@ -17,7 +17,7 @@ val coreModule = module {
             setPersistenceEnabled(true)
             getReference(FirebasePaths.QUESTIONS).keepSynced(true)
             getReference("experts").keepSynced(true)
-            getReference("experiences").keepSynced(true)
+            getReference(FirebasePaths.ACTIVE_EXPERIENCES).keepSynced(true)
             getReference(FirebasePaths.USERS).keepSynced(true)
         }
     }

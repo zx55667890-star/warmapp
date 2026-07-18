@@ -434,7 +434,7 @@ async function matchQuestionByTags(questionId, questionTags) {
   const rejectedExperts = new Set();
   qSnap.child('rejectedExperts').forEach(child => rejectedExperts.add(child.key));
 
-  const expSnap = await db.ref('experiences')
+  const expSnap = await db.ref('active_experiences')
     .orderByChild('status').equalTo('active').once('value');
 
   const matchPromises = [];

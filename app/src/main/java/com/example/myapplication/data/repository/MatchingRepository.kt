@@ -1,5 +1,6 @@
 package com.example.myapplication.data.repository
 import android.util.Log
+import com.example.myapplication.data.FirebasePaths
 import com.example.myapplication.data.model.Experience
 
 import com.google.firebase.database.DataSnapshot
@@ -27,7 +28,7 @@ class MatchingRepository(
                     it.key?.let { key -> rejectedExperts.add(key) }
                 }
 
-                firebaseDb.getReference("experiences")
+                firebaseDb.getReference(FirebasePaths.ACTIVE_EXPERIENCES)
                     .orderByChild("status").equalTo("active")
                     .addListenerForSingleValueEvent(object : ValueEventListener {
                         override fun onDataChange(expSnapshot: DataSnapshot) {

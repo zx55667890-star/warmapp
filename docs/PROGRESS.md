@@ -151,6 +151,18 @@
 - [x] 約 42+ 次提交，已全部推送至 main
 - [x] 第 11 輪變更：1 個檔案修改（`functions/index.js`）
 
+### Round 15：修復匹配路徑不一致 + 專家經驗發佈 UI（2026-07-18）
+- [x] **functions/index.js** — `matchQuestionByTags()` 讀取路徑 `experiences` → `active_experiences`（對齊客戶端寫入路徑）
+- [x] **ExpertRepository.kt** — `expertId` → `authorId` 欄位名稱修正（對齊 CF 讀取欄位）
+- [x] **QuickLogCard.kt** — 新增 `onPublishExperience` 回呼參數 +「也設為配對經驗」次級按鈕
+- [x] **ExpertScreen.kt** — 串接 `onPublishExperience = { viewModel.publishExperience(userId, it) }`
+- [x] **strings.xml** — 新增 `expert_label_experience_sync` + `expert_toast_experience_published`
+- [x] **database.rules.json** — `active_experiences` 補 `authorId`/`timestamp` 驗證 + `.indexOn: ["status"]`
+- [x] **MatchingRepository.kt + CoreModule.kt** — 一併修正路徑常數
+- [x] **Android BUILD SUCCESSFUL** — CLI 編譯通過
+- [x] **Cloud Function 部署成功** — `batchProcessPendingSkills` + `batchProcessPendingQuestions`
+- [x] **Database Rules 部署成功** — `active_experiences` 規則生效
+
 ### 第 12 輪：主題系統重構（AppColors → Theme → Type + DI 拆分）
 - [x] **AppColors 獨立檔案** — 從 `Color.kt` 中遷出 `object AppColors` 成獨立檔
 - [x] **Color.kt 合併進 AppColors.kt** — 刪除 Color.kt，Purple80/Purple40 等死碼一併移除
@@ -204,9 +216,14 @@
 - [x] **`QuestionRepository.kt`** — `sendQuestion()` 寫入問題後同步寫入 `pending_questions/{id}`；`cancelMatching()` 清除佇列
 - [x] **`SeekerViewModel.kt`** — 移除 `matchCoordinator.matchAndAssignExpert()`，配對由後端非同步處理
 - [x] **`database.rules.json`** — 新增 `pending_questions` 路徑規則 + `.indexOn: ["timestamp"]`
+- [x] **`database.rules.json`** — 新增 `/experiences` 路徑規則 + `.indexOn: ["status"]`（修復 Cloud Function 缺少 index 警告）
 - [x] **`functions/index.js` — `batchProcessPendingSkills` 提速** — 排程 `5min→1min`、批量 `20→50`
 - [x] **`functions/index.js` — 新增 `batchProcessPendingQuestions`** — 讀取 `pending_questions` → 黑/白名單檢查 → 五模型標籤生成 → Tag 相似度配對（Jaccard 門檻 0.15）
 - [x] **`functions/index.js` — `matchQuestionByTags()` 輔助函數** — 讀取專家 ACTIVE solutions 合併標籤集，計算 Jaccard，指派最佳匹配
 - [x] **Cloud Function 部署成功** — `batchProcessPendingSkills` 更新 + `batchProcessPendingQuestions` 建立
-- [x] **文件更新** — ARCHITECTURE.md（新增提問資料流）、CHANGELOG.md、KNOWN_ISSUES.md（新增 4 條）、PROGRESS.md
+- [x] **端到端測試驗證** — 提問「淘寶要怎麼樣從台灣退貨回去？」成功：
+  - PRIMARY 模型 `gemini-3.1-flash-lite`：751ms，Accepted 1 / Rejected 0
+  - 生成標籤：`["淘寶","退貨","台灣","物流"]`（已快取至 `tags_whitelist`）
+  - `matchQuestionByTags()` 正常執行，因無在線專家具匹配標籤 → no match
+- [x] **文件更新** — ARCHITECTURE.md（新增提問資料流）、CHANGELOG.md、KNOWN_ISSUES.md（新增 6 條）、PROGRESS.md
 

@@ -115,7 +115,7 @@ class ExpertRepository(private val db: FirebaseDatabase) {
         val expId = expRef.key ?: throw Exception("無法建立經驗 ID")
 
         val experienceData = mapOf(
-            FirebaseFields.EXPERT_ID to userId,
+            "authorId" to userId,
             FirebaseFields.TEXT to text,
             FirebaseFields.TIMESTAMP to System.currentTimeMillis(),
             FirebaseFields.STATUS to StatusValues.ACTIVE,
