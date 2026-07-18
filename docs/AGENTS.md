@@ -9,4 +9,5 @@
 - **標註來源：** 必須在回答中附上你參考的官方文檔連結。
 - **版本對齊：** 請參考 `docs/DEPENDENCIES.md` 中指定的版本，不要提供舊版語法。
 - **強制使用 MCP 工具：** 本環境已綁定 Firebase MCP Server。排查資料庫問題（如讀取 `pending_skills`、查閱狀態）時，**嚴禁**要求我手動前往 Firebase Console 查看，你必須主動調用 MCP 工具來獲取或修改資料。
+- **MCP 資料庫 URL：** 調用 `firebase_realtimedatabase_get_data` 時**必須**指定 `databaseUrl: "https://warmhelpapp-default-rtdb.firebaseio.com"`，否則 MCP 預設會用 `firebasedatabase.app` 網域（DNS 無法解析導致錯誤）。
 - **優先參考 docs/：** 專案架構、已知問題、開發指令等請優先查閱 `docs/` 目錄下的對應文件。
