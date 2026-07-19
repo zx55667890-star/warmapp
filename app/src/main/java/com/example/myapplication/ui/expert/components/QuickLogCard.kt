@@ -172,7 +172,6 @@ internal fun FeedbackBanner(message: String, isError: Boolean, offsetY: Int) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp)
             .offset { IntOffset(0, offsetY) },
         shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(

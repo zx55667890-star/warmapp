@@ -16,18 +16,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.LayoutCoordinates
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
@@ -90,8 +85,6 @@ fun ExpertScreenContent(
     onEditSkillDismiss: () -> Unit,
     onNavigateToInput: () -> Unit
 ) {
-    var cardCoords by remember { mutableStateOf<LayoutCoordinates?>(null) }
-    var outerBoxLayout by remember { mutableStateOf<LayoutCoordinates?>(null) }
     var successVersion by remember { mutableIntStateOf(0) }
     val feedbackMsg = uiState.publishFeedbackRes?.let { stringResource(it) }
 
@@ -116,31 +109,28 @@ fun ExpertScreenContent(
         )
     }
 
-    Scaffold(
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
-        containerColor = AppColors.DarkBackground
-    ) { innerPadding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .onGloballyPositioned { outerBoxLayout = it }
-        ) {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(20.dp)
+    Box(Modifier.fillMaxSize()) {
+        Scaffold(
+            snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+            containerColor = AppColors.DarkBackground
+        ) { innerPadding ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
             ) {
-                item { HeaderSection() }
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(20.dp)
+                ) {
+                    item { HeaderSection() }
 
-                item {
-                    StatsCard(helpCount = uiState.helpCount, rating = uiState.rating)
-                }
+                    item {
+                        StatsCard(helpCount = uiState.helpCount, rating = uiState.rating)
+                    }
 
-                item {
-                    Box(
-                        modifier = Modifier.onGloballyPositioned { cardCoords = it }
-                    ) {
+                    item {
                         QuickLogCard(
                             onPublish = onPublishSkill,
                             onClearFeedback = onClearPublishFeedback,
@@ -148,91 +138,88 @@ fun ExpertScreenContent(
                             clearInputSignal = successVersion
                         )
                     }
-                }
 
-                item {
-                    SectionHeader(
-                        title = stringResource(R.string.expert_knowledge_title),
-                        icon = Icons.Outlined.Lightbulb
-                    )
-                }
-
-                val visibleHistory = uiState.solutionHistory.filter { it.status != SkillStatus.PENDING }
-
-                if (visibleHistory.isEmpty()) {
                     item {
-                        com.example.myapplication.ui.expert.components.EmptyKnowledgeCard()
+                        SectionHeader(
+                            title = stringResource(R.string.expert_knowledge_title),
+                            icon = Icons.Outlined.Lightbulb
+                        )
                     }
-                } else {
-                    itemsIndexed(visibleHistory) { index, solution ->
-                        KnowledgeItemCard(
-                            solution = solution,
-                            onEditClick = { onStartSkillEdit(solution) },
-                            animDelay = index * 60L
+
+                    val visibleHistory = uiState.solutionHistory.filter { it.status != SkillStatus.PENDING }
+
+                    if (visibleHistory.isEmpty()) {
+                        item {
+                            com.example.myapplication.ui.expert.components.EmptyKnowledgeCard()
+                        }
+                    } else {
+                        itemsIndexed(visibleHistory) { index, solution ->
+                            KnowledgeItemCard(
+                                solution = solution,
+                                onEditClick = { onStartSkillEdit(solution) },
+                                animDelay = index * 60L
+                            )
+                        }
+                    }
+
+                    item {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        ActionButton(
+                            text = stringResource(R.string.expert_back_button),
+                            onClick = onNavigateToInput,
+                            style = ActionButtonStyle.OUTLINED
+                        )
+                    }
+
+                    item {
+                        ActionButton(
+                            text = "批次測試（20筆）",
+                            onClick = {
+                                val skills = listOf(
+                                    "Mojo 高效能 AI 原生程式語言模組開發",
+                                    "Quantum CI 分散式圖形化 CI/CD 執行引擎",
+                                    "Backstage 內部開發者入口平台外掛整合",
+                                    "OpenTofu 開源 Terraform 分支遷移與管理",
+                                    "eBPF Linux 核心動態追蹤與安全監控",
+                                    "Zig 零成本抽象系統程式語言開發",
+                                    "Tekton Kubernetes 原生 CI/CD 管線建置",
+                                    "Kyverno Kubernetes 准入控制策略管理",
+                                    "CycloneDX 軟體物料清單自動生成與稽核",
+                                    "Pulumi 基礎設施即程式碼多雲編排",
+                                    "Dagger CI/CD 管線容器化圖形執行",
+                                    "WasmEdge WebAssembly 輕量級邊緣運算",
+                                    "教你如何用 OPENCLAW 使用電腦操控",
+                                    "HashiCorp Boundary 零信任動態憑證代理",
+                                    "NixOS 宣告式系統配置與可重現建置",
+                                    "Temporal 持久化分散式工作流程編排",
+                                    "RisingWave 串流資料庫即時物化視圖",
+                                    "Cilium eBPF 容器網路安全與可觀測性",
+                                    "Carbon Google 實驗性系統程式語言",
+                                    "教你如何使用 GPT 5.6 提示詞工程"
+                                )
+                                skills.forEach { onPublishSkill(it) }
+                            },
+                            style = ActionButtonStyle.GRADIENT
                         )
                     }
                 }
-
-                item {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    ActionButton(
-                        text = stringResource(R.string.expert_back_button),
-                        onClick = onNavigateToInput,
-                        style = ActionButtonStyle.OUTLINED
-                    )
-                }
-
-                item {
-                    ActionButton(
-                        text = "批次測試（20筆）",
-                        onClick = {
-                            val skills = listOf(
-                                "Mojo 高效能 AI 原生程式語言模組開發",
-                                "Quantum CI 分散式圖形化 CI/CD 執行引擎",
-                                "Backstage 內部開發者入口平台外掛整合",
-                                "OpenTofu 開源 Terraform 分支遷移與管理",
-                                "eBPF Linux 核心動態追蹤與安全監控",
-                                "Zig 零成本抽象系統程式語言開發",
-                                "Tekton Kubernetes 原生 CI/CD 管線建置",
-                                "Kyverno Kubernetes 准入控制策略管理",
-                                "CycloneDX 軟體物料清單自動生成與稽核",
-                                "Pulumi 基礎設施即程式碼多雲編排",
-                                "Dagger CI/CD 管線容器化圖形執行",
-                                "WasmEdge WebAssembly 輕量級邊緣運算",
-                                "教你如何用 OPENCLAW 使用電腦操控",
-                                "HashiCorp Boundary 零信任動態憑證代理",
-                                "NixOS 宣告式系統配置與可重現建置",
-                                "Temporal 持久化分散式工作流程編排",
-                                "RisingWave 串流資料庫即時物化視圖",
-                                "Cilium eBPF 容器網路安全與可觀測性",
-                                "Carbon Google 實驗性系統程式語言",
-                                "教你如何使用 GPT 5.6 提示詞工程"
-                            )
-                            skills.forEach { onPublishSkill(it) }
-                        },
-                        style = ActionButtonStyle.GRADIENT
-                    )
-                }
             }
+        }
 
-            AnimatedVisibility(
-                visible = feedbackMsg != null && cardCoords != null && outerBoxLayout != null,
-                enter = fadeIn() + slideInVertically(initialOffsetY = { -it / 2 }),
-                exit = fadeOut() + slideOutVertically(targetOffsetY = { -it / 2 }),
-                modifier = Modifier.align(Alignment.TopCenter)
-            ) {
-                if (feedbackMsg != null) {
-                    val density = LocalDensity.current
-                    val anchorY = with(density) { 220.dp.toPx().roundToInt() }
-
-                    com.example.myapplication.ui.expert.components.FeedbackBanner(
-                        message = feedbackMsg,
-                        isError = uiState.publishFeedbackIsError,
-                        offsetY = anchorY
-                    )
-                }
-            }
-
+        AnimatedVisibility(
+            visible = feedbackMsg != null,
+            enter = fadeIn() + slideInVertically(initialOffsetY = { -it / 2 }),
+            exit = fadeOut() + slideOutVertically(targetOffsetY = { -it / 2 }),
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = 220.dp)
+                .padding(horizontal = 20.dp)
+        ) {
+            com.example.myapplication.ui.expert.components.FeedbackBanner(
+                message = feedbackMsg ?: "",
+                isError = uiState.publishFeedbackIsError,
+                offsetY = 0
+            )
         }
     }
 }
