@@ -74,7 +74,8 @@ class AuthViewModel(
     fun sendVerificationCode(email: String) = sendVerificationInternal(email)
     fun sendResetVerificationCode(email: String) = sendVerificationInternal(email, prefix = "reset_")
 
-    private fun sendVerificationInternal(email: String, prefix: String = "") {
+    private fun sendVerificationInternal(rawEmail: String, prefix: String = "") {
+        val email = AuthUtils.normalizeEmail(rawEmail)
         if (email.isBlank()) {
             _uiState.update { it.copy(error = UiText.Dynamic("請先輸入 Email")) }
             return
@@ -138,7 +139,8 @@ class AuthViewModel(
         ) }
     }
 
-    fun submit(email: String, password: String, confirmPassword: String, nickname: String, verificationCode: String) {
+    fun submit(rawEmail: String, password: String, confirmPassword: String, nickname: String, verificationCode: String) {
+        val email = AuthUtils.normalizeEmail(rawEmail)
         if (email.isBlank() || password.isBlank()) {
             _uiState.update { it.copy(error = UiText.Dynamic("請填寫 email 和密碼")) }
             return
@@ -200,7 +202,8 @@ class AuthViewModel(
         }
     }
 
-    fun sendPasswordReset(email: String, verificationCode: String) {
+    fun sendPasswordReset(rawEmail: String, verificationCode: String) {
+        val email = AuthUtils.normalizeEmail(rawEmail)
         if (email.isBlank()) {
             _uiState.update { it.copy(error = UiText.Dynamic("請先輸入 Email")) }
             return

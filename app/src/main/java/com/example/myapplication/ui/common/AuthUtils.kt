@@ -29,8 +29,12 @@ object AuthUtils {
         return null
     }
 
+    fun normalizeEmail(email: String): String {
+        return email.replace('＠', '@').replace('。', '.')
+    }
+
     fun isAllowedEmail(email: String): Boolean {
-        val domain = email.substringAfter("@").lowercase()
+        val domain = normalizeEmail(email).substringAfter("@").lowercase()
         return domain == "gmail.com" || ALLOWED_DOMAINS.any { domain.endsWith(it) }
     }
 }
