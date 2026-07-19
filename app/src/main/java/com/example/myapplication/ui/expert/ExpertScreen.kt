@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Lightbulb
 import androidx.compose.material.icons.outlined.Star
@@ -23,6 +24,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
@@ -108,6 +110,25 @@ fun ExpertScreenContent(
         )
     }
 
+    val listState = rememberLazyListState()
+    val itemSizes = remember { mutableStateMapOf<Int, Int>() }
+
+    LaunchedEffect(listState) {
+        snapshotFlow { listState.layoutInfo.visibleItemsInfo.toList() }
+            .collect { items ->
+                items.forEach { itemSizes[it.index] = it.size }
+            }
+    }
+
+    val scrollOffsetPx by remember(listState) {
+        derivedStateOf {
+            val firstVisible = listState.layoutInfo.visibleItemsInfo.firstOrNull()
+                ?: return@derivedStateOf 0
+            val sizesBefore = (0 until firstVisible.index).sumOf { itemSizes[it] ?: 0 }
+            sizesBefore + (-firstVisible.offset)
+        }
+    }
+
     Box(Modifier.fillMaxSize()) {
         Scaffold(
             snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
@@ -119,6 +140,7 @@ fun ExpertScreenContent(
                     .padding(innerPadding)
             ) {
                 LazyColumn(
+                    state = listState,
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(20.dp)
@@ -212,6 +234,7 @@ fun ExpertScreenContent(
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .padding(top = 220.dp)
+                .offset { IntOffset(0, -scrollOffsetPx) }
                 .padding(horizontal = 20.dp)
         ) {
             com.example.myapplication.ui.expert.components.FeedbackBanner(
