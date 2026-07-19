@@ -271,7 +271,7 @@ Firebase Scheduler (every 5 min)
         ├── Firebase RTDB (read pending_skills / pending_questions)
         ├── Blacklist check (tags_blacklist)
         ├── Whitelist check (tags_whitelist)
-        └── Gemini AI (4 model fallback chain)
+        └── Gemini AI (6 model fallback chain)
               ├── Serper external search (FALLBACK_1, `useWebFetch`)
               └── Google Search grounding (FALLBACK_2~3 only)
 ```

@@ -50,13 +50,13 @@
 ### 後端 (Cloud Function)
 - ✅ Node.js 24 runtime
 - ✅ Secret 使用 `defineSecret('GEMINI_API_KEY')` 而非 `functions.config()`
-- ✅ 每 5 分鐘排程
+- ✅ 每 1 分鐘排程（`* * * * *`）
 - ✅ `minInstances: 1`
-- ✅ 5 模型 fallback 鏈（PRIMARY + 4 FALLBACK）
+- ✅ 6 模型 fallback 鏈（PRIMARY + 5 FALLBACK）
 - ✅ 503 retry（2s / 4s backoff）
 - ✅ 429/RESOURCE_EXHAUSTED → EXHAUSTED
 - ✅ 有搜尋的模型不使用 `responseMimeType: 'application/json'`（Gemini 2.5 不支援同時使用 tools + JSON mode）
-- ✅ 自我修復排程每 5 分鐘掃描孤立 PENDING（`healOrphanedPending`，每次 5 個 user）
+- ✅ 自我修復掃描孤立 PENDING（`healOrphanedPending`，每次 5 個 user，隨 scheduler 每分鐘執行）
 
 ### 測試
 - ✅ ViewModel 測試用 `Dispatchers.setMain(testDispatcher)` + `runTest`

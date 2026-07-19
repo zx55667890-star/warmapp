@@ -29,11 +29,11 @@
 │              Cloud Function (Node.js 22)                  │
 │  batchProcess (scheduler, every 1 min)                    │
 │    ├─ skills: Blacklist → Whitelist → Gemini AI           │
-│    │   └─ 5 model fallback (Serper/Google Search)         │
+│    │   └─ 6 model fallback (PRIMARY + 5 FALLBACK)         │
 │    │   └─ Submission Lock management                       │
 │    │                                                       │
 │    └─ questions: Blacklist → Whitelist → Gemini AI         │
-│        └─ 5 model fallback (same as skills)                │
+│        └─ 6 model fallback (same as skills)                │
 │        └─ Tag-based matching → expert assignment            │
 └─────────────────────────────────────────────────────────┘
 ```
@@ -61,8 +61,8 @@ ExpertViewModel.publishSkill(userId, text)
                 └─ Firebase: pending_skills/{pushId}
                       { userId, text, timestamp }
                       │
-                      ▼  (排程，最長等 5 分鐘)
-                batchProcessPendingSkills (Cloud Function)
+                      ▼  (排程，最長等 1 分鐘)
+                batchProcess (Cloud Function)
                       │
                       ├─ [Self-Heal] healOrphanedPending()
                       │    掃描 solutions 中 PENDING > 10 分鐘且
@@ -74,11 +74,14 @@ ExpertViewModel.publishSkill(userId, text)
                       ├─ 2. Whitelist 檢查 (tags_whitelist/{base64(text)}/tags)
                       │     └─ 命中 → ACTIVE + 快取標籤
                       │
-              ├─ 3. AI 分析 (4 模型接力)
+              ├─ 3. AI 分析 (6 模型接力)
               │     PRIMARY: gemini-3.1-flash-lite (無搜尋)
               │       → REJECT 才丟給下一棒
-              │     FALLBACK_1: Serper 外部搜尋 (`useWebFetch`，避開 Gen3 429)
-              │     FALLBACK_2~3: 內建 Google Search 能力
+              │     FALLBACK_1: gemini-3.1-flash-lite + Serper (`useWebFetch`)
+              │     FALLBACK_2: gemini-2.5-flash-lite + googleSearch
+              │     FALLBACK_3: gemini-2.5-flash + googleSearch
+              │     FALLBACK_4: gemini-3.5-flash + Serper + minimal thinking
+              │     FALLBACK_5: gemini-3-flash-preview + Serper + minimal thinking
               │       → 最終 REJECT 才寫入黑名單
                       │
                       └─ 結果寫回：
@@ -108,7 +111,7 @@ SeekerViewModel.sendQuestion(text, userId, media)
                 { userId, text, timestamp }
                 │
                 ▼  (排程，最長等 1 分鐘)
-          batchProcessPendingQuestions (Cloud Function)
+          batchProcess (Cloud Function)
                 │
                 ├─ 1. Blacklist 檢查 (tags_blacklist/{base64(text)})
                 │     └─ 命中 → cancelled
@@ -116,7 +119,7 @@ SeekerViewModel.sendQuestion(text, userId, media)
                 ├─ 2. Whitelist 檢查 (tags_whitelist/{base64(text)}/tags)
                 │     └─ 命中 → 快取標籤 + Tag 配對
                 │
-                ├─ 3. AI 5 模型降級分析 → 題目標籤
+                ├─ 3. AI 6 模型降級分析 → 題目標籤
                 │     PRIMARY: gemini-3.1-flash-lite (無搜尋)
                 │     FALLBACK_1~5: Serper / Google Search
                 │

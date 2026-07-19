@@ -9,7 +9,7 @@
 - 錄音功能
 - 配對系統
 - Submission Lock（防濫用）
-- Cloud Function AI 分析（5 模型 fallback + Google Search grounding）
+- Cloud Function AI 分析（6 模型 fallback + Serper/Google Search）
 
 ## 🚧 v1.0 (進行中)
 - [ ] 聊天室完整功能（已讀/收回）

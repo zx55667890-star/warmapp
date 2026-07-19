@@ -6,7 +6,7 @@ warmapp：知識技能記錄平台 Android App。使用者可以作為 **專家 
 ## 目前 Feature 狀態
 - ✅ **聊天**：文字/圖片/語音/影片，已讀收回（基礎）
 - ✅ **登入**：電話驗證 + Google Sign In（基礎整合）
-- ✅ **專家技能發布**：後端 AI 自動標籤提取（5 模型 fallback）
+- ✅ **專家技能發布**：後端 AI 自動標籤提取（6 模型 fallback）
 - ✅ **提問者**：發問 + 配對專家
 - ✅ **相機**：拍照/錄影
 - ✅ **錄音**：語音訊息
@@ -36,9 +36,9 @@ observeExpertStatus()      → callbackFlow
 - `minInstances: 1`（避免冷啟動）
 - 2nd Gen (`firebase-functions/v2/scheduler`)
 - Secret via `defineSecret('GEMINI_API_KEY')` + `defineSecret('SERPER_API_KEY')`
-- Model 陣列：PRIMARY（無搜尋）+ FALLBACK_1（Serper 外部搜尋）+ FALLBACK_2~3（內建 googleSearch）
+- Model 陣列（6 個）：PRIMARY（無搜尋）+ FALLBACK_1（Serper）+ FALLBACK_2~3（googleSearch）+ FALLBACK_4~5（Serper + thinking）
 - `useWebFetch` 旗標：先 `searchOnSerper()` 取搜尋結果注入 prompt，再送模型（無 `tools: [googleSearch]`）
-- `thinkingConfig`：Gen3 模型支援 `{ thinkingLevel: 'minimal' | 'low' | 'medium' | 'high' }`
+- `thinkingConfig`：Gen3 模型支援 `{ thinkingLevel: 'minimal' | 'low' | 'medium' | 'high' }`（FALLBACK_4~5 使用 `minimal`）
 - `searchOnSerper()` 調用 `https://google.serper.dev/search`，前 3 筆 organic，5s timeout
 
 ### SkillStatus 列舉

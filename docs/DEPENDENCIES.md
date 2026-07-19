@@ -82,8 +82,9 @@
 ## Cloud Function 模型清單 (fallback 順序)
 | 順位 | 模型 | 思考 | 搜尋 |
 |------|------|------|------|
-| PRIMARY | gemini-3.1-flash-lite | default minimal | ❌ |
-| FALLBACK_1 | gemini-2.5-flash | budget:0 | ✅ |
-| FALLBACK_2 | gemini-2.5-flash-lite | budget:0 | ✅ |
-| FALLBACK_3 | gemini-3-flash-preview | minimal | ✅ |
-| FALLBACK_4 | gemini-3.5-flash | minimal | ✅ |
+| PRIMARY | gemini-3.1-flash-lite | - | ❌ | 最高 RPD 主力，快速濾掉已知技能 |
+| FALLBACK_1 | gemini-3.1-flash-lite | - | Serper | 同 PRIMARY + Serper 外部搜尋 |
+| FALLBACK_2 | gemini-2.5-flash-lite | budget:0 | ✅ googleSearch | 內建 Google Search |
+| FALLBACK_3 | gemini-2.5-flash | budget:0 | ✅ googleSearch | 內建 Google Search |
+| FALLBACK_4 | gemini-3.5-flash | minimal | Serper | Gen3 + Serper |
+| FALLBACK_5 | gemini-3-flash-preview | minimal | Serper | Gen3 + Serper |
