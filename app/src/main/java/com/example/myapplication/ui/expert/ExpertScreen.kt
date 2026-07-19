@@ -221,11 +221,9 @@ fun ExpertScreenContent(
                 exit = fadeOut() + slideOutVertically(targetOffsetY = { -it / 2 }),
                 modifier = Modifier.align(Alignment.TopCenter)
             ) {
-                if (feedbackMsg != null && cardCoords != null && outerBoxLayout != null) {
+                if (feedbackMsg != null) {
                     val density = LocalDensity.current
-                    val cardRoot = cardCoords!!.localToRoot(Offset.Zero).y
-                    val outerRoot = outerBoxLayout!!.localToRoot(Offset.Zero).y
-                    val anchorY = with(density) { (cardRoot - outerRoot - 56.dp.toPx()).roundToInt() }
+                    val anchorY = with(density) { 220.dp.toPx().roundToInt() }
 
                     com.example.myapplication.ui.expert.components.FeedbackBanner(
                         message = feedbackMsg,
