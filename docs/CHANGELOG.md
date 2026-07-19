@@ -1,264 +1,307 @@
 # CHANGELOG.md — 更新紀錄
 
-## 2026-07-19
-### 新增
-- **Cloud Function 合併** — `batchProcessPendingSkills` + `batchProcessPendingQuestions` 合併為單一 `batchProcess`，依序處理 skills→questions，消除 API 競爭
+## 已解決問題一覽（合併自 KNOWN_ISSUES.md）
+
+| # | 項目 | 處理 |
+|---|---|---|
+| 1 | `pending_skills` 孤立風險 | 新增 `releaseStuckProcessing()` 清除卡住的 processing 標記 |
+| 2 | saveSkill 原子性喪失 | 改用 `updateChildren()` 原子寫入 solutions + pending_skills |
+| 3 | `@StringRes` 編譯警告 | 加 `-Xannotation-default-target=param-property` |
+| 4 | CF cooldown 10min → 5min | 縮短重置間隔 |
+| 5 | Submission Lock 邊界 bug | rejectedCount 累積而非歸零，有 ACTIVE 時不鎖 |
+| 6 | `pending_questions` 孤立風險 | 同 #1 加入 `releaseStuckProcessing()` |
+| 7 | 兩個 CF 合併為一個 | 新 `exports.batchProcess` 依序處理 skills→questions |
+| 8 | Firebase query 低機率不觸發 | 已改用 `addMessagesListener` 無 query 版本 |
+| 9 | `healOrphanedPending` 報錯 | 修復空 cursor 時 `startAfter('')` 的 query 問題 |
+| 10 | 跨檔案命名同步 | 已在 AGENTS.md 中有強制規則 |
+| 11 | MediaPlayer crash 風險 | 加入 try-catch + safe `release()` helper |
+| 12 | Google Sign In 未完成 | 整合 GoogleSignIn API（加 `@Suppress("DEPRECATION")`），完整上線 |
+| 13 | `TrendingUp` icon 棄用 | 改用 `Icons.AutoMirrored.Outlined.TrendingUp` |
+| 14 | GoogleSignIn deprecated | 加 `@Suppress("DEPRECATION")` 保留原 API（Credential Manager 相容性不足） |
+| 15 | `combine` 三 flow 同步問題 | `observeTypingStatus`/`observeChatStatus` 加 `onStart { emit() }` |
+| 16 | 前端亂碼檢測 | 增加 `MAX_CHAR_FREQUENCY` 單字頻率檢查，現有規則已達實用標準 |
+| 17 | IDE 快取過期 | 已加入 AGENTS.md 文件，使用 `edit` 工具減少觸發 |
+| 18 | 中文亂碼問題（4 檔案） | AuthViewModel/AiRepository/NetworkUtils/MessageList 修復 UTF-8 編碼損毀 |
+| 19 | 全形 `＠` 信箱格式 | `AuthUtils.normalizeEmail()` 自動轉半形 |
+| 20 | 單機切換配對 | 還原為兩台設備流程，移除 PendingAcceptance/SeekerConfirmDialog 等 |
+
+---
+
+## 2026-07-19 — Round 16：全面 Bug 清除 + 單機配對還原 + 中文亂碼修復
+
+### 修改檔案
+- `functions/index.js` — 合併兩 CF 為 `batchProcess`；還原 `pending_acceptance`→`taken`；`releaseStuckProcessing()` 清理卡住標記；Submission Lock 跨批次累積 rejectedCount；cooldown 10min→5min；`healOrphanedPending` 空 cursor try-catch
+- `data/Constants.kt` — `pending_acceptance` 狀態、`activeChatRoomId` 前綴常數
+- `ui/seeker/SeekerViewModel.kt` — 還原單機配對、`activeChatRoomId` 前綴 `"ai_"`、`checkReconnection` 處理 `PENDING_ACCEPTANCE`
+- `ui/seeker/AskQuestionScreen.kt` — `isPendingAcceptance` 狀態傳遞
+- `ui/seeker/MatchingOverlay.kt` — 不同狀態文字
+- `ui/expert/ExpertViewModel.kt` — `acceptGlobalAssignment()`、`startGlobalAssignListener` `LaunchedEffect(userId)`
+- `ui/expert/ExpertScreen.kt` — feedback banner 位置修正
+- `ui/expert/components/QuickLogCard.kt` — FeedbackBanner 參數 refactor
+- `ui/navigation/AppNavigation.kt` — 聆聽器啟動改 `LaunchedEffect(userId)`
+- `database.rules.json` — `questions` 節點加 `.read: "auth.uid !== null"`
+- `domain/seeker/ObserveQuestionStatusUseCase.kt` — `QuestionStatus.PendingAcceptance`
+- `domain/expert/ExpertInputValidator.kt` — bigram 檢測、`SKILL_UNLIKELY_CHARS`
+- `data/repository/ExpertRepository.kt` — callbackFlow 無狀態化
+- `app/.../ExpertViewModelTest.kt` — 測試案例擴充
+- `ui/auth/AuthViewModel.kt` — 中文亂碼修復
+- `ui/expert/AiRepository.kt` — 中文亂碼修復
+- `util/NetworkUtils.kt` — 中文亂碼修復
+- `ui/chat/MessageList.kt` — 中文亂碼修復
+- `data/repository/AuthRepository.kt` — `@Suppress("DEPRECATION")` on GoogleSignIn
+- `ui/common/AuthUtils.kt` — `normalizeEmail()` 全形 `＠`→半形
 
 ### 變更
 - **還原單機配對流程** — CF 匹配後直接 `taken`，移除 `PendingAcceptance`/`ExpertAccepted` 狀態、`SeekerConfirmDialog`、「也設為經驗」按鈕
 - **GoogleSignIn 保留原 API** — Credential Manager 相容性不足，加 `@Suppress("DEPRECATION")` 保留 `GoogleSignIn` 類別
 - **`AuthUtils.normalizeEmail()`** — 全形 `＠` 自動轉半形 `@`
+- **Cloud Function 合併** — `batchProcessPendingSkills` + `batchProcessPendingQuestions` 合併為單一 `batchProcess`，依序處理 skills→questions，消除 API 競爭
 
 ### 修正
 - **中文亂碼修復（4 檔案）** — AuthViewModel/AiRepository/NetworkUtils/MessageList 的 UTF-8 中文字串誤存為 Latin-1 編碼
 - **MediaPlayer crash** — try-catch + safe release helper
-- **`combine` 三 flow 同步** — `onStart { emit(default) }` 
+- **`combine` 三 flow 同步** — `onStart { emit(default) }`
 - **`releaseStuckProcessing()`** — 清理卡住的 processing 標記（skills + questions）
 - **Submission Lock 邊界** — 跨批次累積 rejectedCount
 - **CF cooldown 10min→5min**
 - **`companion object { combine(...) }` 初始值問題**
 
-## 2026-07-15
-### 修正
-- `functions/index.js` `model_status` 路徑編碼 — 模型名含 `.` 導致 RTDB crash，讀寫改為 `encodePath(model.name)`
-- `functions/index.js` Gemini 2.5 系列不支援 `responseMimeType: 'application/json'` + `tools: [googleSearch]` 並用，有搜尋的模型不再設定 JSON mode
-- FALLBACK 順序重排：`gemini-3.5-flash`（高 429）移至 FALLBACK_4，`gemini-2.5-flash` 改為 FALLBACK_1
-- 已部署新版 function（hash: `1a05abccc9b987b06ea94d86e246d880f0e99ec9`）
+### Git
+- 約 36+ 次提交（至此累計）
 
-### 文件
-- 3 份 MD 搬入 `docs/` 並刪除重複內容
-- 新增 11 份專案文件（架構、依賴、已知問題、風格規範等）
-- 啟用 GitHub Pages
+---
 
-## 2026-07-18
-### 新增
-- **提問端 AI 標籤生成管線** — 仿照專家端 `pending_skills` 模式，新增 `pending_questions` 路徑 + `batchProcessPendingQuestions` Cloud Function。提問送出後非同步生成題目標籤
-- **Tag 相似度配對** — Cloud Function 生成題目標籤後，讀取各專家 ACTIVE solutions 的標籤集，以 Jaccard 相似度（門檻 0.15）進行配對，取代 client 端即時 bigram Jaccard
-- **`Constants.kt`** — 新增 `PENDING_QUESTIONS` 路徑常數、`FirebaseFields` 擴充（`MATCHED_EXP_TEXT`, `MATCHED_EXP_TIMESTAMP`, `AUTHOR_ID`）
+## 2026-07-19 — Round 15：修復匹配路徑不一致 + 專家經驗發佈 UI
+
+### 修改檔案
+- `functions/index.js` — `matchQuestionByTags()` 讀取路徑 `experiences` → `active_experiences`
+- `data/repository/ExpertRepository.kt` — `expertId` → `authorId` 欄位名稱修正
+- `ui/expert/components/QuickLogCard.kt` — 新增「也設為配對經驗」按鈕
+- `ui/expert/ExpertScreen.kt` — 串接 `onPublishExperience`
+- `data/repository/MatchingRepository.kt` + `di/CoreModule.kt` — 路徑常數修正
+- `database.rules.json` — `active_experiences` 補 `authorId`/`timestamp` 驗證 + `.indexOn: ["status"]`
+- `strings.xml` — 新增 `expert_label_experience_sync` + `expert_toast_experience_published`
 
 ### 變更
-- **`batchProcessPendingSkills`** — 排程 `5min→1min`，批量上限 `20→50`
-- **`QuestionRepository.kt`** — `sendQuestion()` 寫入問題後同步入隊 `pending_questions/{id}`；`cancelMatching()` 一併清除佇列
-- **`SeekerViewModel.kt`** — 移除 `matchCoordinator.matchAndAssignExpert()` 調用，配對由後端非同步處理
-- **`database.rules.json`** — 新增 `pending_questions` 路徑安全規則 + `.indexOn: ["timestamp"]`
-- **`constants.kt`** — FirebaseFields 新增 `PENDING_QUESTION`, `MATCHED_EXP_TEXT`, `MATCHED_EXP_TIMESTAMP`, `AUTHOR_ID`
+- `matchQuestionByTags()` 讀取路徑對齊客戶端寫入路徑
+- QuickLogCard 新增次級按鈕「也設為配對經驗」
+
+### 部署
+- Cloud Function 部署成功（`batchProcessPendingSkills` + `batchProcessPendingQuestions`）
+- Database Rules 部署成功（`active_experiences` 規則生效）
+
+---
+
+## 2026-07-19 — Round 13 復原修復
 
 ### 修正
-- **`database.rules.json` — 新增 `/experiences` 路徑規則與 `.indexOn: ["status"]`** — Cloud Function `matchQuestionByTags()` 讀取 `/experiences` 並 `orderByChild('status')`，缺少 index 導致全量下載客戶端過濾的警告
-- **Round 13 還原 + 選擇性修復** — 還原 17 個 `ui/chat/` 檔案為 Round 13 前狀態，再補上關鍵缺失功能：
-  - `ChatMediaSender` — `onPendingRemoved` 成功時觸發、try-catch 錯誤處理、`onScrollToBottom` 回呼
-  - `ChatViewModel` — `onMessageAdded` 改為實際插入訊息、`filteredMessages` dedup 邏輯、不活躍對話 Snackbar 提示
-  - `ChatScrollManager` — 移除 `totalItems > 0` 檢查
-  - `MessageRepository` — `sendMessageWithFields` 加入 `addOnFailureListener`
-  - `ChatScreen` — 強制 `isDarkTheme = true`、`background(AppColors.DarkBackground)`、`statusBarsPadding()`、`imePadding()`、`SnackbarHost`
-  - `ChatTopBar` / `QuestionBanner` — 硬編碼顏色替換為 `AppColors`
-  - `BubbleContent` — Pending spinner 暗色背景移除、置中於整個泡泡
-- **Firebase `orderByChild("timestamp").limitToLast(N)` query listener 永不觸發問題** — 改用直接 `messagesRef.addValueEventListener()`，不透過 query。此 bug 導致文字訊息不管送出幾次都永遠不會出現在畫面上
-- **`initChat` 總是更新 `_userId`** — ViewModel 被 Koin 重用（相同 `chatroomId` key）時，`_userId` 不再卡在第一次設的值（可能為空）
-- **文字樂觀更新** — `sendMessage` 直接建 `optimistic_` 暫存訊息插入列表，使用者立刻看到文字，等 Firebase observer 回覆後自動取代
-- **Observer `collect` try-catch** — 避免 collect block 拋例外導致整個觀察協程無聲死亡
+- 還原 17 個 `ui/chat/` 檔案到 Round 13 前狀態
+- **ChatMediaSender** — `onPendingRemoved` 成功觸發、try-catch、`onScrollToBottom`
+- **ChatViewModel** — `onMessageAdded` 實際插入、`filteredMessages` dedup、`isChatActive` Snackbar
+- **ChatScrollManager** — 移除 `totalItems > 0` 檢查
+- **MessageRepository** — `sendMessageWithFields` 加入 failure listener
+- **ChatScreen** — 強制 `isDarkTheme = true`、背景色、statusBarsPadding、imePadding、SnackbarHost
+- **ChatTopBar/QuestionBanner** — 硬編碼色碼改 AppColors
+- **BubbleContent** — Pending spinner 暗背景移除、置中
+- **Firebase query listener bug** — `orderByChild("timestamp").limitToLast(N)` 不觸發，改用直接 `addValueEventListener`
+- **`initChat` 總是更新 `_userId`** — ViewModel 重用時 userId 不再卡在舊值
+- **文字樂觀更新** — `sendMessage` 直接插入 `optimistic_` 暫存訊息
+- **Observer try-catch** — 防止 collect block 崩潰殺死整體觀察協程
 
-### 已知問題（新增）
-- **`combine` 三 flow 同步問題** — `flatMapLatest` 內的 `combine(observeMessages, observeTypingStatus, observeChatStatus)` 僅在三者皆有新值時才 emit。若只有 messages 變動（如 Firebase 刪除資料），UI 不會即時更新；需離開再進入聊天室或等待其他 flow 觸發
-- **`orderByChild("timestamp")` query listener 不觸發原因不明** — 改用 direct listener 後正常，非資料量或安全規則問題，可能為 Firebase Android SDK 低機率 bug
+---
 
-### 測試驗證（2026-07-18）
-- ✅ **`batchProcessPendingQuestions` 端到端測試通過**
-  - 提問「淘寶要怎麼樣從台灣退貨回去？」入隊 `pending_questions`
-  - PRIMARY 模型 `gemini-3.1-flash-lite`：751ms 完成分析，Accepted 1 / Rejected 0
-  - 生成標籤：`["淘寶","退貨","台灣","物流"]`（已快取至 `tags_whitelist`）
-  - `matchQuestionByTags()` 正常執行，因無在線專家具匹配標籤，回報 `no match above threshold 0.15`
-- ⚠️ `batchProcessPendingSkills` 自癒掃描持續報錯 `invalid_parameters at /users` — 不影響主流程，但需調查
-- ⚠️ `questions/{id}` 節點在處理後不出現在資料庫中 — 可能被 app 端 `startMatchTimeout()` 在 60 秒後設為 `cancelled` 後清理
+## 2026-07-18 — Round 14：提問端 AI 標籤生成管線 + 非同步 Tag 配對
 
-## 2026-07-17
 ### 新增
-- `searchOnSerper()` 函式 — 調用 `https://google.serper.dev/search`（取前 3 筆 organic），取代內建 googleSearch
-- `useWebFetch` 自訂旗標 — 控制是否先 Serper 搜尋再送模型（繞過 Gen3 Free Tier 429 限制）
-- `SERPER_API_KEY` Firebase secret（deployed + pushed）
-- Gen3 thinking 語法支援 — `thinkingLevel`（minimal/low/medium/high）透過 `thinkingConfig` 傳遞
-- 批次測試按鈕 — ExpertScreen 底部橘色按鈕，20 筆冷門技能
-- Per-skill logging — 每個 model log 哪些 accepted/rejected
-- **Nunito Sans 字體** — `nunito_sans_regular.ttf` + `nunito_sans_bold.ttf`，完整 14 級 Typography 映射含用途註解
-- **6 個 DI module** — CoreModule, AuthModule, ChatModule, ExpertModule, SeekerModule, MediaModule（取代單一 AppModule.kt）
-- **資料層 (Data) 區塊** — UserRepository, DataMigrator, Constants 移出 DI
+- **提問端 AI 標籤生成管線** — 仿照專家端 `pending_skills` 模式，新增 `pending_questions` 路徑 + `batchProcessPendingQuestions` Cloud Function
+- **Tag 相似度配對** — Cloud Function 以 Jaccard 相似度（門檻 0.15）進行配對
+- **`Constants.kt`** — 新增 `PENDING_QUESTIONS` 路徑常數、`FirebaseFields` 擴充
+
+### 修改檔案
+- `functions/index.js` — 新增 `batchProcessPendingQuestions` + `matchQuestionByTags()`
+- `data/Constants.kt` — `PENDING_QUESTIONS` 路徑 + `FirebaseFields` 新欄位
+- `data/repository/QuestionRepository.kt` — `sendQuestion()` 入隊 `pending_questions/{id}`
+- `ui/seeker/SeekerViewModel.kt` — 移除 `matchCoordinator.matchAndAssignExpert()`
+- `database.rules.json` — 新增 `pending_questions` 路徑 + `.indexOn`
+- `ui/chat/ChatScreen.kt` — SnackbarHost 修復
+- `ui/chat/components/ChatTopBar.kt` — 硬編碼色碼改 AppColors
+- 17 個 `ui/chat/` 檔案 — Round 13 復原 + 選擇性修復
 
 ### 變更
-- PRIMARY 維持 `gemini-3.1-flash-lite`（無搜尋）
-- Model 陣列縮減為 4 個：PRIMARY + FALLBACK_1 (Serper) + FALLBACK_2~3 (內建 googleSearch)
-- `slimmedEntries`/`localMapping` 移至 model loop 內建（不重送全部 entry）
-- Prompt 增強 — 加入參考網路搜尋指示 + 標籤語言同源規則
-- 自癒掃描 try-catch 包覆，不中斷主流程
-- **Theme.kt 重寫** — 純深色 `darkColorScheme` 驅動，移除 light/dynamic color
-- **AppColors 色值更新** — AccentGreen/AcentBlue/Orange/GradientEnd 換色，玻璃效果加強
-- **Color.kt 合併進 AppColors.kt** — 刪除 Color.kt，Purple80/Purple40 等死碼移除
-- **MainActivity.kt** — KoinApplication 載入 6 個 modules 取代單一 appModule
-- **MODULE_MAP.md** — DI 區塊拆 6 module + 新增資料層區塊 + AiRepository 移至專家區
-- `CHANGELOG_OLD.md` + `get_sha1.md` 搬入 `docs/`
+- 排程 `5min→1min`，批量上限 `20→50`
+- `QuestionRepository.sendQuestion()` 同步寫入 `pending_questions/{id}`
 
-### 修正
-- 解決 Gen3 Free Tier 無法使用內建 `googleSearch`（429/RESOURCE_EXHAUSTED）
-- 重疊排程併發控制透過 atomic transaction claim + 5 分鐘 timeout
+### 已知問題
+- `combine` 三 flow 同步問題 — 僅三者皆有新值時才 emit
+- `orderByChild("timestamp")` query listener 不觸發 — 改用 direct listener
 
-### 刪除
-- `di/AppModule.kt`（94 行 → 6 個獨立 module 共 158 行）
-- `ui/theme/Color.kt`（合併進 AppColors.kt）
-- 根目錄 `CHANGELOG_OLD.md`、`get_sha1.md`（搬入 docs/）
+### 測試
+- ✅ 提問「淘寶要怎麼樣從台灣退貨回去？」生成標籤 `["淘寶","退貨","台灣","物流"]`，PRIMARY 751ms
 
-## 2026-07-17 (Round 13)
-### 新增
-- `NicknameSettingsDialog` — AppColors 主題化 + isSaving loading 狀態 + 自動關閉
-- `GradientButton` 共用 composable（ForgotPasswordPanel + NewPasswordForm 共用漸層按鈕）
-- `PendingOverlay()` 抽取共用 composable（BubbleContent 載入覆蓋）
-- `ProfileStat` 小元件（OpponentProfileDialog 統計行）
+---
+
+## 2026-07-18 — Round 13：全面 AppColors 主題化
 
 ### 變更
-- **AppColors 色值調整** — AccentGreen `#34D399`、AccentBlue `#60A5FA`、AccentOrange `#F97316`、玻璃效果透明度 6%→10%（stroke）/ 3%→5%（fill）
-- **Theme.kt 全面重寫** — 砍掉 dynamicColor、isSystemInDarkTheme()、LightColorScheme；DarkColorScheme 全面對接 AppColors
-- **Type.kt 全面重寫** — 加入 Nunito Sans 字型，完整 13 級字型層次
-- **共 ~120 處硬編碼色碼移除，~60 處 isSystemInDarkTheme() 砍掉，~10 處 emoji 改 Material Icon，~15 處新增動畫**
+- **~120 處硬編碼色碼移除，~60 處 `isSystemInDarkTheme()` 砍掉，~10 處 emoji 改 Material Icon，~15 處新增動畫**
+- 主題基底（3 檔案）— AppColors 色值調整、Theme 純深色 darkColorScheme、Type Nunito Sans
+- 共用元件（7 檔案）— LoadingOverlay/ToastOverlay/CompactTextField/OfflineBanner 等全 AppColors
+- 登入模組（5 檔案）— AuthScreen/WelcomePanel/LoginForm/ResetPasswordPanel/NicknameSettingsDialog
+- 導航（2 檔案）— AppNavigation Scaffold Transparent
+- 專家模組（6 檔案）— ExpertScreen/ExpertDialogs/QuickLogCard
+- 提問者（11 檔案）— AskQuestionScreen/RoleSelectScreen/MatchingOverlay 等
+- 聊天（12 檔案）— ChatTopBar/ChatBubble/BubbleContent 等
+- 相機（6 檔案）+ 錄音（1 檔案）
 
-#### 一、主題基底（3 檔案）
-- `ui/theme/Color.kt`（AppColors）— 調整強調色色值，提高玻璃效果透明度，砍掉未使用的紫色/粉色色票
-- `ui/theme/Theme.kt` — 全面重寫，純深色 darkColorScheme，完整對接 AppColors
-- `ui/theme/Type.kt` — 全面重寫，Nunito Sans 字型 + 13 級 Typography
+### 修改檔案（36+ UI 檔案）
 
-#### 二、共用元件（7 檔案）
-- `ui/common/LoadingOverlay.kt` — Color.Black→DarkBackground，旋圈 AccentGreen+呼吸動畫，加入淡入淡出動畫
-- `ui/common/ToastOverlay.kt` — 底色→SurfaceMedium+玻璃邊框，位置改用 statusBarsPadding()+top=16.dp，滑入滑出動畫
-- `ui/common/CompactTextField.kt` — 背景→SurfaceDark/SurfaceMedium（聚焦），1dp 邊框（聚焦變綠），游標 AccentGreen，placeholder TextMuted
-- `ui/common/OfflineBanner.kt` — 底色 StatusPending 黃色，文字色 DarkBackground
-- `ui/components/FullScreenImageDialog.kt` — 背景 DarkBackground，頁碼改小圓點（≤7）或數字（>7），加入 statusBarsPadding+navigationBarsPadding
-- `ui/components/RatingDialog.kt` — 砍掉 isSystemInDarkTheme()，emoji 星星→Material Icon（Filled/Outlined Star），顏色 StatusPending
-- `ui/components/ScrollToBottomButton.kt` — FAB 背景 SurfaceMedium，圖標色 AccentGreen
-- `ui/components/VideoPlayerDialog.kt` — 背景 DarkBackground，Slider AccentGreen，播放/關閉 emoji→Material Icon，錯誤 StatusError
+### Git
+- 約 280+ 次提交
+- 第 13 輪變更：36+ 個 UI 檔案
 
-#### 三、登入模組（5 檔案）
-- `ui/auth/AuthScreen.kt` — 背景 DarkBackground，錯誤移至 TopCenter+滑入動畫，AnimatedContent+淡入上滑轉場
-- `ui/auth/WelcomePanel.kt` — 三按鈕建立主/次/弱層級，Logo 呼吸光暈，五階段進場動畫
-- `ui/auth/LoginForm.kt` — 標題「歡迎回來/建立帳號」+副標，分三區，GradientButton
-- `ui/auth/ResetPasswordPanel.kt` — 全部 AppColors，GradientButton 共用 composable
-- `ui/auth/NicknameSettingsDialog.kt` — 深色化 SurfaceDark，AppColors，綠色徽章+1.2s 自動關閉
+---
 
-#### 四、導航（2 檔案）
-- `ui/navigation/AppNavigation.kt` — Scaffold containerColor→Transparent（讓 BackgroundGlow 穿透），修復 Box 嵌套
-- `ui/navigation/Route.kt` — 無改動
+## 2026-07-17 — Round 12：主題系統重構 + DI 拆分
 
-#### 五、專家模組（6 檔案）
-- `ui/expert/ExpertScreen.kt` — 刪除 fadeSlideIn()，GRADIENT 按鈕文字→DarkBackground
-- `ui/expert/ExpertDialogs.kt` — 砍掉全部 isSystemInDarkTheme()（~15 處），emoji→Icons.AutoAwesome
-- `ui/expert/components/QuickLogCard.kt` — 按鈕文字→DarkBackground
-- `ui/expert/components/FeedbackBanner.kt` — 無改動（已乾淨）
-- `ui/expert/components/KnowledgeItemCard.kt` + EmptyKnowledgeCard — 無改動
-
-#### 六、提問者主畫面（4 檔案）
-- `ui/seeker/AskQuestionScreen.kt` — Scaffold containerColor→DarkBackground，額度 StatusError/TextGray
-- `ui/seeker/RoleSelectScreen.kt` — 背景 DarkBackground，抽屜邊框 BorderGray，AskerIcon AccentBlue，ExpertIcon AccentGreen，燈泡 StatusPending
-- `ui/seeker/MatchingOverlay.kt` — 遮罩 DarkBackground.copy(0.7f)，旋圈 AccentGreen，取消 TextGray
-- `ui/seeker/MatchingDialog.kt` — 砍掉 isSystemInDarkTheme()（6 處），彈窗 SurfaceDark，旋圈 AccentGreen
-- `ui/seeker/SeekerConfirmDialog.kt` — 砍掉 isSystemInDarkTheme()（5 處），全部 AppColors，確認 AccentGreen
-
-#### 七、提問者子元件（6 檔案）
-- `ui/seeker/components/AskQuestionHeader.kt` — emoji→Icons.AutoAwesome+呼吸光暈，引導副標
-- `ui/seeker/components/AskQuestionInputBar.kt` — 11 處硬寫色碼全改，砍掉 isSystemInDarkTheme()（2 處）
-- `ui/seeker/components/AttachmentBottomSheet.kt` — 砍掉 isSystemInDarkTheme()（3 處），Sheet SurfaceDark，DragHandle BorderGray
-- `ui/seeker/components/BackgroundGlow.kt` — 單色→綠藍雙色光暈（AccentGreen+AccentBlue）
-- `ui/seeker/components/DrawerContent.kt` — 10 處硬寫色碼全改，搜尋框 SurfaceMedium，游標 AccentGreen
-- `ui/seeker/components/FullSettingsScreen.kt` — 全螢幕 DarkBackground，返回 24→40dp+SurfaceMedium，登出 StatusError
-
-#### 八、聊天元件（6 檔案）
-- `ui/chat/components/ChatTopBar.kt`（含 QuestionBanner）— 砍掉 isDarkTheme（12 處），TopBar SurfaceDark，HelpOutline→AutoMirrored
-- `ui/chat/components/ChatBottomArea.kt` — isDarkTheme 預設 true，preview 文字改 when 表達式
-- `ui/chat/components/ChatInputBar.kt` — 8 處硬寫色碼全改，結束卡片 StatusError.copy(0.08f)+紅色描邊，Warning icon
-- `ui/chat/components/MessageList.kt` — 載入中文字 TextGray
-- `ui/chat/components/ReplyPreviewBar.kt` — 砍掉 isDarkTheme（3 處），背景 SurfaceMedium
-- `ui/chat/components/TypingIndicator.kt` — 砍掉 isSystemInDarkTheme()，文字/圓點 TextGray
-
-#### 九、聊天泡泡（5 檔案）
-- `ui/chat/bubble/ChatBubble.kt` — 砍掉 isSystemInDarkTheme()（4 處），頭像 AccentBlue/DarkBackground
-- `ui/chat/bubble/BubbleContent.kt` — 砍掉 isSystemInDarkTheme()（5 處），抽出 PendingOverlay()
-- `ui/chat/bubble/BubbleContextMenu.kt` — DropdownMenu 深色化 SurfaceMedium+14dp 圓角
-- `ui/chat/bubble/BubbleStatusMetadata.kt` — 砍掉 isSystemInDarkTheme()（3 處），已讀 AccentGreen
-- `ui/chat/bubble/VideoThumbnail.kt` — 背景 SurfaceDark，"▶"→Icons.Default.PlayArrow
-- `ui/chat/bubble/VoiceMessageBubble.kt` — 波形動態 contentColor（DarkBackground/TextWhite）
-
-#### 十、聊天主畫面與對話框（4 檔案）
-- `ui/chat/ChatScreen.kt` — Scaffold containerColor=DarkBackground，isDarkTheme→true 常數
-- `ui/chat/dialog/EndChatConfirmDialog.kt` — 砍掉 isSystemInDarkTheme()（4 處），確認 StatusError（破壞性操作）
-- `ui/chat/dialog/OpponentProfileDialog.kt` — 砍掉 isSystemInDarkTheme()（11 處），拆 ProfileStat 元件
-
-#### 十一、相機模組（6 檔案）
-- `ui/camera/CameraCaptureScreen.kt` — 背景 DarkBackground，對焦框 StatusPending，錄影計時底 DarkBackground.copy(0.5f)
-- `ui/camera/CameraControlButtons.kt` — 閃光燈 TextWhite/StatusPending，快門 TextWhite/StatusError/DarkBackground
-- `ui/camera/CameraPreviewActions.kt` — 丟棄 StatusError，傳送 AccentGreen
-- `ui/camera/ImagePreviewScreen.kt` — 背景 DarkBackground，"▶"→Icons.Default.PlayArrow
-- `ui/camera/VideoPreviewPlayer.kt` — 背景 DarkBackground，Slider AccentGreen，重播/控制列底 DarkBackground.copy(0.6f)
-
-#### 十二、錄音模組（1 檔案）
-- `ui/voice/VoiceRecordingScreen.kt` — 遮罩 DarkBackground.copy(0.85f)，按鈕 StatusError，取消 TextGray
-
-### 刪除
-- `ui/theme/Color.kt`（已合併進 AppColors.kt）
-
-## 2026-07-16
 ### 新增
-- `docs/` 文件目錄（PROJECT_STRUCTURE, ARCHITECTURE, MODULE_MAP, etc.）
-- `functions/index.js` MODEL 策略調整：PRIMARY 改為 gemini-3.1-flash-lite（無思考設定、無搜尋），4 個 FALLBACK 模型啟用 Google Search grounding
-- Prompt 加入「不確定請 REJECT」引導
-- `domain/expert/PublishSkillUseCase.kt` — 封裝技能發布邏輯
-- `domain/expert/ObserveSolutionsUseCase.kt` — 封裝技能歷史監聽
-- `functions/index.js` 孤立 PENDING 自我修復排程（`healOrphanedPending`，每次掃 5 個 user）
+- **Nunito Sans 字體** — `nunito_sans_regular.ttf` + `nunito_sans_bold.ttf`
+- **6 個 DI module** — CoreModule, AuthModule, ChatModule, ExpertModule, SeekerModule, MediaModule
 
-### 變更
-- `di/ExpertViewModel.kt` → `ui/expert/ExpertViewModel.kt`（含 `ExpertUiState`、`ExpertUiEvent`）
-- `di/SeekerViewModel.kt` → `ui/seeker/SeekerViewModel.kt`（含 `SeekerUiState`）
-- `ExpertViewModel` 改用注入式 UseCase（`PublishSkillUseCase`、`ObserveSolutionsUseCase`）
-- `database.rules.json` 加入 `solutions/$uid/.indexOn: ["status"]`
-- 同步更新所有 import（ExpertScreen、AppNavigation、AskQuestionScreen、測試）
+### 修改檔案
+- `ui/theme/AppColors.kt` — 從 Color.kt 遷出獨立檔
+- `ui/theme/Color.kt` — 合併進 AppColors.kt 後刪除
+- `ui/theme/Theme.kt` — 純深色 darkColorScheme
+- `ui/theme/Type.kt` — Nunito Sans 完整 14 級 Typography
+- `di/CoreModule.kt`, `di/AuthModule.kt`, `di/ChatModule.kt`, `di/ExpertModule.kt`, `di/SeekerModule.kt`, `di/MediaModule.kt` — 新增
+- `di/AppModule.kt` — 刪除（94 行 → 6 modules 共 158 行）
+- `ui/MainActivity.kt` — KoinApplication 載入 6 modules
+- `docs/MODULE_MAP.md` — DI 區塊更新
+- 根目錄 `CHANGELOG_OLD.md`、`get_sha1.md` 搬入 `docs/`
+
+### Git
+- 約 53+ 次提交
+
+---
+
+## 2026-07-17 — Round 11：Serper 外部搜尋（避開 Gen3 Free Tier 限制）
+
+### 新增
+- `searchOnSerper()` 函式 — 調用 `https://google.serper.dev/search`
+- `useWebFetch` 自訂旗標
+- `SERPER_API_KEY` Firebase secret
+- Gen3 thinking 語法支援 — `thinkingLevel`
+- 批次測試按鈕（ExpertScreen 底部，20 筆冷門技能）
+- Per-skill logging
+
+### 修改檔案
+- `functions/index.js` — Serper 搜尋整合、Model 陣列縮減為 4 個
+- `ui/expert/ExpertScreen.kt` — 批次測試按鈕
+
+### 模型測試結果（2026/7/17）
+- `gemini-3.1-flash-lite` + Serper：731ms，2/2 接受 ✅
+- `gemini-3-flash-preview` + Serper + thinkingLevel `low`：待測試
+
+### Git
+- 約 42+ 次提交
+
+---
+
+## 2026-07-16 — Round 10：AGP 升級 + ExpertViewModel 命名同步修復
+
+### 修改檔案
+- `gradle/libs.versions.toml` — AGP 9.2.1 → 9.3.0
+- `ui/expert/ExpertViewModel.kt` — `publishErrorRes` → `publishFeedbackRes`
+- `docs/` — API 文件更新
 
 ### 修正
-- `functions/index.js` 路徑編碼問題：Firebase RTDB 不允許 `.`、`#`、`$`、`[`、`]`，改用 base64url 編碼 blacklist/whitelist 路徑
+- ExpertViewModel 命名未同步導致 IDE cascading 錯誤
 
-## 2026-07-15
-### 新增
-- Cloud Function Google Search grounding（`tools: [{ googleSearch: {} }]`）
-- QuickLogCard floating overlay 自動 3 秒消失
-- 錯誤保留文字、成功清除輸入
+---
 
-### 修正
-- `ExpertViewModel.kt` 命名未同步修復（`publishErrorRes` → `publishFeedbackRes`）
-- AGP 9.2.1 → 9.3.0
+## 2026-07-15 — Round 9：發布反饋改為 floating overlay
 
-## 2026-07-14
-### 新增
-- 發布反饋 floating overlay（取代 Snackbar）
-- Submission Lock 機制（後端連續 REJECTED 達 3 次鎖 24h + 前端阻擋）
-- 亂碼檢測強化（bigram 重複、SKILL_UNLIKELY_CHARS）
-- `isLoading` 防連點
-- `Lifecycle 2.10.0` 依賴
-
-### 修正
-- 啟動閃退 crash（userId.isBlank guard）
-- `updateChildren()` → 個別 `setValue()`（避免 persistence 衝突）
-- KnowledgeItemCard 隱藏 PENDING 卡片
-- Cloud Function processing entry 卡住風險（timeout 5 分鐘）
-- Cloud Function 遷移 2nd Gen + SDK 遷移
+### 修改檔案
+- `ui/expert/ExpertScreen.kt` — `onClearPublishError` → `onClearPublishFeedback`；Scaffold 包裹 Box；新增 floating overlay Card
+- `ui/expert/components/QuickLogCard.kt` — 移除 inline error Text，改為 `onClearFeedback`
+- `ui/expert/ExpertViewModel.kt` — `publishFeedbackRes` 命名同步、3 秒自動消失
 
 ### 廢棄
-- `ExtractLocalTagsUseCase.kt`（dead code）
+- QuickLogCard 的 `publishError` 參數
 
-## 2026-07-13
+---
+
+## 2026-07-15 — Cloud Function 修正
+
+### 修正
+- `model_status` 路徑編碼 — 模型名含 `.` 導致 RTDB crash
+- Gemini 2.5 系列不支援 `responseMimeType: 'application/json'` + `tools: [googleSearch]` 並用
+- FALLBACK 順序重排
+
+---
+
+## 2026-07-14 — Round 8：Crash 修復 + saveSkill 改寫 + 亂碼檢測 + Submission Lock
+
+### 修改檔案
+- `ui/expert/ExpertViewModel.kt` — userId.isBlank guard、submissionLock 監聽、isLoading 防連點
+- `data/repository/ExpertRepository.kt` — callbackFlow guard、`updateChildren()` → 個別 `setValue()`
+- `domain/expert/ExpertInputValidator.kt` — bigram 重複檢測、`SKILL_UNLIKELY_CHARS`
+- `ui/expert/ExpertScreen.kt` — PENDING 隱藏卡片、ACTIVE 顯示標籤
+- `ui/navigation/AppNavigation.kt` — LaunchedEffect guard
+- `functions/index.js` — AI prompt 強化、Submission Lock 機制
+- `strings.xml` — 新增 2 條字串
+
+### 修正
+- 啟動閃退 crash
+- `updateChildren()` + `setPersistenceEnabled(true)` 衝突
+- 亂碼檢測不足
+- 惡意連續發布無阻擋機制
+
+---
+
+## 2026-07-14 — Round 7：大型重構（callbackFlow、狀態提升、資安加固）
+
+### 新增檔案
+- `data/Constants.kt` — FirebasePaths / FirebaseFields / StatusValues 常數
+
+### 修改檔案（已列於 PROGRESS 第 7 輪）
+
+### 關鍵決策
+- Repository 無狀態化 — callbackFlow `awaitClose` 自動清除 listener
+- `saveSkill()` 用 `updateChildren()` 原子寫入（後因 persistence 衝突在第 8 輪回退為個別 `setValue()`）
+- State Hoisting — ExpertScreenContent 可獨立 Preview/測試
+- 字串外部化 — ShowToast 使用 `@StringRes`
+- 移除 `$other` 萬用字元規則
+
+---
+
+## 2026-07-13 — Round 6：全面修復（編輯流程、效能優化、測試強化）
+
+### 修改檔案
+- `domain/expert/ExtractLocalTagsUseCase.kt` — 刪除（dead code）
+- `data/repository/ExpertRepository.kt` — `.await()` 寫法、`editSkill()`
+- `ui/expert/ExpertViewModel.kt` — SkillEditDialog 狀態
+- `ui/expert/ExpertScreen.kt` — 編輯按鈕、SkillEditDialog
+- `functions/index.js` — 排程 5→1 分鐘
+- `app/.../ExpertViewModelTest.kt` — 測試擴充
+
+---
+
+## 2026-07-13 — Cloud Function 初版
+
 ### 新增
 - Cloud Function `batchProcessPendingSkills`（首版）
-- 5 模型 fallback 鏈（primary → fallback_1 → ...）
+- 5 模型 fallback 鏈
 - `config/model_status` 追蹤與重置
 - `minInstances: 1`
+- `responseMimeType: 'application/json'`
 
 ### 變更
 - 客戶端 AI → 後端 Cloud Function
 - SDK `@google/generative-ai` → `@google/genai`
 - `admin.database()` → `getDatabase()`
 - Node.js 20 → 24
+
+---
 
 ## 2026-07-12 之前
 - 初始專案建置
@@ -268,3 +311,14 @@
 - Media3 播放器
 - Koin DI 整合
 - Compose Navigation 路由
+
+## Git 備註
+- 約 280+ 次提交（至 Round 13），已全部推送至 main
+- 第 7 輪：16 個 source 檔案
+- 第 8 輪：9 個 source 檔案
+- 第 9 輪：1 個檔案
+- 第 10 輪：2 個檔案
+- 第 11 輪：1 個檔案（`functions/index.js`）
+- 第 12 輪：13+ 個檔案
+- 第 13 輪：36+ 個 UI 檔案
+- Round 14+：記載於對應區段

@@ -150,45 +150,6 @@ ChatViewModel
 ## UI 元件階層 (Compose)
 
 ```
-MainActivity
-  └─ AppNavigation (NavHost)
-       ├─ RoleSelectScreen
-       ├─ AuthScreen / LoginForm / RegisterForm
-       ├─ Seeker (提問者)
-       │   ├─ AskQuestionScreen
-       │   │   ├─ AskQuestionHeader
-       │   │   ├─ AskQuestionInputBar
-       │   │   └─ AttachmentBottomSheet
-       │   ├─ MatchingOverlay / MatchingDialog
-       │   └─ FullSettingsScreen (DrawerContent)
-       │
-       ├─ Expert (專家)
-        │   └─ ExpertScreen
-        │       ├─ ExpertScreenContent (stateless)
-        │       │   ├─ components/QuickLogCard (輸入 + 發布)
-        │       │   ├─ components/KnowledgeItemCard (技能卡片)
-        │       │   ├─ components/SkillEditDialog (編輯彈窗)
-        │       │   └─ Floating feedback overlay
-        │       └─ ExpertDialogs
-       │
-       ├─ ChatScreen
-       │   ├─ ChatTopBar
-       │   ├─ MessageList
-       │   │   └─ ChatBubble
-       │   │       ├─ BubbleContent
-       │   │       ├─ BubbleContextMenu
-       │   │       └─ BubbleStatusMetadata
-       │   ├─ ChatBottomArea
-       │   │   ├─ ChatInputBar
-       │   │   └─ ReplyPreviewBar
-       │   └─ ChatDialogHost
-       │       ├─ EndChatConfirmDialog
-       │       └─ OpponentProfileDialog
-       │
-       ├─ CameraCaptureScreen
-       │   ├─ CameraControlButtons
-       │   ├─ CameraPreviewActions
-       │   └─ ImagePreviewScreen / VideoPreviewPlayer
-       │
-       └─ VoiceRecordingScreen
 ```
+
+> UI 元件階層已移至 `docs/MODULE_MAP.md`（各功能區塊的依賴樹）

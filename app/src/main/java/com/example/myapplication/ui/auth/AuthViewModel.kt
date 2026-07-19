@@ -296,13 +296,10 @@ class AuthViewModel(
 
     private fun setError(error: UiText) {
         _uiState.update { it.copy(error = error) }
-        _toastEvent.trySend(error)
     }
 
     fun setError(message: String) {
-        val error = UiText.Dynamic(message)
-        _uiState.update { it.copy(error = error) }
-        _toastEvent.trySend(error)
+        _uiState.update { it.copy(error = UiText.Dynamic(message)) }
     }
 
     fun clearError() {

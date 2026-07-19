@@ -79,6 +79,19 @@ observeExpertStatus()      → callbackFlow
 - Build：`.\gradlew.bat assembleDebug --daemon --parallel`
 - 清理 Build：`.\gradlew.bat clean`
 - Deploy Cloud Function：`firebase deploy --only functions --force`
-- 查看 Log：`firebase functions:log --only batchProcessPendingSkills`
+- 查看 Log：`firebase functions:log --only batchProcess`
 - RTDB 操作：使用 Firebase MCP 工具
 - Git：只 stage 預期檔案，不提交 `node_modules/`
+
+### 取得 debug SHA-1 fingerprint
+在模擬器執行以下指令，輸出中找 `SHA1:`，加到 Firebase Console → Project Settings → Android app → SHA certificate fingerprints：
+
+Android Studio 內建 JDK：
+```powershell
+& "C:\Program Files\Android\Android Studio\jbr\bin\keytool" -list -v -keystore "$env:USERPROFILE\.android\debug.keystore" -alias androiddebugkey -storepass android -keypass android
+```
+
+系統 Java：
+```powershell
+keytool -list -v -keystore "%USERPROFILE%\.android\debug.keystore" -alias androiddebugkey -storepass android -keypass android
+```
