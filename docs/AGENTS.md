@@ -3,6 +3,7 @@
 ## 強制規則
 
 - **查閱最新文檔：** 回答 API/SDK 語法前**必須**搜尋最新官方文檔。
+- **標註來源：** 回答時必須附上參考的官方文檔連結。
 - **強制使用 MCP 工具：** 排查資料庫問題時**嚴禁**要求手動前往 Firebase Console，必須主動調用 MCP 工具。
 - **MCP 資料庫 URL：** 調用 `firebase_realtimedatabase_get_data` 時**必須**指定 `databaseUrl: "https://warmhelpapp-default-rtdb.firebaseio.com"`。
 - **優先參考 `docs/`：** 先查閱 `docs/` 目錄下的對應文件，再自行推理。

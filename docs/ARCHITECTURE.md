@@ -27,15 +27,14 @@
 │  Cloud Messaging    │  Hosting                           │
 ├─────────────────────────────────────────────────────────┤
 │              Cloud Function (Node.js 22)                  │
-│  batchProcessPendingSkills (scheduler, every 1 min)      │
-│    └─ Blacklist check → Whitelist check → Gemini AI      │
-│    └─ 5 model fallback chain (Serper/Google Search)      │
-│    └─ Submission Lock management                          │
-│                                                          │
-│  batchProcessPendingQuestions (scheduler, every 1 min)    │
-│    └─ Blacklist check → Whitelist check → Gemini AI      │
-│    └─ 5 model fallback chain (same as skills)            │
-│    └─ Tag-based matching → expert assignment              │
+│  batchProcess (scheduler, every 1 min)                    │
+│    ├─ skills: Blacklist → Whitelist → Gemini AI           │
+│    │   └─ 5 model fallback (Serper/Google Search)         │
+│    │   └─ Submission Lock management                       │
+│    │                                                       │
+│    └─ questions: Blacklist → Whitelist → Gemini AI         │
+│        └─ 5 model fallback (same as skills)                │
+│        └─ Tag-based matching → expert assignment            │
 └─────────────────────────────────────────────────────────┘
 ```
 

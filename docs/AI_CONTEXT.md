@@ -32,7 +32,7 @@ observeExpertStatus()      → callbackFlow
 - 不能拆分、不能改名已有常數
 
 ### Cloud Function
-- 排程固定 `every 5 minutes`
+- 排程固定 `every 1 minute`（`* * * * *`）
 - `minInstances: 1`（避免冷啟動）
 - 2nd Gen (`firebase-functions/v2/scheduler`)
 - Secret via `defineSecret('GEMINI_API_KEY')` + `defineSecret('SERPER_API_KEY')`
