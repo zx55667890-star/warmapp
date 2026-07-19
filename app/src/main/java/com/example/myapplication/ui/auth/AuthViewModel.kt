@@ -76,11 +76,11 @@ class AuthViewModel(
 
     private fun sendVerificationInternal(email: String, prefix: String = "") {
         if (email.isBlank()) {
-            _uiState.update { it.copy(error = UiText.Dynamic("è«‹å…ˆè¼¸å…¥ Email")) }
+            _uiState.update { it.copy(error = UiText.Dynamic("請先輸入 Email")) }
             return
         }
         if (!isAllowedEmail(email)) {
-            _uiState.update { it.copy(error = UiText.Dynamic("éŒ¯èª¤çš„ä¿¡ç®±æ ¼å¼")) }
+            _uiState.update { it.copy(error = UiText.Dynamic("錯誤的信箱格式")) }
             return
         }
         val now = System.currentTimeMillis()
@@ -88,7 +88,7 @@ class AuthViewModel(
         val lastSent = if (isReset) _uiState.value.resetVerificationLastSentAt else _uiState.value.verificationLastSentAt
         if (now - lastSent < 60_000L) {
             val remain = 60 - (now - lastSent) / 1000
-            _uiState.update { it.copy(error = UiText.Dynamic("è«‹ ${remain} ç§’å¾Œå†è©¦")) }
+            _uiState.update { it.copy(error = UiText.Dynamic("請 ${remain} 秒後再試")) }
             return
         }
         viewModelScope.launch {
@@ -102,16 +102,16 @@ class AuthViewModel(
                         resetVerificationLastSentAt = if (isReset) now else it.resetVerificationLastSentAt
                     )
                 }
-                _toastEvent.send(UiText.Dynamic("é©—è­‰ç¢¼å·²ç™¼é€è‡³ $email"))
+                _toastEvent.send(UiText.Dynamic("驗證碼已發送至 $email"))
             } catch (e: Exception) { if (e is kotlinx.coroutines.CancellationException) throw e;
-                _uiState.update { it.copy(error = UiText.Dynamic(e.message ?: "ç™¼é€å¤±æ•—")) }
+                _uiState.update { it.copy(error = UiText.Dynamic(e.message ?: "發送失敗")) }
             }
         }
     }
 
     fun sendResetEmail(email: String) {
         if (email.isBlank()) {
-            _uiState.update { it.copy(error = UiText.Dynamic("è«‹å…ˆè¼¸å…¥ Email")) }
+            _uiState.update { it.copy(error = UiText.Dynamic("請先輸入 Email")) }
             return
         }
         _uiState.update { it.copy(isLoading = true, error = null) }
@@ -120,7 +120,7 @@ class AuthViewModel(
                 resetPasswordUseCase.sendResetEmail(email)
                 _uiState.update { it.copy(isLoading = false, resetSent = true) }
             } catch (e: Exception) { if (e is kotlinx.coroutines.CancellationException) throw e;
-                _uiState.update { it.copy(isLoading = false, error = UiText.Dynamic(e.message ?: "ç™¼é€å¤±æ•—")) }
+                _uiState.update { it.copy(isLoading = false, error = UiText.Dynamic(e.message ?: "發送失敗")) }
             }
         }
     }
@@ -140,15 +140,15 @@ class AuthViewModel(
 
     fun submit(email: String, password: String, confirmPassword: String, nickname: String, verificationCode: String) {
         if (email.isBlank() || password.isBlank()) {
-            _uiState.update { it.copy(error = UiText.Dynamic("è«‹å¡«å¯« email å’Œå¯†ç¢¼")) }
+            _uiState.update { it.copy(error = UiText.Dynamic("請填寫 email 和密碼")) }
             return
         }
         if (!isAllowedEmail(email)) {
-            _uiState.update { it.copy(error = UiText.Dynamic("éŒ¯èª¤çš„ä¿¡ç®±æ ¼å¼")) }
+            _uiState.update { it.copy(error = UiText.Dynamic("錯誤的信箱格式")) }
             return
         }
         if (_uiState.value.isRegisterMode && password != confirmPassword) {
-            _uiState.update { it.copy(error = UiText.Dynamic("å…©æ¬¡å¯†ç¢¼ä¸ä¸€è‡´")) }
+            _uiState.update { it.copy(error = UiText.Dynamic("兩次密碼不一致")) }
             return
         }
         val pwdError = AuthUtils.validatePassword(password)
@@ -157,7 +157,7 @@ class AuthViewModel(
             return
         }
         if (_uiState.value.isRegisterMode && nickname.isBlank()) {
-            _uiState.update { it.copy(error = UiText.Dynamic("è«‹å¡«å¯«æš±ç¨±")) }
+            _uiState.update { it.copy(error = UiText.Dynamic("請填寫暱稱")) }
             return
         }
         if (_uiState.value.isRegisterMode) {
@@ -173,13 +173,13 @@ class AuthViewModel(
             try {
                 if (_uiState.value.isRegisterMode) {
                     if (verificationCode.isBlank()) {
-                        _uiState.update { it.copy(isLoading = false, error = UiText.Dynamic("è«‹è¼¸å…¥é©—è­‰ç¢¼")) }
+                        _uiState.update { it.copy(isLoading = false, error = UiText.Dynamic("請輸入驗證碼")) }
                         return@launch
                     }
                     val targetEmail = _uiState.value.verificationSentTo.ifBlank { email }
                     val valid = verifyVerificationCodeUseCase(targetEmail, verificationCode)
                     if (!valid) {
-                        _uiState.update { it.copy(isLoading = false, error = UiText.Dynamic("é©—è­‰ç¢¼éŒ¯èª¤")) }
+                        _uiState.update { it.copy(isLoading = false, error = UiText.Dynamic("驗證碼錯誤")) }
                         return@launch
                     }
                     registerUseCase(email, password)
@@ -195,22 +195,22 @@ class AuthViewModel(
                     _uiState.update { it.copy(isLoading = false, isLoggedIn = true) }
                 }
             } catch (e: Exception) { if (e is kotlinx.coroutines.CancellationException) throw e;
-                _uiState.update { it.copy(isLoading = false, error = UiText.Dynamic(e.message ?: "æ“ä½œå¤±æ•—")) }
+                _uiState.update { it.copy(isLoading = false, error = UiText.Dynamic(e.message ?: "操作失敗")) }
             }
         }
     }
 
     fun sendPasswordReset(email: String, verificationCode: String) {
         if (email.isBlank()) {
-            _uiState.update { it.copy(error = UiText.Dynamic("è«‹å…ˆè¼¸å…¥ Email")) }
+            _uiState.update { it.copy(error = UiText.Dynamic("請先輸入 Email")) }
             return
         }
         if (!isAllowedEmail(email)) {
-            _uiState.update { it.copy(error = UiText.Dynamic("éŒ¯èª¤çš„ä¿¡ç®±æ ¼å¼")) }
+            _uiState.update { it.copy(error = UiText.Dynamic("錯誤的信箱格式")) }
             return
         }
         if (verificationCode.isBlank()) {
-            _uiState.update { it.copy(error = UiText.Dynamic("è«‹è¼¸å…¥é©—è­‰ç¢¼")) }
+            _uiState.update { it.copy(error = UiText.Dynamic("請輸入驗證碼")) }
             return
         }
         _uiState.update { it.copy(isLoading = true, error = null) }
@@ -220,23 +220,23 @@ class AuthViewModel(
                 Log.d("AuthViewModel", "sendPasswordReset: targetEmail=$targetEmail code=$verificationCode emailField=$email")
                 val valid = resetPasswordUseCase.verifyResetCode(targetEmail, verificationCode)
                 if (!valid) {
-                    _uiState.update { it.copy(isLoading = false, error = UiText.Dynamic("é©—è­‰ç¢¼éŒ¯èª¤")) }
+                    _uiState.update { it.copy(isLoading = false, error = UiText.Dynamic("驗證碼錯誤")) }
                     return@launch
                 }
                 _uiState.update { it.copy(isLoading = false, showNewPasswordForm = true) }
             } catch (e: Exception) { if (e is kotlinx.coroutines.CancellationException) throw e;
-                _uiState.update { it.copy(isLoading = false, error = UiText.Dynamic(e.message ?: "é©—è­‰å¤±æ•—")) }
+                _uiState.update { it.copy(isLoading = false, error = UiText.Dynamic(e.message ?: "驗證失敗")) }
             }
         }
     }
 
     fun confirmResetPassword(email: String, verificationCode: String, newPassword: String, confirmNewPassword: String) {
         if (newPassword.isBlank() || confirmNewPassword.isBlank()) {
-            _uiState.update { it.copy(error = UiText.Dynamic("è«‹å¡«å¯«å¯†ç¢¼")) }
+            _uiState.update { it.copy(error = UiText.Dynamic("請填寫密碼")) }
             return
         }
         if (newPassword != confirmNewPassword) {
-            _uiState.update { it.copy(error = UiText.Dynamic("å…©æ¬¡å¯†ç¢¼ä¸ä¸€è‡´")) }
+            _uiState.update { it.copy(error = UiText.Dynamic("兩次密碼不一致")) }
             return
         }
         val pwdError = AuthUtils.validatePassword(newPassword)
@@ -245,19 +245,19 @@ class AuthViewModel(
             return
         }
         if (verificationCode.isBlank()) {
-            _uiState.update { it.copy(error = UiText.Dynamic("è«‹é‡æ–°é©—è­‰")) }
+            _uiState.update { it.copy(error = UiText.Dynamic("請重新驗證")) }
             return
         }
         _uiState.update { it.copy(isLoading = true, error = null) }
         viewModelScope.launch {
             try {
-                Log.d("AuthViewModel", "æº–å‚™é‡è¨­å¯†ç¢¼: email=$email, code=$verificationCode, newPassword=$newPassword")
+                Log.d("AuthViewModel", "準備重設密碼: email=$email, code=$verificationCode, newPassword=$newPassword")
                 resetPasswordUseCase.resetViaCloudFunction(email, newPassword, verificationCode)
                 _uiState.update { it.copy(isLoading = false, showNewPasswordForm = false) }
-                _toastEvent.send(UiText.Dynamic("å¯†ç¢¼é‡è¨­æˆåŠŸï¼Œè«‹ç”¨æ–°å¯†ç¢¼ç™»å…¥"))
+                _toastEvent.send(UiText.Dynamic("密碼重設成功，請用新密碼登入"))
                 _navigateEvent.send(NavigationEvent.ShowLoginForm)
             } catch (e: Exception) { if (e is kotlinx.coroutines.CancellationException) throw e;
-                _uiState.update { it.copy(isLoading = false, error = UiText.Dynamic(e.message ?: "å¯†ç¢¼é‡è¨­å¤±æ•—")) }
+                _uiState.update { it.copy(isLoading = false, error = UiText.Dynamic(e.message ?: "密碼重設失敗")) }
             }
         }
     }
@@ -283,10 +283,10 @@ class AuthViewModel(
                 _uiState.update { it.copy(isLoading = false, isLoggedIn = true) }
             } catch (e: TimeoutCancellationException) {
                 Log.w("AuthViewModel", "signInWithGoogle timeout")
-                _uiState.update { it.copy(isLoading = false, error = UiText.Dynamic("ç™»å…¥é€¾æ™‚ï¼Œè«‹æª¢æŸ¥ç¶²è·¯é€£ç·šæˆ– Firebase Google ç™»å…¥æ˜¯å¦é–‹å•Ÿ")) }
+                _uiState.update { it.copy(isLoading = false, error = UiText.Dynamic("登入逾時，請檢查網路連線或 Firebase Google 登入是否開啟")) }
             } catch (e: Exception) { if (e is kotlinx.coroutines.CancellationException) throw e;
                 Log.w("AuthViewModel", "signInWithGoogle failed: ${e.message}")
-                _uiState.update { it.copy(isLoading = false, error = UiText.Dynamic(e.message ?: "ç™»å…¥å¤±æ•—")) }
+                _uiState.update { it.copy(isLoading = false, error = UiText.Dynamic(e.message ?: "登入失敗")) }
             }
         }
     }
@@ -323,4 +323,3 @@ class AuthViewModel(
         fun validateNickname(nickname: String): String? = AuthUtils.validateNickname(nickname)
     }
 }
-
