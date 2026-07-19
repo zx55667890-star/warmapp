@@ -86,9 +86,9 @@ fun MessageList(
                 val isMine = msg.senderId == userId
                 val originalIndex = allMessages.lastIndex - index
                 
-                // åœ¨åè½‰çš„åˆ—è¡¨ä¸­ï¼Œindex 0 æ˜¯æœ€æ–°çš„è¨Šæ¯ã€‚
-                // å› æ­¤ã€Œè¼ƒèˆŠã€çš„è¨Šæ¯åœ¨ reversedMessages[index + 1]
-                // ã€Œè¼ƒæ–°ã€çš„è¨Šæ¯åœ¨ reversedMessages[index - 1]
+                // 在反轉的列表中，index 0 是最新的訊息。
+                // 因此「較舊」的訊息在 reversedMessages[index + 1]
+                // 「較新」的訊息在 reversedMessages[index - 1]
                 val prevMsg = if (index < reversedMessages.lastIndex) reversedMessages[index + 1] else null
                 val nextMsg = if (index > 0) reversedMessages[index - 1] else null
 
@@ -159,7 +159,7 @@ fun MessageList(
         )
         if (isLoadingMore) {
             Box(Modifier.fillMaxWidth().padding(4.dp).align(Alignment.TopCenter), contentAlignment = Alignment.Center) {
-                Text("è¼‰å…¥ä¸­...", fontSize = 12.sp, color = if (isDarkTheme) Color(0xFF888888) else Color.Gray)
+                Text("載入中...", fontSize = 12.sp, color = if (isDarkTheme) Color(0xFF888888) else Color.Gray)
             }
         }
     }

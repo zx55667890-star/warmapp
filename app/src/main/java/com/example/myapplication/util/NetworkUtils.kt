@@ -11,10 +11,10 @@ import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
 import java.net.URL
 
-// âœ… æ•æ„Ÿè³‡è¨Šç¾å·²ç§»è‡³ BuildConfigï¼ˆé€éŽ build.gradle.kts æ³¨å…¥ï¼‰
-// åŽŸå§‹ç¡¬ç·¨ç¢¼ URL å·²ç§»é™¤ï¼Œæ”¹ç”±ç·¨è­¯æ™‚é€šéŽ buildConfigField æä¾›
-// const val SHEET_WEBHOOK_URL = "..."  // â† å·²ç§»é™¤
-// const val SPREADSHEET_ID = "..."      // â† å·²ç§»é™¤
+// ✅ 敏感資訊現已移至 BuildConfig（透過 build.gradle.kts 注入）
+// 原始硬編碼 URL 已移除，改由編譯時透過 buildConfigField 提供
+// const val SHEET_WEBHOOK_URL = "..."  // ← 已移除
+// const val SPREADSHEET_ID = "..."      // ← 已移除
 
 suspend fun uploadToGoogleSheet(text: String) {
     withContext(Dispatchers.IO) {
@@ -30,7 +30,7 @@ suspend fun uploadToGoogleSheet(text: String) {
             }.toString()
 
             OutputStreamWriter(conn.outputStream, Charsets.UTF_8).use { it.write(jsonParam) }
-            conn.responseCode // ç­‰å¾…å›žæ‡‰å®Œæˆ
+            conn.responseCode // 等待回應完成
         } catch (e: Exception) { if (e is kotlinx.coroutines.CancellationException) throw e;
             e.printStackTrace()
         } finally {
@@ -39,8 +39,8 @@ suspend fun uploadToGoogleSheet(text: String) {
     }
 }
 
-// ä¿®å¾©ï¼šå¾ž testUpload æ”¹åç‚ºèªžæ„æ­£ç¢ºçš„ uploadChatAndComplete
-// ä¿®å¾©ï¼šbuildString è£¡çš„äº‚ç¢¼ï¼ˆåŽŸç‚º BIG5/UTF-8 æ··ç¢¼ï¼‰+ $è®Šæ•¸ æ’å€¼å¤±æ•ˆ
+// 修復：從 testUpload 改名為語意正確的 uploadChatAndComplete
+// 修復：buildString 裡的亂碼（原為 BIG5/UTF-8 混碼）+ $變數 插值失效
 suspend fun uploadChatAndComplete(chatroomId: String, firebaseDb: FirebaseDatabase) {
     if (chatroomId.isBlank()) return
 
@@ -64,9 +64,9 @@ suspend fun uploadChatAndComplete(chatroomId: String, firebaseDb: FirebaseDataba
         }
 
         val fullText = buildString {
-            appendLine("å•é¡Œï¼š$questionText")       // ä¿®å¾©ï¼šåŽŸæœ¬æ˜¯äº‚ç¢¼ "??åš—?questionText"
-            appendLine("å°ˆå®¶ IDï¼š$expertId")        // ä¿®å¾©ï¼šåŽŸæœ¬æ˜¯äº‚ç¢¼ "æ’ æŒ¯ IDåš—?expertId"
-            appendLine("å°è©±ç´€éŒ„ï¼š")                 // ä¿®å¾©ï¼šåŽŸæœ¬æ˜¯äº‚ç¢¼ "æ’ åº—è??"
+            appendLine("問題：$questionText")       // 修復：原本是亂碼 "??問?questionText"
+            appendLine("專家 ID：$expertId")        // 修復：原本是亂碼 "專 ID?expertId"
+            appendLine("對話紀錄：")                 // 修復：原本是亂碼 "對?"
             append(messages.joinToString("\n"))
         }
 
@@ -77,6 +77,5 @@ suspend fun uploadChatAndComplete(chatroomId: String, firebaseDb: FirebaseDataba
     }
 }
 
-// å·²ç§»é™¤ï¼šsubmitRatingAndCommentï¼ˆå¾žæœªè¢«å‘¼å«ï¼Œç‚ºæ­»ç¢¼ï¼‰
-// è‹¥å¾ŒçºŒè¦å¯¦ä½œè©•åˆ†åŠŸèƒ½ï¼Œå¯åœ¨æ­¤è™•é‡æ–°åŠ å…¥
-
+// 已移除：submitRatingAndComment（從未被呼叫，為死碼）
+// 若後續要實作評分功能，可在此處重新加入

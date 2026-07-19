@@ -16,25 +16,25 @@ class AiRepository(
 
     suspend fun generateExpertTags(domain: String, subDomain: String, problem: String): List<String> = withContext(Dispatchers.IO) {
         val prompt = """
-            ä½ æ˜¯ä¸€å€‹å°ˆæ¥­çš„æœå°‹ç³»çµ±æ¨™ç±¤ç”Ÿæˆå™¨ã€‚è«‹æ ¹æ“šä»¥ä¸‹çœŸäººå°ˆå®¶è¼¸å…¥çš„å°ˆæ¥­é ˜åŸŸï¼Œæç…‰å‡º 3 åˆ° 5 å€‹ç²¾æº–çš„ã€Œé—œéµå­—ç‰¹å¾µæ¨™ç±¤ã€(Tags)ï¼Œç”¨ä¾†å¹«åŠ©é…å°ç³»çµ±æœå°‹ã€‚
-            
-            å¤§é ˜åŸŸï¼š${domain}
-            å­é ˜åŸŸï¼š${subDomain}
-            å…·é«”èƒ½è§£æ±ºçš„å•é¡Œï¼š${problem}
+            你是一個專業的搜尋系統標籤生成器。請根據以下真人專家輸入的專業領域，提煉出 3 到 5 個精準的「關鍵字特徵標籤」(Tags)，用來幫助配對系統搜尋。
 
-            è¦å‰‡ï¼š
-            1. ç›´æŽ¥å›žè¦†æ¨™ç±¤åç¨±ï¼Œä½¿ç”¨åŠå½¢é€—è™Ÿ (,) åˆ†éš”ã€‚
-            2. çµ•å°ä¸è¦åŠ ä¸Š # å­—è™Ÿã€‚
-            3. çµ•å°ä¸è¦åŒ…å«ä»»ä½•å…¶ä»–è§£é‡‹æˆ–å•å€™æ–‡å­—ã€‚
-            
-            è¼¸å‡ºç¯„ä¾‹ï¼šæ·˜å¯¶,è·¨å¢ƒé€€è²¨,æµ·é‹ç‰©æµ,å…©å²¸é›»å•†
+            大領域：${domain}
+            子領域：${subDomain}
+            具體能解決的問題：${problem}
+
+            規則：
+            1. 直接回覆標籤名稱，使用半形逗號 (,) 分隔。
+            2. 絕對不要加上 # 字號。
+            3. 絕對不要包含任何其他解釋或問候文字。
+
+            輸出範例：淘寶,跨境退貨,海運物流,兩岸電商
         """.trimIndent()
         return@withContext try {
             Log.d("AiRepo", "generateExpertTags: sending prompt length=${prompt.length}")
             val response = client.models.generateContent("gemini-2.0-flash", prompt, emptyConfig)
             val responseText = response.text()
             if (!responseText.isNullOrBlank()) {
-                val tags = responseText!!.split(",", "ï¼Œ").map { it.trim() }.filter { it.isNotEmpty() }
+                val tags = responseText!!.split(",", "，").map { it.trim() }.filter { it.isNotEmpty() }
                 Log.d("AiRepo", "generateExpertTags: parsed tags=$tags")
                 tags
             } else {
@@ -42,7 +42,7 @@ class AiRepository(
                 generateLocalFallbackTags(domain, subDomain, problem)
             }
         } catch (e: Exception) { if (e is kotlinx.coroutines.CancellationException) throw e;
-            Log.e("AiRepo", "Gemini API é™æµæˆ–ç•°å¸¸ï¼Œå•Ÿå‹•æœ¬åœ°é™ç´šæ–·è©žæ©Ÿåˆ¶: ${e.message}")
+            Log.e("AiRepo", "Gemini API 限流或異常，啟動本地降級斷詞機制: ${e.message}")
             generateLocalFallbackTags(domain, subDomain, problem)
         }
     }
@@ -52,7 +52,7 @@ class AiRepository(
         if (domain.isNotBlank()) fallbackTags.add(domain.trim())
         if (subDomain.isNotBlank()) fallbackTags.add(subDomain.trim())
         if (problem.isNotBlank()) {
-            val tokens = problem.split(Regex("[\\s,ï¼Œã€\\.ã€‚åˆ°å¾žçš„èˆ‡å’ŒåŽ»åœ¨]"))
+            val tokens = problem.split(Regex("[\\s,，、\\.。到從的與和去在]"))
             tokens.forEach { token ->
                 val cleaned = token.trim()
                 if (cleaned.length >= 2 && !cleaned.all { it.isDigit() }) {
@@ -64,10 +64,10 @@ class AiRepository(
     }
 
     suspend fun generateResponse(question: String): String = withContext(Dispatchers.IO) {
-        val prompt = "ä½ æ˜¯ä¸€å€‹ç¶“é©—åˆ†äº«å¹³å°çš„AIåŠ©æ‰‹ã€‚è«‹é‡å°ä»¥ä¸‹å•é¡Œæä¾›å¯¦ç”¨ã€å…·é«”çš„å»ºè­°ã€‚" +
-                "å›žç­”è«‹ç”¨ç¹é«”ä¸­æ–‡ï¼ŒæŽ§åˆ¶åœ¨300å­—ä»¥å…§ã€‚å•é¡Œï¼š$question"
+        val prompt = "你是一個經驗分享平台的AI助手。請針對以下問題提供實用、具體的建議。" +
+                "回答請用繁體中文，控制在300字以內。問題：$question"
         val response = client.models.generateContent("gemini-2.0-flash", prompt, emptyConfig)
-        response.text() ?: "æŠ±æ­‰ï¼Œæˆ‘æš«æ™‚ç„¡æ³•å›žç­”é€™å€‹å•é¡Œã€‚"
+        response.text() ?: "抱歉，我暫時無法回答這個問題。"
     }
 
     fun createAiChatroom(questionId: String, questionText: String, aiResponse: String, onComplete: (String) -> Unit) {
@@ -100,4 +100,3 @@ class AiRepository(
             .addOnSuccessListener { onComplete(chatroomId) }
     }
 }
-
