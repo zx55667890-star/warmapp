@@ -1,5 +1,23 @@
 # CHANGELOG.md — 更新紀錄
 
+## 2026-07-19
+### 新增
+- **Cloud Function 合併** — `batchProcessPendingSkills` + `batchProcessPendingQuestions` 合併為單一 `batchProcess`，依序處理 skills→questions，消除 API 競爭
+
+### 變更
+- **還原單機配對流程** — CF 匹配後直接 `taken`，移除 `PendingAcceptance`/`ExpertAccepted` 狀態、`SeekerConfirmDialog`、「也設為經驗」按鈕
+- **GoogleSignIn 保留原 API** — Credential Manager 相容性不足，加 `@Suppress("DEPRECATION")` 保留 `GoogleSignIn` 類別
+- **`AuthUtils.normalizeEmail()`** — 全形 `＠` 自動轉半形 `@`
+
+### 修正
+- **中文亂碼修復（4 檔案）** — AuthViewModel/AiRepository/NetworkUtils/MessageList 的 UTF-8 中文字串誤存為 Latin-1 編碼
+- **MediaPlayer crash** — try-catch + safe release helper
+- **`combine` 三 flow 同步** — `onStart { emit(default) }` 
+- **`releaseStuckProcessing()`** — 清理卡住的 processing 標記（skills + questions）
+- **Submission Lock 邊界** — 跨批次累積 rejectedCount
+- **CF cooldown 10min→5min**
+- **`companion object { combine(...) }` 初始值問題**
+
 ## 2026-07-15
 ### 修正
 - `functions/index.js` `model_status` 路徑編碼 — 模型名含 `.` 導致 RTDB crash，讀寫改為 `encodePath(model.name)`

@@ -212,18 +212,34 @@
 - [x] **Observer try-catch** — 防止 collect block 崩潰殺死整體觀察協程
 
 ### Round 14：提問端 AI 標籤生成管線 + 非同步 Tag 配對（2026-07-18）
-- [x] **`Constants.kt` 擴充** — `FirebasePaths.PENDING_QUESTIONS` + `FirebaseFields` 新欄位（`MATCHED_EXP_TEXT`, `MATCHED_EXP_TIMESTAMP`, `AUTHOR_ID`）
-- [x] **`QuestionRepository.kt`** — `sendQuestion()` 寫入問題後同步寫入 `pending_questions/{id}`；`cancelMatching()` 清除佇列
+- [x] **`Constants.kt` 擴充** — `FirebasePaths.PENDING_QUESTIONS` + `FirebaseFields` 新欄位
+- [x] **`QuestionRepository.kt`** — `sendQuestion()` 寫入問題後同步寫入 `pending_questions/{id}`
 - [x] **`SeekerViewModel.kt`** — 移除 `matchCoordinator.matchAndAssignExpert()`，配對由後端非同步處理
-- [x] **`database.rules.json`** — 新增 `pending_questions` 路徑規則 + `.indexOn: ["timestamp"]`
-- [x] **`database.rules.json`** — 新增 `/experiences` 路徑規則 + `.indexOn: ["status"]`（修復 Cloud Function 缺少 index 警告）
-- [x] **`functions/index.js` — `batchProcessPendingSkills` 提速** — 排程 `5min→1min`、批量 `20→50`
-- [x] **`functions/index.js` — 新增 `batchProcessPendingQuestions`** — 讀取 `pending_questions` → 黑/白名單檢查 → 五模型標籤生成 → Tag 相似度配對（Jaccard 門檻 0.15）
-- [x] **`functions/index.js` — `matchQuestionByTags()` 輔助函數** — 讀取專家 ACTIVE solutions 合併標籤集，計算 Jaccard，指派最佳匹配
-- [x] **Cloud Function 部署成功** — `batchProcessPendingSkills` 更新 + `batchProcessPendingQuestions` 建立
-- [x] **端到端測試驗證** — 提問「淘寶要怎麼樣從台灣退貨回去？」成功：
-  - PRIMARY 模型 `gemini-3.1-flash-lite`：751ms，Accepted 1 / Rejected 0
-  - 生成標籤：`["淘寶","退貨","台灣","物流"]`（已快取至 `tags_whitelist`）
-  - `matchQuestionByTags()` 正常執行，因無在線專家具匹配標籤 → no match
-- [x] **文件更新** — ARCHITECTURE.md（新增提問資料流）、CHANGELOG.md、KNOWN_ISSUES.md（新增 6 條）、PROGRESS.md
+- [x] **`database.rules.json`** — 新增 `pending_questions` 路徑規則 + `.indexOn`
+- [x] **`functions/index.js`** — 新增 `batchProcessPendingQuestions` + `matchQuestionByTags()`
+- [x] **端到端測試驗證** — 提問「淘寶退貨」成功生成標籤 `["淘寶","退貨","台灣","物流"]`
+
+### Round 15：修復匹配路徑不一致 + 專家經驗發佈 UI（2026-07-18）
+- [x] **functions/index.js** — `matchQuestionByTags()` 讀取路徑 `experiences` → `active_experiences`
+- [x] **ExpertRepository.kt** — `expertId` → `authorId` 欄位名稱修正
+- [x] **QuickLogCard.kt** — 新增「也設為配對經驗」按鈕
+- [x] **database.rules.json** — `active_experiences` 補 `authorId`/`timestamp` 驗證
+
+### Round 16：全面 Bug 清除 + 單機配對還原 + 中文亂碼修復（2026-07-19）
+- [x] **還原單機切換配對** — CF `pending_acceptance`→`taken`；移除 `PendingAcceptance`/`ExpertAccepted` 狀態、`SeekerConfirmDialog`、「也設為經驗」按鈕、experience 編輯死碼
+- [x] **`activeChatRoomId` 前綴 bug** — 四處 `activeChatRoomId = questionId` 改為 `"ai_$questionId"`
+- [x] **#3: `@StringRes` 編譯警告** — 加 `-Xannotation-default-target=param-property`
+- [x] **#18: `TrendingUp` icon** — 改用 `Icons.AutoMirrored.Outlined.TrendingUp`
+- [x] **#1/#7: pending 孤立** — `releaseStuckProcessing()` 釋放逾時 processing 標記
+- [x] **#2: saveSkill 原子性** — 改用 `updateChildren()` 原子寫入
+- [x] **#12: healOrphanedPending** — 空 cursor try-catch
+- [x] **#5: Submission Lock 邊界** — 跨批次累積 rejectedCount
+- [x] **#21: combine 同步** — `onStart { emit(default) }`
+- [x] **#4: CF cooldown** — 10min→5min
+- [x] **#9: 合併兩 CF** — `batchProcessPendingSkills` + `batchProcessPendingQuestions` 合併為單一 `batchProcess`
+- [x] **#16: MediaPlayer crash** — try-catch + safe release
+- [x] **#14/#19: GoogleSignIn deprecated** — 先遷移至 Credential Manager 再還原為 GoogleSignIn + `@Suppress("DEPRECATION")`
+- [x] **中文亂碼修復（4 檔案）** — AuthViewModel/AiRepository/NetworkUtils/MessageList 的中文字串誤存為 Latin-1 編碼
+- [x] **全形 `＠` 信箱相容** — `AuthUtils.normalizeEmail()` 自動轉半形
+- [x] **文件更新** — KNOWN_ISSUES.md、PROGRESS.md、CHANGELOG.md
 
