@@ -258,13 +258,13 @@ SeekerViewModel.kt (ui/seeker/)
 ## 後端 (Cloud Function)
 | 檔案 | 角色 |
 |------|------|
-| `functions/index.js` | batchProcess (排程 AI 分析，含 Serper 搜尋、thinkingConfig、4 model fallback) |
+| `functions/index.js` | batchProcess (排程 AI 分析，含 Serper 搜尋、thinkingConfig、6 模型 fallback) |
 | `functions/package.json` | Node.js 24, firebase-admin, @google/genai |
 | `database.rules.json` | RTDB Security Rules |
 
 **依賴樹：**
 ```
-Firebase Scheduler (every 5 min)
+Firebase Scheduler (every 1 min)
   └── batchProcess (index.js)
         ├── [Self-Heal] healOrphanedPending()
         │     掃描 solutions PENDING > 10min 且無對應 pending_skills entry
@@ -272,7 +272,7 @@ Firebase Scheduler (every 5 min)
         ├── Blacklist check (tags_blacklist)
         ├── Whitelist check (tags_whitelist)
         └── Gemini AI (6 model fallback chain)
-              ├── Serper external search (FALLBACK_1, `useWebFetch`)
+              ├── Serper external search (FALLBACK_1, 4, 5, `useWebFetch`)
               └── Google Search grounding (FALLBACK_2~3 only)
 ```
 

@@ -80,8 +80,8 @@
 | 原因 | `saveSkill()` 使用兩次個別 `setValue()` 非原子寫入，`pending_skills` 可能寫失敗 |
 
 ## Cloud Function 模型清單 (fallback 順序)
-| 順位 | 模型 | 思考 | 搜尋 |
-|------|------|------|------|
+| 順位 | 模型 | 思考 | 搜尋 | 備註 |
+|------|------|------|------|------|
 | PRIMARY | gemini-3.1-flash-lite | - | ❌ | 最高 RPD 主力，快速濾掉已知技能 |
 | FALLBACK_1 | gemini-3.1-flash-lite | - | Serper | 同 PRIMARY + Serper 外部搜尋 |
 | FALLBACK_2 | gemini-2.5-flash-lite | budget:0 | ✅ googleSearch | 內建 Google Search |
