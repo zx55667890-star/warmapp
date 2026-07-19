@@ -253,6 +253,7 @@ async function processSkills() {
       updates[`solutions/${entry.userId}/${entry.id}/status`] = 'ACTIVE';
       updates[`solutions/${entry.userId}/${entry.id}/tags`] = cachedTags;
       updates[`pending_skills/${entry.id}`] = null;
+      updates[`active_experiences/${entry.id}`] = { authorId: entry.userId, text: entry.text, timestamp: now, status: 'active', isOnline: true };
       const t = lockTrackers[entry.userId] || (lockTrackers[entry.userId] = { rejectedCount: 0, hasActive: false });
       t.hasActive = true;
     } else {
@@ -322,6 +323,7 @@ async function processSkills() {
         if (m) parsed = JSON.parse(m[0]); else throw new Error('無法解析 AI 回應為 JSON');
       }
 
+      const modelAccepted = [];
       const newRejected = [];
       for (const item of parsed) {
         const entry = localMapping.get(item.id?.toString());
@@ -336,9 +338,13 @@ async function processSkills() {
           updates[`${sr}/tags`] = tags;
           updates[`tags_whitelist/${encodePath(entry.text)}/tags`] = tags;
           updates[`pending_skills/${entry.id}`] = null;
+          updates[`active_experiences/${entry.id}`] = { authorId: entry.userId, text: entry.text, timestamp: now, status: 'active', isOnline: true };
+          modelAccepted.push(entry);
           t.hasActive = true;
         }
       }
+      if (modelAccepted.length > 0) console.log(`[Skills] ${model.label} accepted:`, modelAccepted.map(e => e.text));
+      if (newRejected.length > 0) console.log(`[Skills] ${model.label} rejected:`, newRejected.map(e => e.text));
       remaining = newRejected;
     } catch (err) {
       console.error(`[Skills] model ${model.name} failed:`, err.message);
@@ -357,6 +363,7 @@ async function processSkills() {
       updates[`${sr}/tags`] = [];
       updates[`tags_blacklist/${encodePath(entry.text)}`] = true;
       updates[`pending_skills/${entry.id}`] = null;
+      updates[`active_experiences/${entry.id}`] = null;
       t.rejectedCount = (t.rejectedCount || 0) + 1;
     }
   }
