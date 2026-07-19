@@ -18,7 +18,8 @@ import kotlinx.coroutines.delay
 
 @Composable
 fun MatchingOverlay(
-    onCancel: () -> Unit
+    onCancel: () -> Unit,
+    isPendingAcceptance: Boolean = false
 ) {
     var dotCount by remember { mutableIntStateOf(0) }
     LaunchedEffect(Unit) {
@@ -61,7 +62,7 @@ fun MatchingOverlay(
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                text = "配對中請稍候",
+                text = if (isPendingAcceptance) "等待專家接受" else "配對中請稍候",
                 fontWeight = FontWeight.Bold,
                 fontSize = 20.sp,
                 color = AppColors.TextWhite
@@ -70,7 +71,7 @@ fun MatchingOverlay(
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = "正在為您尋找合適的專家" + ".".repeat(dotCount),
+                text = if (isPendingAcceptance) "已找到專家，等待對方接受連線" else "正在為您尋找合適的專家" + ".".repeat(dotCount),
                 fontSize = 14.sp,
                 color = AppColors.TextGray,
                 textAlign = TextAlign.Center

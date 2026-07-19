@@ -640,7 +640,7 @@ async function matchQuestionByTags(questionId, questionTags) {
     const best = matches[0];
     await db.ref(`questions/${questionId}`).update({
       expertId: best.exp.authorId,
-      status: 'taken',
+      status: 'pending_acceptance',
       matchedExpText: best.exp.text,
       matchedExpTimestamp: best.exp.timestamp,
     });

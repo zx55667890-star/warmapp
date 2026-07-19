@@ -15,7 +15,7 @@ object FirebasePaths {
 
 object StatusValues {
     const val MATCHING = "matching"
-
+    const val PENDING_ACCEPTANCE = "pending_acceptance"
     const val TAKEN = "taken"
     const val CANCELLED = "cancelled"
     const val ACTIVE = "active"

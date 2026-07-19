@@ -29,6 +29,7 @@ import java.util.Locale
 
 data class SeekerUiState(
     val isUserMatching: Boolean = false,
+    val isPendingAcceptance: Boolean = false,
     val noExpertsMessage: String = "",
     val matchedExpertDate: String = "",
     val matchedExpertText: String = "",
@@ -187,7 +188,12 @@ class SeekerViewModel(
                         cleanupListeners()
                         refreshQuota(status.authorId)
                     }
-                    is QuestionStatus.Matching -> { /* no-op */ }
+                    is QuestionStatus.PendingAcceptance -> {
+                        _uiState.update { it.copy(isPendingAcceptance = true) }
+                    }
+                    is QuestionStatus.Matching -> {
+                        _uiState.update { it.copy(isPendingAcceptance = false) }
+                    }
                 }
             }
         }
@@ -258,7 +264,7 @@ class SeekerViewModel(
     }
 
     private fun resetMatchingState() {
-        _uiState.update { it.copy(isUserMatching = false, noExpertsMessage = "") }
+        _uiState.update { it.copy(isUserMatching = false, isPendingAcceptance = false, noExpertsMessage = "") }
         currentUserQuestionId = ""
     }
 

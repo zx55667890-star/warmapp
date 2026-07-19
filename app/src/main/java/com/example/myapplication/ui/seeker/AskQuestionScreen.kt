@@ -154,7 +154,10 @@ fun AskQuestionScreen(
                 enter = fadeIn(tween(300)),
                 exit = fadeOut(tween(300))
             ) {
-                MatchingOverlay(onCancel = { viewModel.cancelUserMatching() })
+                MatchingOverlay(
+                    onCancel = { viewModel.cancelUserMatching() },
+                    isPendingAcceptance = seekerUiState.isPendingAcceptance
+                )
             }
         }
 

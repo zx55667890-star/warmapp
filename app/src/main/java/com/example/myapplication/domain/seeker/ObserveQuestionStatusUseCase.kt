@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.callbackFlow
 
 sealed class QuestionStatus {
     data class Taken(val questionId: String, val questionText: String, val expertId: String, val expertText: String, val timestamp: Long) : QuestionStatus()
+    data class PendingAcceptance(val expertId: String, val expertText: String, val timestamp: Long) : QuestionStatus()
     data object NoExperts : QuestionStatus()
     data class Cancelled(val authorId: String) : QuestionStatus()
     data object Matching : QuestionStatus()
@@ -27,6 +28,11 @@ class ObserveQuestionStatusUseCase(
                 if (!snapshot.exists()) return
                 val status = snapshot.child("status").value?.toString() ?: return
                 val statusEvent = when (status) {
+                    "pending_acceptance" -> QuestionStatus.PendingAcceptance(
+                        expertId = snapshot.child("expertId").value?.toString().orEmpty(),
+                        expertText = snapshot.child("matchedExpText").value?.toString().orEmpty(),
+                        timestamp = (snapshot.child("matchedExpTimestamp").value as? Long) ?: 0L
+                    )
                     "taken" -> QuestionStatus.Taken(
                         questionId = questionId,
                         questionText = snapshot.child("text").value?.toString().orEmpty(),

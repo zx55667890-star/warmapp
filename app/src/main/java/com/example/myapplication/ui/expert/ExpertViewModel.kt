@@ -248,7 +248,7 @@ class ExpertViewModel(
                     val qId = child.key.orEmpty()
 
                     when (status) {
-                        StatusValues.TAKEN -> {
+                        StatusValues.PENDING_ACCEPTANCE -> {
                             if (qId == currentState.globalAssignedQId) {
                                 val chatroomId = "ai_$qId"
                                 _uiState.update {
@@ -279,7 +279,7 @@ class ExpertViewModel(
                 if (!foundActiveAssignment && currentState.globalAssignedQId.isNotBlank()) {
                     val currentChild = snapshot.children.firstOrNull { it.key == currentState.globalAssignedQId }
                     val currentStatus = currentChild?.child("status")?.value?.toString()
-                    if (currentStatus == null || currentStatus == StatusValues.MATCHING || currentStatus == StatusValues.CANCELLED) {
+                    if (currentStatus == null || currentStatus == StatusValues.MATCHING || currentStatus == StatusValues.PENDING_ACCEPTANCE || currentStatus == StatusValues.CANCELLED) {
                         _uiState.update {
                             it.copy(
                                 globalAssignedQId = "",
@@ -301,6 +301,8 @@ class ExpertViewModel(
     fun acceptGlobalAssignment() {
         val qId = _uiState.value.globalAssignedQId
         if (qId.isNotBlank()) {
+            firebaseDb.getReference(FirebasePaths.QUESTIONS).child(qId).child(FirebaseFields.STATUS)
+                .setValue(StatusValues.TAKEN)
             val chatroomId = "ai_$qId"
             _uiState.update {
                 it.copy(
