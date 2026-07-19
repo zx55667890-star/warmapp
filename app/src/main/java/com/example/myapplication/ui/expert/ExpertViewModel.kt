@@ -279,7 +279,7 @@ class ExpertViewModel(
                 if (!foundActiveAssignment && currentState.globalAssignedQId.isNotBlank()) {
                     val currentChild = snapshot.children.firstOrNull { it.key == currentState.globalAssignedQId }
                     val currentStatus = currentChild?.child("status")?.value?.toString()
-                    if (currentStatus == null || currentStatus == StatusValues.MATCHING || currentStatus == StatusValues.PENDING_ACCEPTANCE || currentStatus == StatusValues.CANCELLED) {
+                    if (currentStatus == null || currentStatus == StatusValues.MATCHING || currentStatus == StatusValues.CANCELLED) {
                         _uiState.update {
                             it.copy(
                                 globalAssignedQId = "",

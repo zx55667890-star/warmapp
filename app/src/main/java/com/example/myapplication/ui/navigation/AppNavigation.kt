@@ -117,13 +117,13 @@ fun AppNavigation() {
 
     // ── 初始化 ──
     LaunchedEffect(Unit) { dataMigrator.migrateIfNeeded(userId) }
-    LaunchedEffect(Unit) {
+    LaunchedEffect(userId) {
         if (userId.isNotBlank()) {
             authRepository.saveFcmToken()
             seekerViewModel.checkReconnection(userId)
             expertViewModel.startGlobalAssignListener(userId)
+            expertViewModel.initializeExpertStatus(userId)
         }
-        expertViewModel.initializeExpertStatus(userId)
     }
 
     // ── 自動導航到聊天室 ──

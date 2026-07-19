@@ -289,6 +289,8 @@ class SeekerViewModel(
                         myRole = "user",
                         activeChatQuestionText = snapshot.child("text").value?.toString().orEmpty()
                     ) }
+                } else if (status == StatusValues.PENDING_ACCEPTANCE) {
+                    _uiState.update { it.copy(isPendingAcceptance = true) }
                 }
             }
 
