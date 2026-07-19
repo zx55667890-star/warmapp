@@ -16,13 +16,18 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
@@ -38,6 +43,7 @@ import com.example.myapplication.ui.expert.components.SkillEditDialog
 import com.example.myapplication.ui.theme.AppColors
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
+import kotlin.math.roundToInt
 
 @Composable
 fun ExpertScreen(viewModel: ExpertViewModel, userId: String, onNavigateToInput: () -> Unit = {}) {
@@ -84,6 +90,8 @@ fun ExpertScreenContent(
     onEditSkillDismiss: () -> Unit,
     onNavigateToInput: () -> Unit
 ) {
+    var cardCoords by remember { mutableStateOf<LayoutCoordinates?>(null) }
+    var outerBoxLayout by remember { mutableStateOf<LayoutCoordinates?>(null) }
     var successVersion by remember { mutableIntStateOf(0) }
     val feedbackMsg = uiState.publishFeedbackRes?.let { stringResource(it) }
 
@@ -116,6 +124,7 @@ fun ExpertScreenContent(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
+                .onGloballyPositioned { outerBoxLayout = it }
         ) {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
@@ -129,13 +138,16 @@ fun ExpertScreenContent(
                 }
 
                 item {
-                    QuickLogCard(
-                        onPublish = onPublishSkill,
-                        onClearFeedback = onClearPublishFeedback,
-                        clearInputSignal = successVersion,
-                        feedbackMessage = feedbackMsg,
-                        feedbackIsError = uiState.publishFeedbackIsError
-                    )
+                    Box(
+                        modifier = Modifier.onGloballyPositioned { cardCoords = it }
+                    ) {
+                        QuickLogCard(
+                            onPublish = onPublishSkill,
+                            onClearFeedback = onClearPublishFeedback,
+                            onButtonLayoutChanged = { },
+                            clearInputSignal = successVersion
+                        )
+                    }
                 }
 
                 item {
@@ -203,6 +215,25 @@ fun ExpertScreenContent(
                 }
             }
 
+            AnimatedVisibility(
+                visible = feedbackMsg != null && cardCoords != null && outerBoxLayout != null,
+                enter = fadeIn() + slideInVertically(initialOffsetY = { -it / 2 }),
+                exit = fadeOut() + slideOutVertically(targetOffsetY = { -it / 2 }),
+                modifier = Modifier.align(Alignment.TopCenter)
+            ) {
+                if (feedbackMsg != null && cardCoords != null && outerBoxLayout != null) {
+                    val density = LocalDensity.current
+                    val cardRoot = cardCoords!!.localToRoot(Offset.Zero).y
+                    val outerRoot = outerBoxLayout!!.localToRoot(Offset.Zero).y
+                    val anchorY = with(density) { (cardRoot - outerRoot - 56.dp.toPx()).roundToInt() }
+
+                    com.example.myapplication.ui.expert.components.FeedbackBanner(
+                        message = feedbackMsg,
+                        isError = uiState.publishFeedbackIsError,
+                        offsetY = anchorY
+                    )
+                }
+            }
 
         }
     }

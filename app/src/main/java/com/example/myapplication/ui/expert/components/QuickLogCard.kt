@@ -1,10 +1,7 @@
 package com.example.myapplication.ui.expert.components
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -16,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -31,9 +29,8 @@ import kotlinx.coroutines.delay
 fun QuickLogCard(
     onPublish: (String) -> Unit,
     onClearFeedback: () -> Unit,
-    clearInputSignal: Int,
-    feedbackMessage: String? = null,
-    feedbackIsError: Boolean = false
+    onButtonLayoutChanged: (LayoutCoordinates) -> Unit,
+    clearInputSignal: Int
 ) {
     var expertise by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf("") }
@@ -56,38 +53,6 @@ fun QuickLogCard(
         border = BorderStroke(1.dp, AppColors.GlassStroke)
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
-            AnimatedVisibility(
-                visible = feedbackMessage != null,
-                enter = fadeIn(),
-                exit = fadeOut()
-            ) {
-                Column {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(14.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = if (feedbackIsError) AppColors.StatusErrorBg
-                                else AppColors.StatusSuccessBg
-                        ),
-                        border = BorderStroke(
-                            1.dp,
-                            if (feedbackIsError) AppColors.StatusError.copy(alpha = 0.2f)
-                            else AppColors.StatusSuccess.copy(alpha = 0.2f)
-                        )
-                    ) {
-                        Text(
-                            text = feedbackMessage.orEmpty(),
-                            color = if (feedbackIsError) AppColors.StatusError
-                                else AppColors.StatusSuccess,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Medium,
-                            modifier = Modifier.padding(14.dp)
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(12.dp))
-                }
-            }
-
             Text(
                 text = "發布技能",
                 fontWeight = FontWeight.SemiBold,
@@ -165,7 +130,8 @@ fun QuickLogCard(
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(50.dp),
+                    .height(50.dp)
+                    .onGloballyPositioned { onButtonLayoutChanged(it) },
                 enabled = expertise.isNotBlank(),
                 shape = RoundedCornerShape(14.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
