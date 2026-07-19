@@ -232,6 +232,7 @@ class ExpertViewModel(
     }
 
     fun startGlobalAssignListener(userId: String) {
+        Log.d("ExpertVM", "startGlobalAssignListener userId=$userId")
         cleanupGlobalListener()
         val query = firebaseDb.getReference(FirebasePaths.QUESTIONS)
             .orderByChild(FirebaseFields.EXPERT_ID)
@@ -240,16 +241,21 @@ class ExpertViewModel(
 
         globalListener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
+                Log.d("ExpertVM", "onDataChange children=${snapshot.children.count()}")
                 var foundActiveAssignment = false
                 val currentState = _uiState.value
+                Log.d("ExpertVM", "  current globalAssignedQId=[${currentState.globalAssignedQId}] showDialog=[${currentState.showGlobalAssignDialog}]")
 
                 for (child in snapshot.children) {
                     val status = child.child("status").value?.toString()
                     val qId = child.key.orEmpty()
+                    val eId = child.child("expertId").value?.toString()
+                    Log.d("ExpertVM", "  child qId=$qId status=$status expertId=$eId")
 
                     when (status) {
                         StatusValues.PENDING_ACCEPTANCE -> {
                             if (qId == currentState.globalAssignedQId) {
+                                Log.d("ExpertVM", ">>> navigate to chat for qId=$qId")
                                 val chatroomId = "ai_$qId"
                                 _uiState.update {
                                     it.copy(
@@ -262,6 +268,7 @@ class ExpertViewModel(
                                 foundActiveAssignment = true
                                 return
                             } else if (currentState.globalAssignedQId.isBlank()) {
+                                Log.d("ExpertVM", ">>> show dialog for qId=$qId")
                                 _uiState.update {
                                     it.copy(
                                         globalAssignedQId = qId,
@@ -279,7 +286,9 @@ class ExpertViewModel(
                 if (!foundActiveAssignment && currentState.globalAssignedQId.isNotBlank()) {
                     val currentChild = snapshot.children.firstOrNull { it.key == currentState.globalAssignedQId }
                     val currentStatus = currentChild?.child("status")?.value?.toString()
+                    Log.d("ExpertVM", "  cleanup check: currentStatus=$currentStatus")
                     if (currentStatus == null || currentStatus == StatusValues.MATCHING || currentStatus == StatusValues.CANCELLED) {
+                        Log.d("ExpertVM", ">>> cleanup: clearing assignment")
                         _uiState.update {
                             it.copy(
                                 globalAssignedQId = "",
@@ -292,7 +301,7 @@ class ExpertViewModel(
             }
 
             override fun onCancelled(error: DatabaseError) {
-                Log.w("ExpertViewModel", "Global listener cancelled", error.toException())
+                Log.w("ExpertVM", "CANCELLED code=${error.code} msg=${error.message}", error.toException())
             }
         }
         query.addValueEventListener(globalListener!!)
