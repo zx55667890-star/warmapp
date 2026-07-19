@@ -8,7 +8,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Lightbulb
 import androidx.compose.material.icons.outlined.Star
@@ -24,7 +25,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
@@ -110,24 +110,8 @@ fun ExpertScreenContent(
         )
     }
 
-    val listState = rememberLazyListState()
-    val itemSizes = remember { mutableStateMapOf<Int, Int>() }
-
-    LaunchedEffect(listState) {
-        snapshotFlow { listState.layoutInfo.visibleItemsInfo.toList() }
-            .collect { items ->
-                items.forEach { itemSizes[it.index] = it.size }
-            }
-    }
-
-    val scrollOffsetPx by remember(listState) {
-        derivedStateOf {
-            val firstVisible = listState.layoutInfo.visibleItemsInfo.firstOrNull()
-                ?: return@derivedStateOf 0
-            val sizesBefore = (0 until firstVisible.index).sumOf { itemSizes[it] ?: 0 }
-            sizesBefore + (-firstVisible.offset)
-        }
-    }
+    var buttonYPositionPx by remember { mutableFloatStateOf(0f) }
+    val density = LocalDensity.current
 
     Box(Modifier.fillMaxSize()) {
         Scaffold(
@@ -140,7 +124,6 @@ fun ExpertScreenContent(
                     .padding(innerPadding)
             ) {
                 LazyColumn(
-                    state = listState,
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(20.dp)
@@ -155,7 +138,9 @@ fun ExpertScreenContent(
                         QuickLogCard(
                             onPublish = onPublishSkill,
                             onClearFeedback = onClearPublishFeedback,
-                            onButtonLayoutChanged = { },
+                            onButtonLayoutChanged = { coordinates ->
+                                buttonYPositionPx = coordinates.positionInRoot().y
+                            },
                             clearInputSignal = successVersion
                         )
                     }
@@ -233,14 +218,17 @@ fun ExpertScreenContent(
             exit = fadeOut() + slideOutVertically(targetOffsetY = { -it / 2 }),
             modifier = Modifier
                 .align(Alignment.TopCenter)
-                .padding(top = 220.dp)
-                .offset { IntOffset(0, -scrollOffsetPx) }
                 .padding(horizontal = 20.dp)
         ) {
+            val offsetYPx = with(density) {
+                val spacingPx = 80.dp.toPx()
+                (buttonYPositionPx - spacingPx).toInt()
+            }
+
             com.example.myapplication.ui.expert.components.FeedbackBanner(
                 message = feedbackMsg ?: "",
                 isError = uiState.publishFeedbackIsError,
-                offsetY = 0
+                offsetY = offsetYPx.coerceAtLeast(0)
             )
         }
     }
