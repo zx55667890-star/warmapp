@@ -221,7 +221,7 @@ fun ExpertScreenContent(
                 .padding(horizontal = 20.dp)
         ) {
             val offsetYPx = with(density) {
-                val spacingPx = 210.dp.toPx()
+                val spacingPx = 260.dp.toPx()
                 (buttonYPositionPx - spacingPx).toInt()
             }
 
