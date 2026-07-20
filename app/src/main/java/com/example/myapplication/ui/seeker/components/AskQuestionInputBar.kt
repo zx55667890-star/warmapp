@@ -16,7 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -187,7 +187,7 @@ private fun MediaPreviewItem(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    Icons.Default.Mic,
+                    Icons.Default.PlayArrow,
                     contentDescription = "語音",
                     tint = AppColors.AccentOrange,
                     modifier = Modifier.size(32.dp)

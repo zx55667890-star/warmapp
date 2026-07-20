@@ -11,9 +11,8 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Lightbulb
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.outlined.Star
-import androidx.compose.material.icons.automirrored.outlined.TrendingUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -148,7 +147,7 @@ fun ExpertScreenContent(
                     item {
                         SectionHeader(
                             title = stringResource(R.string.expert_knowledge_title),
-                            icon = Icons.Outlined.Lightbulb
+                            icon = Icons.Outlined.Star
                         )
                     }
 
@@ -287,7 +286,7 @@ private fun StatsCard(helpCount: Long, rating: Double) {
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
                 StatItem(
-                    icon = Icons.AutoMirrored.Outlined.TrendingUp,
+                    icon = Icons.Default.Check,
                     label = "已解決問題",
                     value = "$helpCount",
                     accentColor = AppColors.AccentGreen

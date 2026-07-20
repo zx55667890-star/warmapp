@@ -7,7 +7,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.MoreHoriz
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -135,7 +135,7 @@ fun DrawerContent(
             )
 
             Icon(
-                imageVector = Icons.Default.MoreHoriz,
+                imageVector = Icons.Default.MoreVert,
                 contentDescription = "Settings",
                 tint = AppColors.TextGray
             )

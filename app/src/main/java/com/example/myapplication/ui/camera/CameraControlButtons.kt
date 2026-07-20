@@ -13,10 +13,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Cameraswitch
-import androidx.compose.material.icons.filled.FlashAuto
-import androidx.compose.material.icons.filled.FlashOff
-import androidx.compose.material.icons.filled.FlashOn
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -51,9 +49,9 @@ fun CameraControlButtons(
             ) {
                 Icon(
                     imageVector = when (uiState.flashMode) {
-                        ImageCapture.FLASH_MODE_OFF -> Icons.Filled.FlashOff
-                        ImageCapture.FLASH_MODE_ON -> Icons.Filled.FlashOn
-                        else -> Icons.Filled.FlashAuto
+                        ImageCapture.FLASH_MODE_OFF -> Icons.Filled.Star
+                        ImageCapture.FLASH_MODE_ON -> Icons.Filled.Star
+                        else -> Icons.Filled.Star
                     },
                     contentDescription = "閃光燈",
                     tint = if (uiState.flashMode == ImageCapture.FLASH_MODE_OFF)
@@ -177,7 +175,7 @@ fun CameraControlButtons(
                 modifier = Modifier.size(40.dp)
             ) {
                 Icon(
-                    Icons.Filled.Cameraswitch,
+                    Icons.Filled.Refresh,
                     contentDescription = "切換鏡頭",
                     tint = AppColors.TextWhite
                 )

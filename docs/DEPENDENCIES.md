@@ -6,6 +6,7 @@
 第 3 波：Media3 / Coil / Koin / 後端 npm
 第 4 波：Firebase Auth/Messaging/Storage/Functions
 第 5 波：exifinterface / Media3 / coroutines / play-services-auth / genai / mockk / Firebase BoM / Node.js 24
+第 6 波：material-icons-extended → core（省 ~2.5min dexing），JVM target 17，gradle.properties 調校
 注意：`material = 1.12.0`（View 系統）已於 7/20 移除，改用 `@android:style/Theme.Material.Light.NoActionBar`。App 已是 100% Compose。 
 
 ## SDK 版本
@@ -23,6 +24,7 @@
 | 函式庫 | 版本 | 更新日 | 備註 |
 |--------|------|--------|------|
 | Compose BOM | 2026.06.00 | 7/20 | Material3 |
+| Material Icons | core（原 extended） | 7/20 | 改用 core 省 ~2.5min dexing |
 | core-ktx | 1.19.0 | 沒更新 | |
 | activity-compose | 1.13.0 | 沒更新 | |
 | lifecycle-runtime-ktx | 2.11.0 | 7/20 | |

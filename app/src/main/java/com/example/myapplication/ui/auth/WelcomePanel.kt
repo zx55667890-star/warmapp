@@ -12,7 +12,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.WaterDrop
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -111,7 +111,7 @@ fun WelcomePanel(
                             )
                     )
                     Icon(
-                        imageVector = Icons.Default.WaterDrop,
+                        imageVector = Icons.Default.Favorite,
                         contentDescription = "Logo",
                         tint = AppColors.AccentGreen,
                         modifier = Modifier.size(64.dp)

@@ -6,9 +6,9 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CameraAlt
-import androidx.compose.material.icons.filled.Mic
-import androidx.compose.material.icons.filled.Photo
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -46,17 +46,17 @@ fun AttachmentBottomSheet(
             verticalAlignment = Alignment.CenterVertically
         ) {
             AttachmentCardItem(
-                icon = Icons.Default.Photo,
+                icon = Icons.Default.Star,
                 label = "相簿",
                 onClick = onGalleryClick
             )
             AttachmentCardItem(
-                icon = Icons.Default.CameraAlt,
+                icon = Icons.Default.Favorite,
                 label = "相機",
                 onClick = onCameraClick
             )
             AttachmentCardItem(
-                icon = Icons.Default.Mic,
+                icon = Icons.Default.Check,
                 label = "錄音",
                 onClick = onVoiceClick
             )
