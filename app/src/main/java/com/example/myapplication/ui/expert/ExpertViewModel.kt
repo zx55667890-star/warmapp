@@ -333,10 +333,18 @@ class ExpertViewModel(
         val qId = _uiState.value.globalAssignedQId
         if (qId.isNotBlank()) {
             val qRef = firebaseDb.getReference(FirebasePaths.QUESTIONS).child(qId)
-            qRef.child("rejectedExperts").child(userId).setValue(true)
-            qRef.child("status").setValue(StatusValues.MATCHING)
+            qRef.updateChildren(mapOf(
+                "rejectedExperts/$userId" to true,
+                "status" to StatusValues.MATCHING
+            ))
         }
-        _uiState.update { it.copy(showGlobalAssignDialog = false) }
+        _uiState.update { 
+            it.copy(
+                showGlobalAssignDialog = false,
+                globalAssignedQId = "",
+                globalAssignedQText = ""
+            ) 
+        }
     }
 
     private fun ExpertInputValidator.ValidationError.toResourceId(): Int = when (this) {
