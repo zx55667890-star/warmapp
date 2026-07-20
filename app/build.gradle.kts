@@ -52,7 +52,6 @@ android {
 kotlin {
     compilerOptions {
         jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
-        freeCompilerArgs.add("-Xannotation-default-target=param-property")
     }
 }
 
@@ -66,7 +65,6 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
     implementation(libs.compose.icons)
-    implementation(libs.material)
 
     implementation(libs.lifecycle.viewmodel.compose)
     implementation(libs.lifecycle.viewmodel.ktx)
@@ -79,14 +77,9 @@ dependencies {
     implementation(libs.firebase.storage)
     implementation(libs.firebase.functions)
 
-    implementation(libs.coil.compose) {
-        exclude(group = "androidx.compose.runtime", module = "runtime")
-        exclude(group = "androidx.compose.runtime", module = "runtime-android")
-    }
-    implementation(libs.coil.video) {
-        exclude(group = "androidx.compose.runtime", module = "runtime")
-        exclude(group = "androidx.compose.runtime", module = "runtime-android")
-    }
+    implementation(libs.coil.compose)
+    implementation(libs.coil.video)
+    implementation(libs.coil.network.okhttp)
 
     implementation(libs.media3.exoplayer)
     implementation(libs.media3.ui)
