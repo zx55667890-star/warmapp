@@ -240,10 +240,11 @@ async function processSkills() {
     }
   }
 
-  // Step 2: whitelist
+  // Step 2: whitelist（精確比對）
   const wlResults = await Promise.all(aiEntries.map(async (entry) => {
-    const wl = await db.ref(`tags_whitelist/${encodePath(entry.text)}/tags`).once('value');
-    const tags = wl.val();
+    const wl = await db.ref(`tags_whitelist/${encodePath(entry.text)}`).once('value');
+    const val = wl.val();
+    const tags = val && val.tags;
     return { entry, cachedTags: Array.isArray(tags) && tags.length > 0 ? tags : null };
   }));
 
@@ -261,6 +262,37 @@ async function processSkills() {
     } else {
       remaining.push(entry);
     }
+  }
+
+  // Step 2.5: whitelist（語意快取，embedding 相似度）
+  if (remaining.length > 0) {
+    const semanticResults = await Promise.all(remaining.map(async (entry) => {
+      try {
+        const embedding = await getEmbedding(entry.text);
+        const semanticTags = await findSemanticCachedTags(entry.text, embedding, updates);
+        return { entry, semanticTags, embedding };
+      } catch (err) {
+        console.warn(`[Skills][SemanticCache] embedding failed for "${entry.text.substring(0, 20)}": ${err.message}`);
+        return { entry, semanticTags: null, embedding: null };
+      }
+    }));
+    const newRemaining = [];
+    for (const { entry, semanticTags, embedding } of semanticResults) {
+      if (semanticTags) {
+        updates[`solutions/${entry.userId}/${entry.id}/status`] = 'ACTIVE';
+        updates[`solutions/${entry.userId}/${entry.id}/tags`] = semanticTags;
+        updates[`pending_skills/${entry.id}`] = null;
+        updates[`active_experiences/${entry.id}`] = { authorId: entry.userId, text: entry.text, timestamp: now, status: 'active', isOnline: true };
+        acceptedEntries.push({ id: entry.id, text: entry.text, embedding });
+        const t = lockTrackers[entry.userId] || (lockTrackers[entry.userId] = { rejectedCount: 0, hasActive: false });
+        t.hasActive = true;
+      } else {
+        // 把 embedding 暫存在 entry 上，LLM 後直接存入 whitelist 不需重複計算
+        entry._precomputedEmbedding = embedding;
+        newRemaining.push(entry);
+      }
+    }
+    remaining = newRemaining;
   }
 
   if (remaining.length === 0) {
@@ -351,6 +383,9 @@ async function processSkills() {
           updates[`${sr}/status`] = 'ACTIVE';
           updates[`${sr}/tags`] = tags;
           updates[`tags_whitelist/${encodePath(entry.text)}/tags`] = tags;
+          if (entry._precomputedEmbedding) {
+            updates[`tags_whitelist/${encodePath(entry.text)}/embedding`] = entry._precomputedEmbedding;
+          }
           updates[`pending_skills/${entry.id}`] = null;
           updates[`active_experiences/${entry.id}`] = { authorId: entry.userId, text: entry.text, timestamp: now, status: 'active', isOnline: true };
           acceptedEntries.push({ id: entry.id, text: entry.text });
@@ -461,10 +496,11 @@ async function processQuestions() {
     }
   }
 
-  // Step 2: whitelist
+  // Step 2: whitelist（精確比對）
   const wlResults = await Promise.all(aiEntries.map(async (entry) => {
-    const wl = await db.ref(`tags_whitelist/${encodePath(entry.text)}/tags`).once('value');
-    const cached = wl.val();
+    const wl = await db.ref(`tags_whitelist/${encodePath(entry.text)}`).once('value');
+    const val = wl.val();
+    const cached = val && val.tags;
     return { entry, cachedTags: Array.isArray(cached) && cached.length > 0 ? cached : null };
   }));
 
@@ -477,6 +513,33 @@ async function processQuestions() {
     } else {
       remaining.push(entry);
     }
+  }
+
+  // Step 2.5: whitelist（語意快取，embedding 相似度）
+  const semanticCachedQuestions = [];
+  if (remaining.length > 0) {
+    const semanticResults = await Promise.all(remaining.map(async (entry) => {
+      try {
+        const embedding = await getEmbedding(entry.text);
+        const semanticTags = await findSemanticCachedTags(entry.text, embedding, updates);
+        return { entry, semanticTags, embedding };
+      } catch (err) {
+        console.warn(`[Questions][SemanticCache] embedding failed for "${entry.text.substring(0, 20)}": ${err.message}`);
+        return { entry, semanticTags: null, embedding: null };
+      }
+    }));
+    const newRemaining = [];
+    for (const { entry, semanticTags, embedding } of semanticResults) {
+      if (semanticTags) {
+        updates[`questions/${entry.id}/tags`] = semanticTags;
+        updates[`pending_questions/${entry.id}`] = null;
+        semanticCachedQuestions.push({ entry, tags: semanticTags });
+      } else {
+        entry._precomputedEmbedding = embedding;
+        newRemaining.push(entry);
+      }
+    }
+    remaining = newRemaining;
   }
 
   if (Object.keys(updates).length > 0) {
@@ -557,6 +620,9 @@ async function processQuestions() {
           allAcceptedQuestions.push({ entry, tags });
           updates[`questions/${entry.id}/tags`] = tags;
           updates[`tags_whitelist/${encodePath(entry.text)}/tags`] = tags;
+          if (entry._precomputedEmbedding) {
+            updates[`tags_whitelist/${encodePath(entry.text)}/embedding`] = entry._precomputedEmbedding;
+          }
           updates[`pending_questions/${entry.id}`] = null;
         }
       }
@@ -578,6 +644,10 @@ async function processQuestions() {
   }
 
   await db.ref().update(updates);
+  for (const item of semanticCachedQuestions) {
+    console.log(`[QMatch][SemanticCache] calling matchQuestionByTags for ${item.entry.id}`);
+    await matchQuestionByTags(item.entry.id, item.tags);
+  }
   for (const item of allAcceptedQuestions) {
     console.log(`[QMatch] calling matchQuestionByTags for ${item.entry.id}`);
     await matchQuestionByTags(item.entry.id, item.tags);
@@ -655,6 +725,47 @@ async function getEmbedding(text) {
   if (!res.ok) { const errBody = await res.text(); throw new Error(`Embedding API error ${res.status}: ${errBody}`); }
   const data = await res.json();
   return data.embedding?.values;
+}
+
+// 語意快取閾值：cosine similarity 超過此值視為「同語意」，直接複用標籤
+const SEMANTIC_CACHE_THRESHOLD = 0.88;
+const SEMANTIC_CACHE_MAX_ENTRIES = 500; // 最多比對筆數，避免資料庫太大時效能惡化
+
+/**
+ * 在 tags_whitelist 中尋找語意上最接近 text 的條目，若相似度 >= 閾值則回傳其 tags。
+ * 同時會將 text 也寫入 whitelist（複用找到的 tags）以加速未來查詢。
+ * @param {string} text 要比對的原始文字
+ * @param {number[]} textEmbedding 已算好的 embedding（避免重複呼叫 API）
+ * @param {object} updates 現有的 Firebase batch updates 物件（會直接追加寫入）
+ * @returns {string[]|null} 命中時回傳 tags 陣列；未命中回傳 null
+ */
+async function findSemanticCachedTags(text, textEmbedding, updates) {
+  if (!textEmbedding) return null;
+  try {
+    const wlSnap = await db.ref('tags_whitelist').limitToLast(SEMANTIC_CACHE_MAX_ENTRIES).once('value');
+    if (!wlSnap.exists()) return null;
+    let bestSim = 0;
+    let bestTags = null;
+    wlSnap.forEach(child => {
+      const val = child.val();
+      const embedding = val && val.embedding;
+      const tags = val && val.tags;
+      if (!Array.isArray(embedding) || !Array.isArray(tags) || tags.length === 0) return;
+      const sim = computeCosineSimilarity(textEmbedding, embedding);
+      if (sim > bestSim) { bestSim = sim; bestTags = tags; }
+    });
+    if (bestSim >= SEMANTIC_CACHE_THRESHOLD && bestTags) {
+      console.log(`[SemanticCache] hit sim=${bestSim.toFixed(3)} for "${text.substring(0, 30)}..."`);
+      // 把當前文字也寫入 whitelist（連同 embedding），下次可精確命中
+      updates[`tags_whitelist/${encodePath(text)}/tags`] = bestTags;
+      updates[`tags_whitelist/${encodePath(text)}/embedding`] = textEmbedding;
+      return bestTags;
+    }
+    return null;
+  } catch (err) {
+    console.warn('[SemanticCache] lookup failed:', err.message);
+    return null;
+  }
 }
 
 function computeCosineSimilarity(vecA, vecB) {
