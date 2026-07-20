@@ -14,7 +14,7 @@ sealed class QuestionStatus {
     data class PendingAcceptance(val expertId: String, val expertText: String, val timestamp: Long) : QuestionStatus()
     data object NoExperts : QuestionStatus()
     data class Cancelled(val authorId: String) : QuestionStatus()
-    data object Matching : QuestionStatus()
+    data class Matching(val questionText: String) : QuestionStatus()
 }
 
 class ObserveQuestionStatusUseCase(
@@ -44,7 +44,9 @@ class ObserveQuestionStatusUseCase(
                     "cancelled" -> QuestionStatus.Cancelled(
                         authorId = snapshot.child("authorId").value?.toString().orEmpty()
                     )
-                    "matching" -> QuestionStatus.Matching
+                    "matching" -> QuestionStatus.Matching(
+                        questionText = snapshot.child("text").value?.toString().orEmpty()
+                    )
                     else -> null
                 }
                 if (statusEvent != null) {

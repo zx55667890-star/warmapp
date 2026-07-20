@@ -200,7 +200,15 @@ class SeekerViewModel(
                         _uiState.update { it.copy(isPendingAcceptance = true) }
                     }
                     is QuestionStatus.Matching -> {
+                        val wasPending = _uiState.value.isPendingAcceptance
                         _uiState.update { it.copy(isPendingAcceptance = false) }
+                        if (wasPending) {
+                            matchCoordinator.matchAndAssignExpert(
+                                questionId,
+                                status.questionText,
+                                currentUserId
+                            )
+                        }
                     }
                 }
             }
