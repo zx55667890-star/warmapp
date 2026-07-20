@@ -120,7 +120,7 @@ fun CameraCaptureScreen(
                 Context.WINDOW_SERVICE
             ) as WindowManager
             val displayRot: Int = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                context.display!!.rotation
+                context.display.rotation
             } else {
                 @Suppress("DEPRECATION")
                 windowManager.defaultDisplay.rotation

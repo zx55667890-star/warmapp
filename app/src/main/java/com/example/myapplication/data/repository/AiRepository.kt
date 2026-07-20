@@ -34,7 +34,7 @@ class AiRepository(
             val response = client.models.generateContent("gemini-2.0-flash", prompt, emptyConfig)
             val responseText = response.text()
             if (!responseText.isNullOrBlank()) {
-                val tags = responseText!!.split(",", "，").map { it.trim() }.filter { it.isNotEmpty() }
+                val tags = responseText.split(",", "，").map { it.trim() }.filter { it.isNotEmpty() }
                 Log.d("AiRepo", "generateExpertTags: parsed tags=$tags")
                 tags
             } else {

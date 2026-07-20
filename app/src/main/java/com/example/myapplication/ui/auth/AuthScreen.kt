@@ -124,7 +124,7 @@ fun AuthScreen(
         val activity = context as? Activity
         val previousMode = activity?.window?.attributes?.softInputMode
         activity?.window?.setSoftInputMode(LayoutParams.SOFT_INPUT_ADJUST_NOTHING)
-        onDispose { previousMode?.let { activity?.window?.setSoftInputMode(it) } }
+        onDispose { previousMode?.let { activity.window.setSoftInputMode(it) } }
     }
 
     LaunchedEffect(uiState.isLoggedIn) {

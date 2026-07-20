@@ -131,7 +131,8 @@ class AuthRepository(
     fun saveFcmToken() {
         val uid = currentUserId
         if (uid.isBlank()) return
-        com.google.firebase.messaging.FirebaseMessaging.getInstance().token
+        @Suppress("DEPRECATION")
+        com.google.firebase.messaging.FirebaseMessaging.getInstance().getToken()
             .addOnSuccessListener { token ->
                 firebaseDb.getReference("users").child(uid).child("fcmToken").setValue(token)
             }

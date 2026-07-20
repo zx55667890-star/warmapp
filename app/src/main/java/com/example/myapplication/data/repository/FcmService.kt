@@ -17,6 +17,8 @@ import com.google.firebase.messaging.RemoteMessage
 
 class FcmService : FirebaseMessagingService() {
 
+    @Suppress("DEPRECATION")
+    @Deprecated("Firebase onNewToken is deprecated", level = DeprecationLevel.WARNING)
     override fun onNewToken(token: String) {
         super.onNewToken(token)
         Log.d(TAG, "New FCM token: $token")

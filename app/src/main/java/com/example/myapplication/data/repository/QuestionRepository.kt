@@ -223,7 +223,7 @@ class QuestionRepository(private val firebaseDb: FirebaseDatabase) {
             }
             override fun onComplete(error: DatabaseError?, committed: Boolean, snapshot: DataSnapshot?) {
                 if (error != null) {
-                    callback.onError(error.message ?: "評分失敗")
+                    callback.onError(error.message)
                 } else if (committed) {
                     callback.onSuccess()
                 } else {
