@@ -173,18 +173,21 @@ class QuestionRepository(private val firebaseDb: FirebaseDatabase) {
         val chatroomRef = firebaseDb.getReference("chatrooms").child("ai_$questionId")
         val pendingRef = firebaseDb.getReference(FirebasePaths.PENDING_QUESTIONS).child(questionId)
         pendingRef.removeValue()
+        var completed = 0
+        val onEachDone = {
+            if (++completed >= 2) onComplete()
+        }
         questionRef.removeValue()
-            .addOnSuccessListener {
-                chatroomRef.removeValue()
-                    .addOnSuccessListener { onComplete() }
-                    .addOnFailureListener { e ->
-                        Log.e("CancelMatch", "chatroom remove failed", e)
-                        onComplete()
-                    }
-            }
+            .addOnSuccessListener { onEachDone() }
             .addOnFailureListener { e ->
                 Log.e("CancelMatch", "question remove failed", e)
-                onComplete()
+                onEachDone()
+            }
+        chatroomRef.removeValue()
+            .addOnSuccessListener { onEachDone() }
+            .addOnFailureListener { e ->
+                Log.e("CancelMatch", "chatroom remove failed", e)
+                onEachDone()
             }
     }
 
