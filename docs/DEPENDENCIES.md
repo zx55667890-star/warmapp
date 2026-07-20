@@ -20,6 +20,17 @@
 | Kotlin | 2.4.10 | 7/20 |
 | Gradle | 9.6.1 | 7/20 |
 
+## 建置設定
+| 項目 | 值 | 更新日 |
+|------|-----|--------|
+| JVM target (source/target) | 17 | 7/20 |
+| Gradle JVM heap | 14GB G1GC | 7/20 |
+| Kotlin daemon heap | 8GB | 7/20 |
+| workers.max | 6 | 7/20 |
+| kotlin.parallel.tasks.in.project | true | 7/20 |
+| Configuration cache | true | 7/20 |
+| Build scan (Develocity) | com.gradle.develocity 3.18.1 | 7/20 |
+
 ## AndroidX / Jetpack Compose
 | 函式庫 | 版本 | 更新日 | 備註 |
 |--------|------|--------|------|
