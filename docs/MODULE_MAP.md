@@ -143,8 +143,6 @@ ExpertScreen.kt
 | `ui/seeker/AskQuestionScreen.kt` | 提問主畫面 |
 | `ui/seeker/SelectedMedia.kt` | 已選媒體顯示 |
 | `ui/seeker/MatchingOverlay.kt` | 配對中遮罩 |
-| `ui/seeker/MatchingDialog.kt` | 配對對話框 |
-| `ui/seeker/SeekerConfirmDialog.kt` | 確認彈窗 |
 | `ui/seeker/components/AskQuestionHeader.kt` | 提問標題列 |
 | `ui/seeker/components/AskQuestionInputBar.kt` | 提問輸入列 |
 | `ui/seeker/components/AttachmentBottomSheet.kt` | 附件選擇 bottom sheet |
@@ -216,6 +214,7 @@ SeekerViewModel.kt (ui/seeker/)
 ## 導航
 | 檔案 | 角色 |
 |------|------|
+| `MainActivity.kt` | App 入口 Activity |
 | `ui/navigation/AppNavigation.kt` | NavHost + 路由設定 |
 | `ui/navigation/Route.kt` | 路由定義 sealed class |
 
@@ -258,22 +257,31 @@ SeekerViewModel.kt (ui/seeker/)
 ## 後端 (Cloud Function)
 | 檔案 | 角色 |
 |------|------|
-| `functions/index.js` | batchProcess (排程 AI 分析，含 Serper 搜尋、thinkingConfig、6 模型 fallback) |
-| `functions/package.json` | Node.js 24, firebase-admin, @google/genai |
+| `functions/index.js` | processSkillsOnWrite / processQuestionsOnWrite (DB triggered AI 分析，含語意快取、Serper 搜尋、6 模型 fallback) |
+| `functions/package.json` | Node.js 22, firebase-admin, @google/genai |
 | `database.rules.json` | RTDB Security Rules |
 
 **依賴樹：**
 ```
-Firebase Scheduler (every 1 min)
-  └── batchProcess (index.js)
-        ├── [Self-Heal] healOrphanedPending()
-        │     掃描 solutions PENDING > 10min 且無對應 pending_skills entry
-        ├── Firebase RTDB (read pending_skills / pending_questions)
-        ├── Blacklist check (tags_blacklist)
-        ├── Whitelist check (tags_whitelist)
-        └── Gemini AI (6 model fallback chain)
-              ├── Serper external search (FALLBACK_1, 4, 5, `useWebFetch`)
-              └── Google Search grounding (FALLBACK_2~3 only)
+DB write → pending_skills/{id} (onValueWritten)
+  └── processSkillsOnWrite (index.js)
+        ├── Firebase RTDB (read pending_skills)
+        ├── Whitelist exact match (tags_whitelist)
+        ├── Semantic cache (embedding cosine similarity, threshold 0.75)
+        ├── LLM tag generation (6 model fallback chain)
+        │     ├── Serper external search (FALLBACK_1, 4, 5)
+        │     └── Google Search grounding (FALLBACK_2~3)
+        └── matchSkillByTags()
+
+DB write → pending_questions/{id} (onValueWritten)
+  └── processQuestionsOnWrite (index.js)
+        ├── Firebase RTDB (read pending_questions)
+        ├── Whitelist exact match (tags_whitelist)
+        ├── Semantic cache (embedding cosine similarity, threshold 0.75)
+        ├── LLM tag generation (6 model fallback chain)
+        │     ├── Serper external search (FALLBACK_1, 4, 5)
+        │     └── Google Search grounding (FALLBACK_2~3)
+        └── matchQuestionByTags()
 ```
 
 ## docs/ 文件

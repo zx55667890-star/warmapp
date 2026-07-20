@@ -41,11 +41,4 @@
     <string name="expert_input_high_repetition">文字重複率過高，請輸入更具體的技能描述</string>
     <string name="expert_input_gibberish">請輸入有意義的內容，避免過多重複的字元</string>
     <string name="expert_input_invalid_english">請輸入正確的英文單字或技能名稱</string>
-
-    <!-- Matching Overlay -->
-    <string name="matching_title">正在為您媒合專家…</string>
-    <string name="matching_subtitle">我們正在尋找最適合回答您問題的專家</string>
-    <string name="matching_pending_title">專家已接單，等待接受…</string>
-    <string name="matching_pending_subtitle">專家正在審核您的問題，請稍候</string>
-    <string name="matching_cancel">取消媒合</string>
 </resources>

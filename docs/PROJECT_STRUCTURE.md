@@ -1,6 +1,6 @@
 # PROJECT_STRUCTURE.md — 專案目錄結構
 
-**總計：124 個 Kotlin 檔，341 次 Git 提交**
+**總計：117 個 Kotlin 檔，341 次 Git 提交**
 
 > 本檔案由 generate_project_structure.sh 自動產生於 2026-07-19 18:54:57，請勿手動編輯。
 
@@ -8,8 +8,6 @@
 warmapp/
 （未安裝 tree，改用 find 列出所有 .kt / 設定檔路徑，排版較陽春，建議 apt/brew install tree 後重跑）
 app/google-services.json
-app/src/androidTest/java/com/example/myapplication/domain/expert/ExtractLocalTagsIntegrationTest.kt
-app/src/androidTest/java/com/example/myapplication/ui/auth/WelcomePanelTest.kt
 app/src/main/java/com/example/myapplication/MainActivity.kt
 app/src/main/java/com/example/myapplication/data/Constants.kt
 app/src/main/java/com/example/myapplication/data/model/ChatMessage.kt
@@ -107,7 +105,6 @@ app/src/main/java/com/example/myapplication/ui/expert/components/SkillEditDialog
 app/src/main/java/com/example/myapplication/ui/navigation/AppNavigation.kt
 app/src/main/java/com/example/myapplication/ui/navigation/Route.kt
 app/src/main/java/com/example/myapplication/ui/seeker/AskQuestionScreen.kt
-app/src/main/java/com/example/myapplication/ui/seeker/MatchingDialog.kt
 app/src/main/java/com/example/myapplication/ui/seeker/MatchingOverlay.kt
 app/src/main/java/com/example/myapplication/ui/seeker/RoleSelectScreen.kt
 app/src/main/java/com/example/myapplication/ui/seeker/SeekerViewModel.kt
@@ -129,9 +126,6 @@ app/src/main/java/com/example/myapplication/util/MediaMetadataHelper.kt
 app/src/main/java/com/example/myapplication/util/NetworkUtils.kt
 app/src/main/java/com/example/myapplication/util/VideoCacheManager.kt
 app/src/main/java/com/example/myapplication/util/VideoThumbnailCache.kt
-app/src/test/java/com/example/myapplication/di/ExpertViewModelTest.kt
-app/src/test/java/com/example/myapplication/di/SeekerViewModelTest.kt
-app/src/test/java/com/example/myapplication/ui/auth/AuthViewModelTest.kt
 docs/AGENTS.md
 docs/AI_CONTEXT.md
 docs/ARCHITECTURE.md
@@ -190,10 +184,7 @@ gradle/libs.versions.toml
 - com/example/myapplication/ui/voice/VoiceRecordingViewModel.kt
 
 ### test/ 底下所有 *Test.kt（核對是否跟主程式路徑對齊）
-- com/example/myapplication/di/ExpertViewModelTest.kt
-- com/example/myapplication/di/SeekerViewModelTest.kt
-- com/example/myapplication/ui/auth/AuthViewModelTest.kt
+（無 — 已全數清除）
 
 ### androidTest/ 底下所有檔案
-- com/example/myapplication/domain/expert/ExtractLocalTagsIntegrationTest.kt
-- com/example/myapplication/ui/auth/WelcomePanelTest.kt
+（無 — 已全數清除）
