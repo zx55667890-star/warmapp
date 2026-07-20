@@ -7,6 +7,7 @@
 第 4 波：Firebase Auth/Messaging/Storage/Functions
 第 5 波：exifinterface / Media3 / coroutines / play-services-auth / genai / mockk / Firebase BoM / Node.js 24
 第 6 波：material-icons-extended → core（省 ~2.5min dexing），JVM target 17，gradle.properties 調校
+第 7 波：清除 10 個 compiler warnings（status bar API、Koin/Firebase deprecation、redundant syntax），AGP 9.x dexing 旗標，R8 release shrink
 注意：`material = 1.12.0`（View 系統）已於 7/20 移除，改用 `@android:style/Theme.Material.Light.NoActionBar`。App 已是 100% Compose。 
 
 ## SDK 版本
@@ -30,6 +31,19 @@
 | kotlin.parallel.tasks.in.project | true | 7/20 |
 | Configuration cache | true | 7/20 |
 | Build scan (Develocity) | com.gradle.develocity 3.18.1 | 7/20 |
+| R8 dex-startup-optimization | true | 7/20 |
+| New resource shrinker | true + preciseShrinking | 7/20 |
+| cacheCompileLib | true | 7/20 |
+| R8 release minify | true | 7/20 |
+| release shrinkResources | true | 7/20 |
+
+## 建置效能 （cold build, `--no-build-cache`）
+| 指標 | 原始 | 當前 | 備註 |
+|------|------|------|------|
+| 總 cold build 時間 | ~5m 25s | **38s** | 8.5× 改善 |
+| compileDebugKotlin | ~2m 20s | (已合入 38s) | 8GB daemon + parallel tasks |
+| mergeExtDexDebug | ~4m 49s | (已合入 38s) | cacheCompileLib + workers.max=6 |
+| incremental build | — | **~9s** | configuration cache 命中 |
 
 ## AndroidX / Jetpack Compose
 | 函式庫 | 版本 | 更新日 | 備註 |
