@@ -126,6 +126,7 @@ class SeekerViewModel(
 
                     matchCoordinator.startAiPreview(questionId, text, viewModelScope)
                     matchCoordinator.startMatchTimeout(questionId, viewModelScope)
+                    matchCoordinator.matchAndAssignExpert(questionId, text, userId)
                     observeStatus(questionId)
 
                     viewModelScope.launch {

@@ -1,7 +1,7 @@
 const admin = require('firebase-admin');
 const { GoogleGenAI, Type } = require('@google/genai');
 const { defineSecret } = require('firebase-functions/params');
-const { onSchedule } = require('firebase-functions/v2/scheduler');
+const { onValueWritten } = require('firebase-functions/v2/database');
 const { getDatabase } = require('firebase-admin/database');
 
 admin.initializeApp();
@@ -226,6 +226,7 @@ async function processSkills() {
   const updates = {};
   let aiEntries = [];
   const lockTrackers = {};
+  const acceptedEntries = [];
 
   for (const { entry, isBlacklisted } of blResults) {
     if (isBlacklisted) {
@@ -254,6 +255,7 @@ async function processSkills() {
       updates[`solutions/${entry.userId}/${entry.id}/tags`] = cachedTags;
       updates[`pending_skills/${entry.id}`] = null;
       updates[`active_experiences/${entry.id}`] = { authorId: entry.userId, text: entry.text, timestamp: now, status: 'active', isOnline: true };
+      acceptedEntries.push({ id: entry.id, text: entry.text });
       const t = lockTrackers[entry.userId] || (lockTrackers[entry.userId] = { rejectedCount: 0, hasActive: false });
       t.hasActive = true;
     } else {
@@ -263,6 +265,18 @@ async function processSkills() {
 
   if (remaining.length === 0) {
     await db.ref().update(updates);
+    if (acceptedEntries.length > 0) {
+      const embedResults = await Promise.allSettled(acceptedEntries.map(async ({ id, text }) => {
+        const embedding = await getEmbedding(text);
+        if (embedding) {
+          await db.ref(`active_experiences/${id}/embedding`).set(embedding);
+        }
+      }));
+      const succeeded = embedResults.filter(r => r.status === 'fulfilled').length;
+      if (succeeded < acceptedEntries.length) {
+        console.log(`[Skills] embedding: ${succeeded}/${acceptedEntries.length} succeeded`);
+      }
+    }
     console.log(`[Skills] all ${processable.length} resolved via cache`);
     return;
   }
@@ -339,6 +353,7 @@ async function processSkills() {
           updates[`tags_whitelist/${encodePath(entry.text)}/tags`] = tags;
           updates[`pending_skills/${entry.id}`] = null;
           updates[`active_experiences/${entry.id}`] = { authorId: entry.userId, text: entry.text, timestamp: now, status: 'active', isOnline: true };
+          acceptedEntries.push({ id: entry.id, text: entry.text });
           modelAccepted.push(entry);
           t.hasActive = true;
         }
@@ -376,6 +391,21 @@ async function processSkills() {
   }
 
   await db.ref().update(updates);
+
+  // Embedding: pre-compute for all newly accepted skills
+  if (acceptedEntries.length > 0) {
+    const embedResults = await Promise.allSettled(acceptedEntries.map(async ({ id, text }) => {
+      const embedding = await getEmbedding(text);
+      if (embedding) {
+        await db.ref(`active_experiences/${id}/embedding`).set(embedding);
+      }
+    }));
+    const succeeded = embedResults.filter(r => r.status === 'fulfilled').length;
+    if (succeeded < acceptedEntries.length) {
+      console.log(`[Skills] embedding: ${succeeded}/${acceptedEntries.length} succeeded`);
+    }
+  }
+
   console.log('[Skills] complete');
 }
 
@@ -549,22 +579,33 @@ async function processQuestions() {
 
   await db.ref().update(updates);
   for (const item of allAcceptedQuestions) {
+    console.log(`[QMatch] calling matchQuestionByTags for ${item.entry.id}`);
     await matchQuestionByTags(item.entry.id, item.tags);
   }
   console.log('[Questions] complete');
 }
 
-exports.batchProcess = onSchedule(
+exports.processSkillsOnWrite = onValueWritten(
   {
-    schedule: '* * * * *',
+    ref: '/pending_skills/{skillId}',
     secrets: [geminiApiKey, serperApiKey],
-    minInstances: 1,
   },
-  async () => {
-    console.log('batchProcess started (skills → questions)');
+  async (event) => {
+    if (event.data.before.exists() || !event.data.after.exists()) return;
+    console.log('[Trigger] new pending_skills entry, processing...');
     try { await processSkills(); } catch (err) { console.error('processSkills failed:', err.message, err.stack); }
+  }
+);
+
+exports.processQuestionsOnWrite = onValueWritten(
+  {
+    ref: '/pending_questions/{questionId}',
+    secrets: [geminiApiKey, serperApiKey],
+  },
+  async (event) => {
+    if (event.data.before.exists() || !event.data.after.exists()) return;
+    console.log('[Trigger] new pending_questions entry, processing...');
     try { await processQuestions(); } catch (err) { console.error('processQuestions failed:', err.message, err.stack); }
-    console.log('batchProcess complete');
   }
 );
 
@@ -582,6 +623,10 @@ function computeTagJaccard(tagsA, tagsB) {
 }
 
 const MATCH_TAG_THRESHOLD = 0.15;
+const TAG_FALLBACK_THRESHOLD = 0.7;
+const HYBRID_TAG_WEIGHT = 0.3;
+const HYBRID_EMBED_WEIGHT = 0.7;
+const HYBRID_THRESHOLD = 0.25;
 
 function getBigrams(text) {
   const clean = String(text).replace(/\s+/g, '');
@@ -600,6 +645,32 @@ function computeTextJaccard(textA, textB) {
   return intersect.size / union.size;
 }
 
+async function getEmbedding(text) {
+  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-2:embedContent?key=${geminiApiKey.value()}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model: 'models/gemini-embedding-2', content: { parts: [{ text }] } }),
+    signal: AbortSignal.timeout(10000),
+  });
+  if (!res.ok) { const errBody = await res.text(); throw new Error(`Embedding API error ${res.status}: ${errBody}`); }
+  const data = await res.json();
+  return data.embedding?.values;
+}
+
+function computeCosineSimilarity(vecA, vecB) {
+  if (!vecA || !vecB || vecA.length !== vecB.length || vecA.length === 0) return 0;
+  let dot = 0, normA = 0, normB = 0;
+  for (let i = 0; i < vecA.length; i++) {
+    dot += vecA[i] * vecB[i];
+    normA += vecA[i] * vecA[i];
+    normB += vecB[i] * vecB[i];
+  }
+  normA = Math.sqrt(normA);
+  normB = Math.sqrt(normB);
+  if (normA === 0 || normB === 0) return 0;
+  return dot / (normA * normB);
+}
+
 async function matchQuestionByTags(questionId, questionTags) {
   const qSnap = await db.ref(`questions/${questionId}`).once('value');
   if (!qSnap.exists()) return false;
@@ -613,42 +684,61 @@ async function matchQuestionByTags(questionId, questionTags) {
   const expSnap = await db.ref('active_experiences')
     .orderByChild('status').equalTo('active').once('value');
 
-  const matchPromises = [];
-  expSnap.forEach(child => {
-    const exp = child.val();
-    if (!exp || !exp.isOnline || rejectedExperts.has(exp.authorId)) return;
-    matchPromises.push((async () => {
-      const solSnap = await db.ref(`solutions/${exp.authorId}`)
-        .orderByChild('status').equalTo('ACTIVE').once('value');
-      const expertTags = new Set();
-      solSnap.forEach(sol => {
-        const tags = sol.child('tags').val();
-        if (Array.isArray(tags)) tags.forEach(t => expertTags.add(t));
-      });
-      const tagJaccard = computeTagJaccard(questionTags, [...expertTags]);
-      const textJaccard = questionText ? computeTextJaccard(questionText, exp.text || '') : 0;
-      const combined = Math.max(tagJaccard, textJaccard);
-      return { exp, jaccard: combined, tagJaccard, textJaccard };
-    })());
-  });
+  let qEmbedding = null;
+  try {
+    qEmbedding = await getEmbedding(questionText);
+  } catch (_) {}
 
-  const matches = (await Promise.all(matchPromises))
-    .filter(m => m.jaccard >= MATCH_TAG_THRESHOLD)
-    .sort((a, b) => b.jaccard - a.jaccard || b.exp.timestamp - a.exp.timestamp);
+  const candidates = [];
 
-  if (matches.length > 0) {
-    const best = matches[0];
+  for (const child of Object.values(expSnap.val() || {})) {
+    if (!child || !child.isOnline || rejectedExperts.has(child.authorId)) continue;
+    const exp = child;
+
+    const solSnap = await db.ref(`solutions/${exp.authorId}`)
+      .orderByChild('status').equalTo('ACTIVE').once('value');
+    const expertTags = new Set();
+    solSnap.forEach(sol => {
+      const tags = sol.child('tags').val();
+      if (Array.isArray(tags)) tags.forEach(t => expertTags.add(t));
+    });
+
+    const tagJaccard = computeTagJaccard(questionTags, [...expertTags]);
+    const textJaccard = questionText ? computeTextJaccard(questionText, exp.text || '') : 0;
+    const embedSim = (qEmbedding && exp.embedding) ? computeCosineSimilarity(qEmbedding, exp.embedding) : 0;
+
+    let score;
+    let threshold;
+    if (tagJaccard > 0 && embedSim > 0) {
+      score = HYBRID_TAG_WEIGHT * tagJaccard + HYBRID_EMBED_WEIGHT * embedSim;
+      threshold = HYBRID_THRESHOLD;
+    } else if (tagJaccard > 0) {
+      score = tagJaccard;
+      threshold = MATCH_TAG_THRESHOLD;
+    } else if (embedSim > TAG_FALLBACK_THRESHOLD) {
+      score = embedSim;
+      threshold = TAG_FALLBACK_THRESHOLD;
+    } else {
+      continue;
+    }
+    candidates.push({ exp, tagJaccard, textJaccard, embedSim, score, threshold });
+  }
+
+  candidates.sort((a, b) => b.score - a.score || b.exp.timestamp - a.exp.timestamp);
+  const best = candidates.find(c => c.score >= c.threshold);
+
+  if (best) {
     await db.ref(`questions/${questionId}`).update({
       expertId: best.exp.authorId,
       status: 'pending_acceptance',
       matchedExpText: best.exp.text,
       matchedExpTimestamp: best.exp.timestamp,
     });
-    console.log(`[QMatch] ${questionId} → expert ${best.exp.authorId} (combined=${best.jaccard.toFixed(3)}, tagJ=${best.tagJaccard.toFixed(3)}, textJ=${best.textJaccard.toFixed(3)})`);
+    console.log(`[QMatch] ${questionId} → expert ${best.exp.authorId} (score=${best.score.toFixed(3)}, tagJ=${best.tagJaccard.toFixed(3)}, textJ=${best.textJaccard.toFixed(3)}, embed=${best.embedSim.toFixed(3)})`);
     return true;
   }
-  const details = matches.length > 0 ? `best=${matches[0].jaccard.toFixed(3)}` : 'no candidates above threshold';
-  console.log(`[QMatch] ${questionId}: ${details} (tagJ_best=${matches.length > 0 ? matches[0].tagJaccard.toFixed(3) : 'N/A'})`);
+
+  console.log(`[QMatch] ${questionId}: no candidates above threshold (best=${candidates.length > 0 ? `score=${candidates[0].score.toFixed(3)} threshold=${candidates[0].threshold}` : 'N/A'})`);
   return false;
 }
 
