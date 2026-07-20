@@ -10,11 +10,7 @@ kotlin = "2.4.10"
 composeBom = "2026.06.00"
 
 googleGmsGoogleServices = "4.5.0"
-firebaseDatabase = "22.0.1"
-firebaseAuth = "24.2.0"
-firebaseMessaging = "25.1.1"
-firebaseStorage = "22.0.1"
-firebaseFunctions = "22.1.1"
+firebaseBom = "34.16.0"
 camerax = "1.6.1"
 playServicesAuth = "21.6.0"
 
@@ -47,11 +43,12 @@ androidx-compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-te
 androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3" }
 compose-icons = { group = "androidx.compose.material", name = "material-icons-extended" }
 
-firebase-database = { group = "com.google.firebase", name = "firebase-database", version.ref = "firebaseDatabase" }
-firebase-auth = { group = "com.google.firebase", name = "firebase-auth", version.ref = "firebaseAuth" }
-firebase-messaging = { group = "com.google.firebase", name = "firebase-messaging", version.ref = "firebaseMessaging" }
-firebase-storage = { group = "com.google.firebase", name = "firebase-storage", version.ref = "firebaseStorage" }
-firebase-functions = { group = "com.google.firebase", name = "firebase-functions", version.ref = "firebaseFunctions" }
+firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebaseBom" }
+firebase-database = { group = "com.google.firebase", name = "firebase-database" }
+firebase-auth = { group = "com.google.firebase", name = "firebase-auth" }
+firebase-messaging = { group = "com.google.firebase", name = "firebase-messaging" }
+firebase-storage = { group = "com.google.firebase", name = "firebase-storage" }
+firebase-functions = { group = "com.google.firebase", name = "firebase-functions" }
 camerax-core = { group = "androidx.camera", name = "camera-core", version.ref = "camerax" }
 camerax-camera2 = { group = "androidx.camera", name = "camera-camera2", version.ref = "camerax" }
 camerax-lifecycle = { group = "androidx.camera", name = "camera-lifecycle", version.ref = "camerax" }

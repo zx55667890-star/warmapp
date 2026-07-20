@@ -1,6 +1,11 @@
 # DEPENDENCIES.md — 版本依賴資訊
 
-更新日：所有日期均為 2026/07/20（第 2 波：exifinterface / Media3 / coroutines / play-services-auth / genai / mockk 更新於 7/20）
+更新日：所有日期均為 2026/07/20
+第 1 波：lifecycle / coroutines / play-services-auth / mockk / navigation-compose / CameraX
+第 2 波：Kotlin / Gradle / Compose BOM
+第 3 波：Media3 / Coil / Koin / 後端 npm
+第 4 波：Firebase Auth/Messaging/Storage/Functions
+第 5 波：exifinterface / Media3 / coroutines / play-services-auth / genai / mockk / Firebase BoM / Node.js 24
 注意：`material = 1.12.0`（View 系統）已於 7/20 移除，改用 `@android:style/Theme.Material.Light.NoActionBar`。App 已是 100% Compose。 
 
 ## SDK 版本
@@ -28,13 +33,14 @@
 | exifinterface | 1.4.2 | 7/20 | |
 
 ## Firebase
-| 函式庫 | 版本 | 更新日 |
-|--------|------|--------|
-| firebase-database | 22.0.1 | 沒更新 |
-| firebase-auth | 24.2.0 | 7/20 |
-| firebase-messaging | 25.1.1 | 7/20 |
-| firebase-storage | 22.0.1 | 7/20 |
-| firebase-functions | 22.1.1 | 7/20 |
+| 函式庫 | 版本 | 更新日 | 備註 |
+|--------|------|--------|------|
+| firebase-bom | 34.16.0 | 7/20 | 統一管理所有 Firebase SDK 版本 |
+| firebase-database | (由 BoM 管理) | 7/20 | |
+| firebase-auth | (由 BoM 管理) | 7/20 | |
+| firebase-messaging | (由 BoM 管理) | 7/20 | |
+| firebase-storage | (由 BoM 管理) | 7/20 | |
+| firebase-functions | (由 BoM 管理) | 7/20 | |
 
 ## 媒體 / 相機
 | 函式庫 | 版本 | 更新日 |
@@ -67,7 +73,7 @@
 ## 後端 (functions/package.json)
 | 套件 | 版本 | 更新日 |
 |------|------|--------|
-| Node.js | 22 (runtime) | 7/20 |
+| Node.js | 24 (runtime) | 7/20 |
 | firebase-admin | ^14.2.0 | 7/20 |
 | firebase-functions | 7.3.0 | 7/20 |
 | @google/genai | ^2.12.0 | 7/20 |
