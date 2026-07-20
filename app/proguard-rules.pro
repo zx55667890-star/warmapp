@@ -5,30 +5,13 @@
 # For more details, see
 #   http://developer.android.com/guide/developing/tools/proguard.html
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-# }
+# === 預設 optimize 配置已處理大部分情況 ===
+# (proguard-android-optimize.txt 已經包含 Android 框架的 keep 規則)
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+# === Kotlin / Coroutines ===
+-keep class kotlin.Metadata { *; }
+-dontwarn kotlinx.coroutines.flow.**
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
-
-# Firebase: 只保留實際用到的功能模組
--keep class com.google.firebase.auth.** { *; }
--keep class com.google.firebase.messaging.** { *; }
--keep class com.google.firebase.database.** { *; }
--keep class com.google.firebase.storage.** { *; }
--keep class com.google.firebase.functions.** { *; }
-
-# Coil (reflective access)
--keep class coil3.** { *; }
-
-# Koin (reflective DI)
--keep class org.koin.** { *; }
+# === Debug / 除錯用 ===
+-keepattributes SourceFile,LineNumberTable
+-renamesourcefileattribute SourceFile

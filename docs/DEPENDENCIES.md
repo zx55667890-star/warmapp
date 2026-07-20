@@ -37,13 +37,22 @@
 | R8 release minify | true | 7/20 |
 | release shrinkResources | true | 7/20 |
 
-## 建置效能 （cold build, `--no-build-cache`）
-| 指標 | 原始 | 當前 | 備註 |
-|------|------|------|------|
-| 總 cold build 時間 | ~5m 25s | **38s** | 8.5× 改善 |
-| compileDebugKotlin | ~2m 20s | (已合入 38s) | 8GB daemon + parallel tasks |
-| mergeExtDexDebug | ~4m 49s | (已合入 38s) | cacheCompileLib + workers.max=6 |
-| incremental build | — | **~9s** | configuration cache 命中 |
+## 建置效能 （cold build, `--no-build-cache --profile`）
+| 指標 | 原始 | 當前 | 改善倍率 |
+|------|------|------|---------|
+| **總 cold build 時間** | **~5m 25s** | **27s** | **12×** |
+| incremental build | — | **~9s** | — |
+| compileDebugKotlin | ~2m 20s | 17.6s | 8× |
+| mergeExtDexDebug | ~4m 49s | 13.2s | 22× |
+| mergeDebugJavaResource | 28.0s | 4.4s | 6.4× |
+| mergeDebugResources | 1m 0s | 4.0s | 15× |
+| dexBuilderDebug | 22.0s | 3.9s | 5.6× |
+| processDebugResources | 45.9s | 2.1s | 22× |
+| generateDebugGlobalSynthetics | 17.9s | 1.4s | 12.8× |
+| compileDebugJavaWithJavac | — | 0.9s | — |
+| checkDebugDuplicateClasses | 28.7s | 0.23s | 125× |
+| processDebugNavigationResources | 38.9s | 0.08s | 486× |
+| checkDebugAarMetadata | 38.7s | 0.13s | 298× |
 
 ## AndroidX / Jetpack Compose
 | 函式庫 | 版本 | 更新日 | 備註 |
