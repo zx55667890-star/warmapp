@@ -11,7 +11,7 @@ const geminiApiKey = defineSecret('GEMINI_API_KEY');
 const serperApiKey = defineSecret('SERPER_API_KEY');
 
 function encodePath(text) {
-  return Buffer.from(text, 'utf8').toString('base64url');
+  return Buffer.from(text.trim(), 'utf8').toString('base64url');
 }
 
 const BATCH_LIMIT_SKILLS = 50;
