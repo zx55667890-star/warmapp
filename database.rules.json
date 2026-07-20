@@ -29,6 +29,7 @@
     },
     "chatrooms": {
       "$roomId": {
+        ".write": "auth.uid !== null && !newData.exists()",
         "messages": {
           "$msgId": {
             ".read": "auth.uid !== null",

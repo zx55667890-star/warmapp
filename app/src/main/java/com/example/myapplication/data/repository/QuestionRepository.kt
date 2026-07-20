@@ -174,15 +174,16 @@ class QuestionRepository(private val firebaseDb: FirebaseDatabase) {
         val chatroomRef = firebaseDb.getReference("chatrooms").child("ai_$questionId")
         val pendingRef = firebaseDb.getReference(FirebasePaths.PENDING_QUESTIONS).child(questionId)
 
-        // 1. 先將 chatroom 的狀態設為 cancelled，通知已進入或正在進入的專家端退回
+        // 1. 立刻移除 pending 與 questions，防堵任何在背景等待的 AI 生成回呼讀取到舊資料
+        pendingRef.removeValue()
+        questionRef.removeValue()
+
+        // 2. 依然先將 chatroom 的狀態設為 cancelled，通知已進入的專家退出
         chatroomRef.child("status").setValue("cancelled").addOnCompleteListener {
-            // 2. 移除 pending_questions
-            pendingRef.removeValue()
-            // 3. 移除 questions 節點
-            questionRef.removeValue()
-            // 4. 移除整個 chatroom 節點
-            chatroomRef.removeValue()
-            
+            // 3. 移除整個 chatroom 節點（已透過 Firebase Security Rules 開放 auth.uid 刪除權限）
+            chatroomRef.removeValue().addOnFailureListener { e ->
+                Log.e("QuestionRepo", "Failed to remove chatroom", e)
+            }
             onComplete()
         }
     }
