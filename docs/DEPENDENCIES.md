@@ -8,20 +8,20 @@
 | minSdk | 28 |
 | namespace | com.example.myapplication |
 | AGP | 9.3.0 |
-| Kotlin | 2.2.20 |
-| Gradle | 9.5.0 |
+| Kotlin | 2.4.10 |
+| Gradle | 9.6.1 |
 
 ## AndroidX / Jetpack Compose
 | 函式庫 | 版本 | 備註 |
 |--------|------|------|
-| Compose BOM | 2026.05.01 | Material3 |
+| Compose BOM | 2026.06.00 | Material3 |
 | core-ktx | 1.19.0 | |
 | activity-compose | 1.13.0 | |
-| lifecycle-runtime-ktx | 2.10.0 | 需與 lifecycle 一致 |
-| lifecycle-runtime-compose | 2.10.0 | 閃退風險 if 版本不一致 |
-| lifecycle-viewmodel-compose | 2.10.0 | |
-| lifecycle-viewmodel-ktx | 2.10.0 | |
-| navigation-compose | 2.8.0 | |
+| lifecycle-runtime-ktx | 2.11.0 | |
+| lifecycle-runtime-compose | 2.11.0 | |
+| lifecycle-viewmodel-compose | 2.11.0 | |
+| lifecycle-viewmodel-ktx | 2.11.0 | |
+| navigation-compose | 2.9.8 | |
 | material | 1.12.0 | Material (non-Compose) |
 | exifinterface | 1.3.7 | |
 
@@ -29,29 +29,29 @@
 | 函式庫 | 版本 |
 |--------|------|
 | firebase-database | 22.0.1 |
-| firebase-auth | 23.2.0 |
-| firebase-messaging | 24.1.0 |
-| firebase-storage | 21.0.1 |
-| firebase-functions | 21.1.0 |
+| firebase-auth | 24.2.0 |
+| firebase-messaging | 25.1.1 |
+| firebase-storage | 22.0.1 |
+| firebase-functions | 22.1.1 |
 
 ## 媒體 / 相機
 | 函式庫 | 版本 |
 |--------|------|
-| CameraX | 1.5.0（core/camera2/lifecycle/view/video） |
-| Media3 (ExoPlayer) | 1.6.0（exoplayer/ui/database） |
-| Coil | 2.7.0（compose/video） |
+| CameraX | 1.6.1（core/camera2/lifecycle/view/video） |
+| Media3 (ExoPlayer) | 1.9.0（exoplayer/ui/database） |
+| Coil | 3.5.0（compose/video/network-okhttp） |
 
 ## DI / Async
 | 函式庫 | 版本 |
 |--------|------|
-| Koin | 4.1.0（core/android/compose） |
-| kotlinx-coroutines-play-services | 1.9.0 |
-| kotlinx-coroutines-test | 1.9.0 |
+| Koin | 4.2.2（core/android/compose） |
+| kotlinx-coroutines-play-services | 1.10.0 |
+| kotlinx-coroutines-test | 1.10.0 |
 
 ## Google 服務
 | 函式庫 | 版本 |
 |--------|------|
-| play-services-auth | 21.2.0 |
+| play-services-auth | 21.3.0 |
 | google-genai | 1.61.0 |
 
 ## 測試
@@ -60,16 +60,16 @@
 | JUnit | 4.13.2 |
 | androidx-junit | 1.3.0 |
 | espresso-core | 3.7.0 |
-| mockk | 1.13.5 |
+| mockk | 1.14.0 |
 
 ## 後端 (functions/package.json)
 | 套件 | 版本 |
 |------|------|
 | Node.js | 22 (runtime) |
-| firebase-admin | ^13.0.0 |
-| firebase-functions | 7.2.5 |
-| @google/genai | ^2.10.0 |
-| nodemailer | ^6.9.0 |
+| firebase-admin | ^14.2.0 |
+| firebase-functions | 7.3.0 |
+| @google/genai | ^2.12.0 |
+| nodemailer | ^9.0.3 |
 
 ## Cloud Function 自我修復
 | 項目 | 值 |
