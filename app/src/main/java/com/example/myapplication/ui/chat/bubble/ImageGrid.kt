@@ -12,8 +12,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
-import coil.request.ImageRequest
+import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import coil3.request.crossfade
 
 fun isVideoUrl(url: String): Boolean {
     val path = android.net.Uri.parse(url).lastPathSegment?.lowercase() ?: return false
@@ -46,7 +47,7 @@ fun ImageGrid(
             AsyncImage(
                 model = ImageRequest.Builder(context)
                     .data(singleUrl)
-                    .crossfade(true)
+                    .crossfade(300)
                     .build(),
                 contentDescription = "圖片訊息",
                 contentScale = ContentScale.Crop,
@@ -82,10 +83,10 @@ fun ImageGrid(
                             AsyncImage(
                                 model = ImageRequest.Builder(context)
                                     .data(url)
-                                    .crossfade(true)
-                                    .build(),
-                                contentScale = ContentScale.Crop,
-                                contentDescription = "圖片訊息",
+                    .crossfade(300)
+                    .build(),
+                contentScale = ContentScale.Crop,
+                contentDescription = "圖片訊息",
                                 modifier = imageModifier.combinedClickable(
                                     onClick = { onImageClick(urls, idx) },
                                     onLongClick = onLongPress

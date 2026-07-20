@@ -1,6 +1,6 @@
 # DEPENDENCIES.md — 版本依賴資訊
 
-更新日：所有日期均為 2026/07/20
+更新日：所有日期均為 2026/07/20（第 2 波：exifinterface / Media3 / coroutines / play-services-auth / genai / mockk 更新於 7/20）
 注意：`material = 1.12.0`（View 系統）已於 7/20 移除，改用 `@android:style/Theme.Material.Light.NoActionBar`。App 已是 100% Compose。 
 
 ## SDK 版本
@@ -25,7 +25,7 @@
 | lifecycle-viewmodel-compose | 2.11.0 | 7/20 | |
 | lifecycle-viewmodel-ktx | 2.11.0 | 7/20 | |
 | navigation-compose | 2.9.8 | 7/20 | |
-| exifinterface | 1.3.7 | 沒更新 | |
+| exifinterface | 1.4.2 | 7/20 | |
 
 ## Firebase
 | 函式庫 | 版本 | 更新日 |
@@ -40,21 +40,21 @@
 | 函式庫 | 版本 | 更新日 |
 |--------|------|--------|
 | CameraX | 1.6.1（core/camera2/lifecycle/view/video） | 7/20 |
-| Media3 (ExoPlayer) | 1.9.0（exoplayer/ui/database） | 7/20 |
+| Media3 (ExoPlayer) | 1.10.1（exoplayer/ui/database） | 7/20 |
 | Coil | 3.5.0（compose/video/network-okhttp） | 7/20 |
 
 ## DI / Async
 | 函式庫 | 版本 | 更新日 |
 |--------|------|--------|
 | Koin | 4.2.2（core/android/compose） | 7/20 |
-| kotlinx-coroutines-play-services | 1.10.0 | 7/20 |
-| kotlinx-coroutines-test | 1.10.0 | 7/20 |
+| kotlinx-coroutines-play-services | 1.11.0 | 7/20 |
+| kotlinx-coroutines-test | 1.11.0 | 7/20 |
 
 ## Google 服務
 | 函式庫 | 版本 | 更新日 |
 |--------|------|--------|
-| play-services-auth | 21.3.0 | 7/20 |
-| google-genai | 1.61.0 | 沒更新 |
+| play-services-auth | 21.6.0 | 7/20 |
+| google-genai | 1.62.0 | 7/20 |
 
 ## 測試
 | 函式庫 | 版本 | 更新日 |
@@ -62,7 +62,7 @@
 | JUnit | 4.13.2 | 沒更新 |
 | androidx-junit | 1.3.0 | 沒更新 |
 | espresso-core | 3.7.0 | 沒更新 |
-| mockk | 1.14.0 | 7/20 |
+| mockk | 1.14.11 | 7/20 |
 
 ## 後端 (functions/package.json)
 | 套件 | 版本 | 更新日 |
