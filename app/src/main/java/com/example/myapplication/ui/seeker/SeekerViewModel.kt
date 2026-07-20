@@ -68,6 +68,7 @@ class SeekerViewModel(
     private var currentUserQuestionId = ""
     private var currentUserId = ""
     private var statusCollectionJob: kotlinx.coroutines.Job? = null
+    private var aiResponseJob: kotlinx.coroutines.Job? = null
 
     fun refreshQuota(userId: String) {
         if (userId.isBlank()) return
@@ -129,7 +130,7 @@ class SeekerViewModel(
                     matchCoordinator.matchAndAssignExpert(questionId, text, userId)
                     observeStatus(questionId)
 
-                    viewModelScope.launch {
+                    aiResponseJob = viewModelScope.launch {
                         try {
                             val answer = aiRepository.generateResponse(text)
                             val aiMsgId = messagesRef.push().key ?: return@launch
@@ -273,6 +274,8 @@ class SeekerViewModel(
         matchCoordinator.cancelMatchTimeout()
         statusCollectionJob?.cancel()
         statusCollectionJob = null
+        aiResponseJob?.cancel()
+        aiResponseJob = null
     }
 
     private fun checkUserReconnection() {

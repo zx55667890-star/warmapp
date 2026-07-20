@@ -32,14 +32,16 @@ observeExpertStatus()      → callbackFlow
 - 不能拆分、不能改名已有常數
 
 ### Cloud Function
-- 排程固定 `every 1 minute`（`* * * * *`）
-- `minInstances: 1`（避免冷啟動）
-- 2nd Gen (`firebase-functions/v2/scheduler`)
+- **DB triggered**（`onValueWritten`），非排程 — `processSkillsOnWrite` + `processQuestionsOnWrite` 各自監聽 `pending_skills/{id}` / `pending_questions/{id}`
+- 排程 `batchProcess`（`every 1 minute`）已於 Round 17 刪除
+- 2nd Gen (`firebase-functions/v2/database`)
 - Secret via `defineSecret('GEMINI_API_KEY')` + `defineSecret('SERPER_API_KEY')`
 - Model 陣列（6 個）：PRIMARY（無搜尋）+ FALLBACK_1（Serper）+ FALLBACK_2~3（googleSearch）+ FALLBACK_4~5（Serper + thinking）
 - `useWebFetch` 旗標：先 `searchOnSerper()` 取搜尋結果注入 prompt，再送模型（無 `tools: [googleSearch]`）
 - `thinkingConfig`：Gen3 模型支援 `{ thinkingLevel: 'minimal' | 'low' | 'medium' | 'high' }`（FALLBACK_4~5 使用 `minimal`）
 - `searchOnSerper()` 調用 `https://google.serper.dev/search`，前 3 筆 organic，5s timeout
+- **匹配演算法**：hybrid（tag Jaccard ×0.3 + embedding cosine ×0.7），threshold 0.25；純 tag 路徑 threshold 0.15（MATCH_TAG_THRESHOLD）；tagJ=0 時降級純 embedding，threshold 0.7（同義詞仍可配對）
+- **客戶端配對**：`MatchingRepository` bigram Jaccard，threshold 0.08；需由 `matchCoordinator.matchAndAssignExpert()` 手動呼叫
 
 ### SkillStatus 列舉
 - `SolutionItem.status` 是 `SkillStatus` 型別（ACTIVE / PENDING / REJECTED）
@@ -60,10 +62,11 @@ observeExpertStatus()      → callbackFlow
 
 ## ⚠️ 這些地方很危險
 
-### pending_skills 孤立
-- 若 Cloud Function crash 在 claim 之後、寫回之前，entry 會被標記 `processing`
-- 5 分鐘後自動 timeout 釋放
-- 必要時可以手動清除：`DELETE /pending_skills/{id}`
+### pending_skills / pending_questions 孤立（DB triggered）
+- Cloud Function 由 DB write 觸發，crash 在 claim 之後、寫回之前，entry 會被標記 `processing`
+- 5 分鐘後自動 timeout 釋放（`PROCESSING_TIMEOUT_MS`）
+- 必要時可以手動清除：`DELETE /pending_skills/{id}` 或 `DELETE /pending_questions/{id}`
+- 高頻連續觸發可能導致 entry 被多個並發 invocation 搶佔而卡住
 
 ### saveSkill 非原子性
 - 兩個獨立 `setValue()`：先寫 `solutions/` 再寫 `pending_skills/`
@@ -75,11 +78,17 @@ observeExpertStatus()      → callbackFlow
 - CLI 建構成功不代表 IDE 無紅字
 - 例如第 9 輪 `publishErrorRes` → `publishFeedbackRes` 未同步導致 cascading error
 
+### AI Response Job 殘留（取消後 chatroom 被重建）
+- `SeekerViewModel.sendQuestion()` 會啟動一個 `aiResponseJob`（第 132 行）在背景產生 AI 回答並寫入 `chatrooms/ai_$id`
+- 若使用者在 AI 回答產生完成之前取消配對，cancelMatching 刪除 chatroom 後，`aiResponseJob` 仍可能繼續執行並**重新建立 chatroom**
+- 修復方式：`aiResponseJob` 存為 Job 欄位，在 `cleanupListeners()` 中 cancel
+- 若未來新增類似背景寫入 job，必須加入 cleanup 機制
+
 ## 🔧 開發指令
 - Build：`.\gradlew.bat assembleDebug --daemon --parallel`
 - 清理 Build：`.\gradlew.bat clean`
 - Deploy Cloud Function：`firebase deploy --only functions --force`
-- 查看 Log：`firebase functions:log --only batchProcess`
+- 查看 Log：`firebase functions:log --only processSkillsOnWrite` 或 `firebase functions:log --only processQuestionsOnWrite`
 - RTDB 操作：使用 Firebase MCP 工具
 - Git：只 stage 預期檔案，不提交 `node_modules/`
 
