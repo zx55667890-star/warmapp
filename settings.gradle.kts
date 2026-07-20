@@ -20,6 +20,18 @@ dependencyResolutionManagement {
     }
 }
 
+plugins {
+    id("com.gradle.develocity") version "3.18.1"
+}
+
+develocity {
+    buildScan {
+        termsOfUseUrl = "https://gradle.com/terms-of-service"
+        termsOfUseAgree = "yes"
+        publishing.onlyIf { true }
+    }
+}
+
 rootProject.name = "My Application"
 include(":app")
  
