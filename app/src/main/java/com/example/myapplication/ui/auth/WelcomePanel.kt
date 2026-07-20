@@ -38,7 +38,6 @@ fun WelcomePanel(
     onGoogleSignIn: () -> Unit,
     onLoginClick: () -> Unit,
     onRegisterClick: () -> Unit,
-    onSkip: () -> Unit,
     onTermsClick: () -> Unit,
     onPrivacyClick: () -> Unit
 ) {
@@ -288,23 +287,6 @@ fun WelcomePanel(
                         modifier = Modifier.clickable(onClick = onPrivacyClick)
                     )
                 }
-            }
-
-            Spacer(modifier = Modifier.height(28.dp))
-
-            AnimatedVisibility(
-                visible = animPhase >= 5,
-                enter = fadeIn(tween(500))
-            ) {
-                Text(
-                    text = "略過直接開始",
-                    color = AppColors.TextGray,
-                    fontSize = 14.sp,
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .clickable { onSkip() }
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                )
             }
 
             Spacer(modifier = Modifier.height(8.dp))

@@ -3,7 +3,7 @@
   "mcp": {
     "firebase": {
       "type": "local",
-      "command": ["npx", "-y", "firebase-tools@latest", "mcp"],
+      "command": ["C:\\Program Files\\nodejs\\node.exe", "C:\\Users\\zx556\\AppData\\Roaming\\npm\\node_modules\\firebase-tools\\lib\\bin\\firebase.js", "mcp"],
       "enabled": true
     }
   }

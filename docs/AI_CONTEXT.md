@@ -60,6 +60,39 @@ observeExpertStatus()      → callbackFlow
 - `TagViewModel.kt`（已合併至 ExpertViewModel）
 - `ExpertScreen.kt` 中的舊 `publishError` 參數（改為 floating overlay）
 
+## 🧠 語意快取（Semantic Whitelist Cache）
+
+### 流程
+```
+新問題進來
+  ↓
+1. 精確比對 whitelist key（現有）
+  → 命中 → 直接用快取 tags（source: "llm"）✅
+  ↓ miss
+2. 計算 embedding，與 whitelist 所有條目比對 cosine 相似度
+  → ≥ 0.75（SEMANTIC_CACHE_THRESHOLD）→ 回傳 tags，不寫入新 entry ✅
+  ↓ miss
+3. 呼叫 LLM 生成 tags
+  → 寫入 whitelist（tags + embedding + source: "llm"）
+```
+
+### 注意
+- `findSemanticCachedTags()` 共用於 questions 與 skills 兩條 pipeline
+- 語意快取命中後仍會呼叫 `matchQuestionByTags()`（已修復 early return bug）
+- Whitelist 只保留 LLM 原始計算的 entry，語意快取命中不增生新資料
+- `source` 欄位可區分 `"llm"`（花 token）與 `"semantic_cache"`（沒花 token）
+
+## ⚠️ 未解決問題
+
+### Q1 文字缺字問題
+- `tags_whitelist` 中 Q1「月底了...」的 key 偶爾遺失首字元「月」
+- 疑似 Android App 寫入 `pending_questions` 時文字被截斷
+- 待確認：是否為 UI 欄位限制或 API 傳送問題
+
+### Embedding 模型名稱
+- 目前 CF 使用 `gemini-embedding-exp-03-07`，但公開 API 只列出 `gemini-embedding-2`
+- 若部署環境的模型不可用，需改為 `gemini-embedding-2`
+
 ## ⚠️ 這些地方很危險
 
 ### pending_skills / pending_questions 孤立（DB triggered）

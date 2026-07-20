@@ -173,18 +173,6 @@ fun AppNavigation() {
                             navController.navigate(Routes.ROLE_SELECT) {
                                 popUpTo(Routes.AUTH) { inclusive = true }
                             }
-                        },
-                        onSkip = {
-                            scope.launch {
-                                try {
-                                    authRepository.signInAnonymously()
-                                } catch (_: Exception) {
-                                    // Anonymous sign-in unavailable (disabled in console)
-                                }
-                                navController.navigate(Routes.ROLE_SELECT) {
-                                    popUpTo(Routes.AUTH) { inclusive = true }
-                                }
-                            }
                         }
                     )
                 }

@@ -27,14 +27,16 @@
 │  Cloud Messaging    │  Hosting                           │
 ├─────────────────────────────────────────────────────────┤
 │              Cloud Function (Node.js 22)                  │
-│  batchProcess (scheduler, every 1 min)                    │
-│    ├─ skills: Blacklist → Whitelist → Gemini AI           │
-│    │   └─ 6 model fallback (PRIMARY + 5 FALLBACK)         │
-│    │   └─ Submission Lock management                       │
+│  DB triggered (onValueWritten) — scheduler removed         │
+│    ├─ processSkillsOnWrite:                                │
+│    │   └─ pending_skills/{id} write → trigger              │
+│    │   └─ Blacklist → Whitelist → Gemini AI + 6 fallback   │
+│    │   └─ Submission Lock management                        │
 │    │                                                       │
-│    └─ questions: Blacklist → Whitelist → Gemini AI         │
-│        └─ 6 model fallback (same as skills)                │
-│        └─ Tag-based matching → expert assignment            │
+│    └─ processQuestionsOnWrite:                             │
+│        └─ pending_questions/{id} write → trigger           │
+│        └─ Blacklist → Whitelist → Gemini AI + 6 fallback   │
+│        └─ Hybrid matching: tagJ ×0.3 + embed ×0.7          │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -61,12 +63,8 @@ ExpertViewModel.publishSkill(userId, text)
                 └─ Firebase: pending_skills/{pushId}
                       { userId, text, timestamp }
                       │
-                      ▼  (排程，最長等 1 分鐘)
-                batchProcess (Cloud Function)
-                      │
-                      ├─ [Self-Heal] healOrphanedPending()
-                      │    掃描 solutions 中 PENDING > 10 分鐘且
-                      │    pending_skills 無對應 entry 者，補回佇列
+                      ▼  (DB write 立即觸發)
+                processSkillsOnWrite (Cloud Function)
                       │
                       ├─ 1. Blacklist 檢查 (tags_blacklist/{base64(text)})
                       │     └─ 命中 → REJECTED
@@ -110,8 +108,8 @@ SeekerViewModel.sendQuestion(text, userId, media)
           └─ Firebase: pending_questions/{pushId}  ← 🆕
                 { userId, text, timestamp }
                 │
-                ▼  (排程，最長等 1 分鐘)
-          batchProcess (Cloud Function)
+                ▼  (DB write 立即觸發)
+          processQuestionsOnWrite (Cloud Function)
                 │
                 ├─ 1. Blacklist 檢查 (tags_blacklist/{base64(text)})
                 │     └─ 命中 → cancelled
@@ -123,16 +121,18 @@ SeekerViewModel.sendQuestion(text, userId, media)
                 │     PRIMARY: gemini-3.1-flash-lite (無搜尋)
                 │     FALLBACK_1~5: Serper / Google Search
                 │
-                └─ 4. Tag 相似度配對 (matchQuestionByTags)
-                      ├─ 讀取所有 active experiences (`experiences` 路徑)
+                └─ 4. Hybrid 匹配 (matchQuestionByTags)
+                      ├─ 讀取所有 active_experiences
                       ├─ 讀取各專家的 ACTIVE solutions 合併標籤集
-                      ├─ Jaccard 相似度 (門檻 0.15)
+                      ├─ 每個 candidate 計算 3 個分數：
+                      │   ├─ tagJaccard: 標籤字串交集
+                      │   ├─ textJaccard: 文字 bigram 交集
+                      │   └─ embedSim: 全文 embedding 餘弦相似度
+                      ├─ 混合分數: tagJ ×0.3 + embed ×0.7 (threshold 0.4)
+                      ├─ tagJ=0 降級純 embed (threshold 0.7, 同義詞情境)
                       └─ 最佳匹配 → questions/{id}:
                             expertId, status:"pending_acceptance"
                             matchedExpText, matchedExpTimestamp
-
-> ⚠️ **注意**：`matchQuestionByTags()` 讀取 `/experiences`，但專家端上線寫入 `/active_experiences`
-> （`FirebasePaths.ACTIVE_EXPERIENCES`）。兩路徑不一致需釐清。
 ```
 
 ## 資料流 — 聊天

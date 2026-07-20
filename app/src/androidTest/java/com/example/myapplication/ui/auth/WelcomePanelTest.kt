@@ -27,7 +27,6 @@ class WelcomePanelTest {
                     onGoogleSignIn = {},
                     onLoginClick = {},
                     onRegisterClick = {},
-                    onSkip = {},
                     onTermsClick = {},
                     onPrivacyClick = {}
                 )
@@ -38,7 +37,6 @@ class WelcomePanelTest {
         composeTestRule.onNodeWithText("Google 登入").assertIsDisplayed()
         composeTestRule.onNodeWithText("密碼登入").assertIsDisplayed()
         composeTestRule.onNodeWithText("註冊").assertIsDisplayed()
-        composeTestRule.onNodeWithText("略過直接開始").assertIsDisplayed()
         composeTestRule.onNodeWithText("我已閱讀並同意 ").assertIsDisplayed()
         composeTestRule.onNodeWithText("使用者協議").assertIsDisplayed()
         composeTestRule.onNodeWithText("隱私政策").assertIsDisplayed()
@@ -55,7 +53,6 @@ class WelcomePanelTest {
                     onGoogleSignIn = {},
                     onLoginClick = {},
                     onRegisterClick = {},
-                    onSkip = {},
                     onTermsClick = {},
                     onPrivacyClick = {}
                 )
@@ -78,7 +75,6 @@ class WelcomePanelTest {
                     onGoogleSignIn = {},
                     onLoginClick = { clicked = true },
                     onRegisterClick = {},
-                    onSkip = {},
                     onTermsClick = {},
                     onPrivacyClick = {}
                 )
@@ -101,7 +97,6 @@ class WelcomePanelTest {
                     onGoogleSignIn = {},
                     onLoginClick = {},
                     onRegisterClick = { clicked = true },
-                    onSkip = {},
                     onTermsClick = {},
                     onPrivacyClick = {}
                 )
@@ -124,7 +119,6 @@ class WelcomePanelTest {
                     onGoogleSignIn = { clicked = true },
                     onLoginClick = {},
                     onRegisterClick = {},
-                    onSkip = {},
                     onTermsClick = {},
                     onPrivacyClick = {}
                 )
@@ -132,29 +126,6 @@ class WelcomePanelTest {
         }
 
         composeTestRule.onNodeWithText("Google 登入").performClick()
-        assert(clicked)
-    }
-
-    @Test
-    fun skipClickTriggersCallback() {
-        var clicked = false
-        composeTestRule.setContent {
-            MyApplicationTheme {
-                WelcomePanel(
-                    isLoading = false,
-                    agreed = false,
-                    onAgreedChange = {},
-                    onGoogleSignIn = {},
-                    onLoginClick = {},
-                    onRegisterClick = {},
-                    onSkip = { clicked = true },
-                    onTermsClick = {},
-                    onPrivacyClick = {}
-                )
-            }
-        }
-
-        composeTestRule.onNodeWithText("略過直接開始").performClick()
         assert(clicked)
     }
 
@@ -170,7 +141,6 @@ class WelcomePanelTest {
                     onGoogleSignIn = {},
                     onLoginClick = {},
                     onRegisterClick = {},
-                    onSkip = {},
                     onTermsClick = { clicked = true },
                     onPrivacyClick = {}
                 )
@@ -193,7 +163,6 @@ class WelcomePanelTest {
                     onGoogleSignIn = {},
                     onLoginClick = {},
                     onRegisterClick = {},
-                    onSkip = {},
                     onTermsClick = {},
                     onPrivacyClick = { clicked = true }
                 )
@@ -216,7 +185,6 @@ class WelcomePanelTest {
                     onGoogleSignIn = {},
                     onLoginClick = {},
                     onRegisterClick = {},
-                    onSkip = {},
                     onTermsClick = {},
                     onPrivacyClick = {}
                 )
@@ -238,7 +206,6 @@ class WelcomePanelTest {
                     onGoogleSignIn = {},
                     onLoginClick = {},
                     onRegisterClick = {},
-                    onSkip = {},
                     onTermsClick = {},
                     onPrivacyClick = {}
                 )
@@ -260,7 +227,6 @@ class WelcomePanelTest {
                     onGoogleSignIn = {},
                     onLoginClick = {},
                     onRegisterClick = {},
-                    onSkip = {},
                     onTermsClick = {},
                     onPrivacyClick = {}
                 )

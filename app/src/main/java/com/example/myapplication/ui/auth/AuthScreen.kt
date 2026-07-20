@@ -51,7 +51,6 @@ private const val TRANSITION_DURATION = 350
 fun AuthScreen(
     viewModel: AuthViewModel,
     onLoggedIn: () -> Unit,
-    onSkip: () -> Unit = {}
 ) {
     val termsUrl = stringResource(R.string.terms_url)
     val privacyUrl = stringResource(R.string.privacy_url)
@@ -259,7 +258,6 @@ fun AuthScreen(
                         viewModel.toggleMode(true)
                         showLoginForm = true
                     },
-                    onSkip = onSkip
                 )
             }
         }
