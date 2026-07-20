@@ -1,8 +1,8 @@
 # PROJECT_STRUCTURE.md — 專案目錄結構
 
-**總計：117 個 Kotlin 檔，341 次 Git 提交**
+**總計：118 個 Kotlin 檔，356 次 Git 提交**
 
-> 本檔案由 generate_project_structure.sh 自動產生於 2026-07-19 18:54:57，請勿手動編輯。
+> 本檔案由 generate_project_structure.sh 自動產生於 2026-07-20 21:12:13，請勿手動編輯。
 
 ```
 warmapp/
@@ -184,7 +184,5 @@ gradle/libs.versions.toml
 - com/example/myapplication/ui/voice/VoiceRecordingViewModel.kt
 
 ### test/ 底下所有 *Test.kt（核對是否跟主程式路徑對齊）
-（無 — 已全數清除）
 
 ### androidTest/ 底下所有檔案
-（無 — 已全數清除）

@@ -167,7 +167,7 @@ AskQuestionScreen.kt
   └── SelectedMedia.kt
 
 RoleSelectScreen.kt
-  └── MatchingOverlay.kt / MatchingDialog.kt
+  └── MatchingOverlay.kt
 
 SeekerViewModel.kt (ui/seeker/)
   ├── QuestionRepository.kt
@@ -228,7 +228,7 @@ SeekerViewModel.kt (ui/seeker/)
 ## 資源
 | 檔案 | 角色 |
 |------|------|
-| `res/values/strings.xml` | 所有 UI 字串（50+ 條） |
+| `res/values/strings.xml` | 所有 UI 字串（~41 條） |
 | `res/values/themes.xml` | 系統主題 |
 
 ## 工具
