@@ -208,14 +208,16 @@ class SeekerViewModel(
     }
 
     fun cancelUserMatching() {
-        cleanupListeners()
         val uid = currentUserId
-        if (currentUserQuestionId.isNotBlank()) {
-            questionRepository.cancelMatching(currentUserQuestionId) {
+        val qId = currentUserQuestionId
+        if (qId.isNotBlank()) {
+            cleanupListeners()
+            questionRepository.cancelMatching(qId) {
                 resetMatchingState()
                 if (uid.isNotBlank()) refreshQuota(uid)
             }
         } else {
+            cleanupListeners()
             resetMatchingState()
         }
     }

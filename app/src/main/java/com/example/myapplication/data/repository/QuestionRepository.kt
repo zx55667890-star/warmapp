@@ -3,6 +3,7 @@ package com.example.myapplication.data.repository
 import android.util.Log
 import com.example.myapplication.data.FirebaseFields
 import com.example.myapplication.data.FirebasePaths
+import com.example.myapplication.data.StatusValues
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
@@ -169,26 +170,21 @@ class QuestionRepository(private val firebaseDb: FirebaseDatabase) {
     // Cancel Matching
     // =============================================================
     fun cancelMatching(questionId: String, onComplete: () -> Unit) {
-        val questionRef = firebaseDb.getReference("questions").child(questionId)
+        val questionRef = firebaseDb.getReference(FirebasePaths.QUESTIONS).child(questionId)
         val chatroomRef = firebaseDb.getReference("chatrooms").child("ai_$questionId")
         val pendingRef = firebaseDb.getReference(FirebasePaths.PENDING_QUESTIONS).child(questionId)
-        pendingRef.removeValue()
-        var completed = 0
-        val onEachDone = {
-            if (++completed >= 2) onComplete()
+
+        // 1. 先將 chatroom 的狀態設為 cancelled，通知已進入或正在進入的專家端退回
+        chatroomRef.child("status").setValue("cancelled").addOnCompleteListener {
+            // 2. 移除 pending_questions
+            pendingRef.removeValue()
+            // 3. 移除 questions 節點
+            questionRef.removeValue()
+            // 4. 移除整個 chatroom 節點
+            chatroomRef.removeValue()
+            
+            onComplete()
         }
-        questionRef.removeValue()
-            .addOnSuccessListener { onEachDone() }
-            .addOnFailureListener { e ->
-                Log.e("CancelMatch", "question remove failed", e)
-                onEachDone()
-            }
-        chatroomRef.removeValue()
-            .addOnSuccessListener { onEachDone() }
-            .addOnFailureListener { e ->
-                Log.e("CancelMatch", "chatroom remove failed", e)
-                onEachDone()
-            }
     }
 
     // =============================================================
