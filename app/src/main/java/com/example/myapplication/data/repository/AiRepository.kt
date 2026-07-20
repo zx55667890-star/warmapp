@@ -1,4 +1,4 @@
-﻿package com.example.myapplication.data.repository
+package com.example.myapplication.data.repository
 
 import android.util.Log
 import com.example.myapplication.BuildConfig
@@ -71,32 +71,37 @@ class AiRepository(
     }
 
     fun createAiChatroom(questionId: String, questionText: String, aiResponse: String, onComplete: (String) -> Unit) {
-        val chatroomId = "ai_$questionId"
-        val chatroomRef = firebaseDb.getReference("chatrooms").child(chatroomId)
-        val messagesRef = chatroomRef.child("messages")
-        val timestamp = System.currentTimeMillis()
+        val qRef = firebaseDb.getReference("questions").child(questionId)
+        qRef.get().addOnSuccessListener { qSnapshot ->
+            if (!qSnapshot.exists()) return@addOnSuccessListener
 
-        val userMsgId = messagesRef.push().key ?: return
-        val aiMsgId = messagesRef.push().key ?: return
+            val chatroomId = "ai_$questionId"
+            val chatroomRef = firebaseDb.getReference("chatrooms").child(chatroomId)
+            val messagesRef = chatroomRef.child("messages")
+            val timestamp = System.currentTimeMillis()
 
-        val userMessage = mapOf(
-            "senderId" to "",
-            "sender" to "user",
-            "text" to questionText,
-            "timestamp" to timestamp,
-            "readBy" to mapOf("system" to true)
-        )
-        val aiMessage = mapOf(
-            "senderId" to "ai_assistant",
-            "sender" to "ai",
-            "text" to aiResponse,
-            "timestamp" to timestamp + 1,
-            "readBy" to mapOf("system" to true)
-        )
+            val userMsgId = messagesRef.push().key ?: return@addOnSuccessListener
+            val aiMsgId = messagesRef.push().key ?: return@addOnSuccessListener
 
-        chatroomRef.child("status").setValue("active")
-        messagesRef.child(userMsgId).setValue(userMessage)
-        messagesRef.child(aiMsgId).setValue(aiMessage)
-            .addOnSuccessListener { onComplete(chatroomId) }
+            val userMessage = mapOf(
+                "senderId" to "",
+                "sender" to "user",
+                "text" to questionText,
+                "timestamp" to timestamp,
+                "readBy" to mapOf("system" to true)
+            )
+            val aiMessage = mapOf(
+                "senderId" to "ai_assistant",
+                "sender" to "ai",
+                "text" to aiResponse,
+                "timestamp" to timestamp + 1,
+                "readBy" to mapOf("system" to true)
+            )
+
+            chatroomRef.child("status").setValue("active")
+            messagesRef.child(userMsgId).setValue(userMessage)
+            messagesRef.child(aiMsgId).setValue(aiMessage)
+                .addOnSuccessListener { onComplete(chatroomId) }
+        }
     }
 }

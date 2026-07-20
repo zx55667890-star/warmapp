@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -133,6 +134,11 @@ class SeekerViewModel(
                     aiResponseJob = viewModelScope.launch {
                         try {
                             val answer = aiRepository.generateResponse(text)
+                            
+                            val qRef = firebaseDb.getReference("questions").child(questionId)
+                            val qSnapshot = qRef.get().await()
+                            if (!qSnapshot.exists()) return@launch
+
                             val aiMsgId = messagesRef.push().key ?: return@launch
                             val aiMessage = mapOf(
                                 "senderId" to "ai_assistant",
