@@ -89,9 +89,8 @@ observeExpertStatus()      → callbackFlow
 - 疑似 Android App 寫入 `pending_questions` 時文字被截斷
 - 待確認：是否為 UI 欄位限制或 API 傳送問題
 
-### Embedding 模型名稱
-- 目前 CF 使用 `gemini-embedding-exp-03-07`，但公開 API 只列出 `gemini-embedding-2`
-- 若部署環境的模型不可用，需改為 `gemini-embedding-2`
+### ✅ Embedding 模型名稱（已修正）
+- 已改用 `gemini-embedding-2`（`functions/index.js:728`）
 
 ## ⚠️ 這些地方很危險
 
@@ -111,10 +110,9 @@ observeExpertStatus()      → callbackFlow
 - CLI 建構成功不代表 IDE 無紅字
 - 例如第 9 輪 `publishErrorRes` → `publishFeedbackRes` 未同步導致 cascading error
 
-### AI Response Job 殘留（取消後 chatroom 被重建）
-- `SeekerViewModel.sendQuestion()` 會啟動一個 `aiResponseJob`（第 132 行）在背景產生 AI 回答並寫入 `chatrooms/ai_$id`
-- 若使用者在 AI 回答產生完成之前取消配對，cancelMatching 刪除 chatroom 後，`aiResponseJob` 仍可能繼續執行並**重新建立 chatroom**
-- 修復方式：`aiResponseJob` 存為 Job 欄位，在 `cleanupListeners()` 中 cancel
+### ✅ AI Response Job 殘留（已修正）
+- `aiResponseJob` 已存為 `Job?` 欄位（行 72），`cleanupListeners()` 中 cancel（行 293-294）
+- `catch` 區塊 rethrow `CancellationException`（行 155）
 - 若未來新增類似背景寫入 job，必須加入 cleanup 機制
 
 ## 🔧 開發指令
