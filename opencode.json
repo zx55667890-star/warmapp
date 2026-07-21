@@ -1,5 +1,6 @@
 {
   "$schema": "https://opencode.ai/config.json",
+  "customInstructions": "調用 firebase_realtimedatabase_get_data 時，databaseUrl 參數永遠必填：\"https://warmhelpapp-default-rtdb.firebaseio.com\"。省略會報錯。",
   "mcp": {
     "firebase": {
       "type": "local",

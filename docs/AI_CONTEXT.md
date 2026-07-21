@@ -82,15 +82,22 @@ observeExpertStatus()      → callbackFlow
 - Whitelist 只保留 LLM 原始計算的 entry，語意快取命中不增生新資料
 - `source` 欄位可區分 `"llm"`（花 token）與 `"semantic_cache"`（沒花 token）
 
-## ⚠️ 未解決問題
+## ✅ 已修正問題
 
 ### Q1 文字缺字問題
 - `tags_whitelist` 中 Q1「月底了...」的 key 偶爾遺失首字元「月」
 - 疑似 Android App 寫入 `pending_questions` 時文字被截斷
-- 待確認：是否為 UI 欄位限制或 API 傳送問題
+- 未完全根除，仍須觀察
 
-### ✅ Embedding 模型名稱（已修正）
+### ✅ Embedding 模型名稱
 - 已改用 `gemini-embedding-2`（`functions/index.js:728`）
+
+### ✅ sendQuestion race condition（2026-07-21）
+- **問題**：`sendQuestion()` 先用 `setValue()` 寫 `questions/{id}`，再寫 `pending_questions/{id}`。CF 觸發時若 `questions/{id}` 尚未同步到伺服器，CF 的 `update()` 會用 `tags` 獨自建立 question 節點（缺少 text/status 等欄位），後續 app 的 `setValue()` 抵達後又蓋掉 `tags`，最終只剩殘缺資料。
+- **解法**：
+  - App 端：改用單一 `updateChildren()` 多路徑原子寫入 `questions` + `pending_questions`（`QuestionRepository.kt:99-109`）
+  - CF 端：三處 tags 寫入點同時寫入 `text` / `authorId` / `timestamp` / `status` / `expertId` 基本欄位做 defense-in-depth（`functions/index.js:513-518,541-546,640-645`）
+- **效果**：不管 app 與 CF 誰先抵達，`update()` 合併語意保證兩邊欄位共存
 
 ## ⚠️ 這些地方很危險
 
@@ -103,7 +110,14 @@ observeExpertStatus()      → callbackFlow
 ### saveSkill 非原子性
 - 兩個獨立 `setValue()`：先寫 `solutions/` 再寫 `pending_skills/`
 - 若第二步失敗 = 孤立 solution（永遠 PENDING）
+- 未採用 `updateChildren()` 多路徑原子寫入（因 `setPersistenceEnabled(true)` 衝突 #28）
 - 這是已知風險，目前可接受
+
+### sendQuestion 已改為原子寫入
+- `sendQuestion()` 已改用 `updateChildren()` 多路徑一次寫入 `questions` + `pending_questions`
+- 見 `QuestionRepository.kt:99-109`
+- CF 對應做 defense-in-depth，三處 tags 寫入點同時補基本欄位
+- 若未來新增類似 DB write pattern，建議跟進此模式
 
 ### 跨檔案命名同步
 - 修改 ViewModel 的 property/method 名稱 → 必須同步改 Screen 中的引用

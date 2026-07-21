@@ -3,7 +3,26 @@
 > Round 15 以前的紀錄已搬移至 [CHANGELOG_OLD.md](CHANGELOG_OLD.md)
 
 
-## 2026-07-20 — Round 18：語意快取（Semantic Whitelist Cache）
+## 2026-07-21 — Round 19：sendQuestion 原子化 + CF defense-in-depth
+
+### 修改檔案
+- `app/.../data/repository/QuestionRepository.kt` — `sendQuestion()` 改為 `updateChildren()` 多路徑原子寫入
+- `functions/index.js` — CF 三處 tags 寫入點同時補 `text`/`authorId`/`timestamp`/`status`/`expertId`
+
+### 變更
+- **sendQuestion 原子化**：原本 `setValue(questions)` → `addOnSuccessListener { setValue(pending_questions) }` 改為單一 `updateChildren()` 一次寫入兩個節點，消除 race condition
+- **CF defense-in-depth**：無論是精確 whitelist、語意快取、AI pipeline，只要寫入 `questions/{id}/tags` 就同時補齊基本欄位，確保 CF 先處理時 question 節點也是完整的
+
+### 修正
+- **question 資料遺失**：CF 先抵達時用 `tags` 獨自建立了 question 節點（缺少 text/status），app 後續 `setValue()` 蓋掉 `tags`，導致資料庫只剩殘缺 entry
+
+### 部署
+- Cloud Function 部署成功（`processQuestionsOnWrite`）
+- APK build 成功（15s incremental）
+
+---
+
+
 
 ### 修改檔案
 - `functions/index.js` — 新增 `findSemanticCachedTags()`、`SEMANTIC_CACHE_THRESHOLD`；`encodePath()` 補 `.trim()`；補 `orderByKey()`；`source` 欄位；修 early return bug
