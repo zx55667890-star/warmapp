@@ -35,8 +35,7 @@ fun DrawerContent(
 
     Column(
         modifier = modifier
-            .fillMaxHeight()
-            .width(290.dp)
+            .fillMaxSize()
             .background(AppColors.SurfaceDark)
             .padding(horizontal = 16.dp)
     ) {

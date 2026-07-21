@@ -1,11 +1,11 @@
 package com.example.myapplication.ui.seeker
 
-import android.content.Context
-import android.view.inputmethod.InputMethodManager
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.*
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
@@ -17,13 +17,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -178,166 +176,95 @@ fun RoleSelectScreen(
     var isDrawerOpen by remember { mutableStateOf(false) }
     var showSettingsScreen by remember { mutableStateOf(false) }
 
-    val scale by animateFloatAsState(
-        targetValue = if (isDrawerOpen) 0.82f else 1f,
-        animationSpec = tween(300), label = "scale"
-    )
-    val offsetX by animateDpAsState(
-        targetValue = if (isDrawerOpen) 275.dp else 0.dp,
-        animationSpec = tween(300), label = "offsetX"
-    )
-    val cornerRadius by animateDpAsState(
-        targetValue = if (isDrawerOpen) 40.dp else 0.dp,
-        animationSpec = tween(300), label = "cornerRadius"
-    )
-
     Box(
         modifier = Modifier
             .fillMaxSize()
             .drawBackgroundGlow()
             .background(AppColors.DarkBackground)
     ) {
-        DrawerContent(
-            nickname = nickname,
-            avatarUrl = avatarUrl,
-            onSearch = {},
-            onHistoryItemClick = {},
-            onSettingsClick = { showSettingsScreen = true }
-        )
-
-        val focusManager = LocalFocusManager.current
-        val context = LocalContext.current
-
-        Box(
+        Row(
             modifier = Modifier
-                .offset { androidx.compose.ui.unit.IntOffset(offsetX.roundToPx(), 0) }
-                .scale(scale)
-                .clip(RoundedCornerShape(cornerRadius))
-                .border(
-                    width = if (isDrawerOpen) 1.dp else 0.dp,
-                    color = AppColors.BorderGray,
-                    shape = RoundedCornerShape(cornerRadius)
-                )
                 .fillMaxSize()
-                .background(AppColors.DarkBackground)
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null
-                ) {
-                    focusManager.clearFocus()
-                    context.getSystemService(Context.INPUT_METHOD_SERVICE)?.let {
-                        (it as InputMethodManager).hideSoftInputFromWindow(
-                            (context as? android.app.Activity)
-                                ?.window?.decorView?.windowToken, 0
-                        )
-                    }
-                }
+                .padding(horizontal = 32.dp),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(modifier = Modifier.fillMaxSize()) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 32.dp),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
+            Card(
+                modifier = Modifier
+                    .width(140.dp)
+                    .height(180.dp)
+                    .clickable { onAskQuestion() },
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = AppColors.SurfaceDark)
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
                 ) {
-                    Card(
-                        modifier = Modifier
-                            .width(140.dp)
-                            .height(180.dp)
-                            .clickable { onAskQuestion() },
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = AppColors.SurfaceDark
-                        )
-                    ) {
-                        Column(
-                            modifier = Modifier.fillMaxSize(),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
-                        ) {
-                            AnimatedAskerIcon(modifier = Modifier.size(60.dp))
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                "我有問題",
-                                fontSize = 15.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = AppColors.TextWhite
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.width(16.dp))
-
-                    Card(
-                        modifier = Modifier
-                            .width(140.dp)
-                            .height(180.dp)
-                            .clickable { onExpertMode() },
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = AppColors.SurfaceDark
-                        )
-                    ) {
-                        Column(
-                            modifier = Modifier.fillMaxSize(),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
-                        ) {
-                            AnimatedExpertIcon(modifier = Modifier.size(60.dp))
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                "分享經驗",
-                                fontSize = 15.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = AppColors.TextWhite
-                            )
-                        }
-                    }
-                }
-
-                Box(
-                    modifier = Modifier
-                        .statusBarsPadding()
-                        .padding(top = 16.dp, start = 16.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .clickable { isDrawerOpen = true }
-                        .padding(8.dp)
-                ) {
-                    Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                        Box(
-                            modifier = Modifier
-                                .width(24.dp)
-                                .height(2.dp)
-                                .background(AppColors.TextGray)
-                        )
-                        Box(
-                            modifier = Modifier
-                                .width(24.dp)
-                                .height(2.dp)
-                                .background(AppColors.TextGray)
-                        )
-                    }
+                    AnimatedAskerIcon(modifier = Modifier.size(60.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("我有問題", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = AppColors.TextWhite)
                 }
             }
 
-            if (isDrawerOpen) {
+            Spacer(modifier = Modifier.width(16.dp))
+
+            Card(
+                modifier = Modifier
+                    .width(140.dp)
+                    .height(180.dp)
+                    .clickable { onExpertMode() },
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = AppColors.SurfaceDark)
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    AnimatedExpertIcon(modifier = Modifier.size(60.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("分享經驗", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = AppColors.TextWhite)
+                }
+            }
+        }
+
+        Box(
+            modifier = Modifier
+                .statusBarsPadding()
+                .padding(top = 16.dp, start = 16.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .clickable { isDrawerOpen = true }
+                .padding(8.dp)
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                Box(Modifier.width(24.dp).height(2.dp).background(AppColors.TextGray))
+                Box(Modifier.width(24.dp).height(2.dp).background(AppColors.TextGray))
+            }
+        }
+
+        AnimatedVisibility(
+            visible = isDrawerOpen,
+            enter = slideInHorizontally { -it },
+            exit = slideOutHorizontally { -it }
+        ) {
+            Box(modifier = Modifier.fillMaxSize()) {
+                DrawerContent(
+                    nickname = nickname,
+                    avatarUrl = avatarUrl,
+                    onSearch = {},
+                    onHistoryItemClick = {},
+                    onSettingsClick = { showSettingsScreen = true; isDrawerOpen = false }
+                )
+
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
-                            onClick = {
-                                focusManager.clearFocus()
-                                context.getSystemService(Context.INPUT_METHOD_SERVICE)?.let {
-                                    (it as InputMethodManager).hideSoftInputFromWindow(
-                                        (context as? android.app.Activity)
-                                            ?.window?.decorView?.windowToken, 0
-                                    )
-                                }
-                                isDrawerOpen = false
-                            }
+                            onClick = { isDrawerOpen = false }
                         )
                 )
             }
