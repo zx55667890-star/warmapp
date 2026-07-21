@@ -7,6 +7,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
@@ -28,6 +29,7 @@ fun DrawerContent(
     onSearch: (String) -> Unit,
     onHistoryItemClick: (String) -> Unit,
     onSettingsClick: () -> Unit,
+    onClose: () -> Unit,
     modifier: Modifier = Modifier,
     avatarUrl: String? = null
 ) {
@@ -40,7 +42,17 @@ fun DrawerContent(
             .padding(horizontal = 16.dp)
     ) {
         Spacer(modifier = Modifier.statusBarsPadding())
-        Spacer(modifier = Modifier.height(12.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End
+        ) {
+            IconButton(onClick = onClose) {
+                Icon(Icons.Default.Close, contentDescription = "Close", tint = AppColors.TextGray)
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
 
         OutlinedTextField(
             value = searchQuery,

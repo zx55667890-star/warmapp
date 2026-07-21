@@ -255,7 +255,8 @@ fun RoleSelectScreen(
                     avatarUrl = avatarUrl,
                     onSearch = {},
                     onHistoryItemClick = {},
-                    onSettingsClick = { showSettingsScreen = true; isDrawerOpen = false }
+                    onSettingsClick = { showSettingsScreen = true; isDrawerOpen = false },
+                    onClose = { isDrawerOpen = false }
                 )
 
                 Box(
