@@ -510,6 +510,11 @@ async function processQuestions() {
   for (const { entry, cachedTags } of wlResults) {
     if (cachedTags) {
       updates[`questions/${entry.id}/tags`] = cachedTags;
+      updates[`questions/${entry.id}/text`] = entry.text;
+      updates[`questions/${entry.id}/authorId`] = entry.userId;
+      updates[`questions/${entry.id}/timestamp`] = entry.timestamp;
+      updates[`questions/${entry.id}/status`] = 'matching';
+      updates[`questions/${entry.id}/expertId`] = '';
       updates[`pending_questions/${entry.id}`] = null;
     } else {
       remaining.push(entry);
@@ -533,6 +538,11 @@ async function processQuestions() {
     for (const { entry, semanticTags, embedding } of semanticResults) {
       if (semanticTags) {
         updates[`questions/${entry.id}/tags`] = semanticTags;
+        updates[`questions/${entry.id}/text`] = entry.text;
+        updates[`questions/${entry.id}/authorId`] = entry.userId;
+        updates[`questions/${entry.id}/timestamp`] = entry.timestamp;
+        updates[`questions/${entry.id}/status`] = 'matching';
+        updates[`questions/${entry.id}/expertId`] = '';
         updates[`pending_questions/${entry.id}`] = null;
         semanticCachedQuestions.push({ entry, tags: semanticTags });
       } else {
@@ -627,6 +637,11 @@ async function processQuestions() {
         if (isReject) { newRejected.push(entry); } else {
           allAcceptedQuestions.push({ entry, tags });
           updates[`questions/${entry.id}/tags`] = tags;
+          updates[`questions/${entry.id}/text`] = entry.text;
+          updates[`questions/${entry.id}/authorId`] = entry.userId;
+          updates[`questions/${entry.id}/timestamp`] = entry.timestamp;
+          updates[`questions/${entry.id}/status`] = 'matching';
+          updates[`questions/${entry.id}/expertId`] = '';
           updates[`tags_whitelist/${encodePath(entry.text)}/tags`] = tags;
           updates[`tags_whitelist/${encodePath(entry.text)}/source`] = 'llm';
           if (entry._precomputedEmbedding) {

@@ -14,6 +14,7 @@ import com.google.firebase.database.Transaction
 import com.google.firebase.database.MutableData
 import kotlinx.coroutines.tasks.await
 import java.util.Calendar
+import java.util.HashMap
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
@@ -97,27 +98,20 @@ class QuestionRepository(private val firebaseDb: FirebaseDatabase) {
     }
 
     fun sendQuestion(text: String, userId: String, callback: SendQuestionCallback) {
-        val newRef = firebaseDb.getReference("questions").push()
-        val id = newRef.key ?: return
+        val id = firebaseDb.getReference("questions").push().key ?: return
         val now = System.currentTimeMillis()
-        val data = mapOf(
-            "text" to text,
-            "status" to "matching",
-            "timestamp" to now,
-            "authorId" to userId,
-            "expertId" to ""
-        )
-        newRef.setValue(data).addOnSuccessListener {
-            firebaseDb.getReference(FirebasePaths.PENDING_QUESTIONS).child(id)
-                .setValue(mapOf(
-                    FirebaseFields.USER_ID to userId,
-                    FirebaseFields.TEXT to text,
-                    FirebaseFields.TIMESTAMP to now
-                ))
-            callback.onSent(id)
-        }.addOnFailureListener { e ->
-            callback.onError(e.message ?: "問題發送失敗")
-        }
+        val childUpdates = HashMap<String, Any>()
+        childUpdates["questions/$id/text"] = text
+        childUpdates["questions/$id/status"] = "matching"
+        childUpdates["questions/$id/timestamp"] = now
+        childUpdates["questions/$id/authorId"] = userId
+        childUpdates["questions/$id/expertId"] = ""
+        childUpdates["pending_questions/$id/${FirebaseFields.USER_ID}"] = userId
+        childUpdates["pending_questions/$id/${FirebaseFields.TEXT}"] = text
+        childUpdates["pending_questions/$id/${FirebaseFields.TIMESTAMP}"] = now
+        firebaseDb.getReference().updateChildren(childUpdates)
+            .addOnSuccessListener { callback.onSent(id) }
+            .addOnFailureListener { e -> callback.onError(e.message ?: "問題發送失敗") }
     }
 
     // =============================================================
