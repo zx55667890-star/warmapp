@@ -33,20 +33,26 @@ observeExpertStatus()      → callbackFlow
 
 ### Cloud Function
 - **DB triggered**（`onValueWritten`），非排程 — `processSkillsOnWrite` + `processQuestionsOnWrite` 各自監聽 `pending_skills/{id}` / `pending_questions/{id}`
+- **Runtime**：Node.js 24
 - 排程 `batchProcess`（`every 1 minute`）已於 Round 17 刪除
 - 2nd Gen (`firebase-functions/v2/database`)
 - Secret via `defineSecret('GEMINI_API_KEY')` + `defineSecret('SERPER_API_KEY')`
-- Model 陣列（6 個）：PRIMARY（無搜尋）+ FALLBACK_1（Serper）+ FALLBACK_2~3（googleSearch）+ FALLBACK_4~5（Serper + thinking）
+- Model 陣列（6 個）：PRIMARY（無搜尋）+ FALLBACK_1~2（Serper）+ FALLBACK_3~5（Serper + minimal thinking）
 - `useWebFetch` 旗標：先 `searchOnSerper()` 取搜尋結果注入 prompt，再送模型（無 `tools: [googleSearch]`）
 - `thinkingConfig`：Gen3 模型支援 `{ thinkingLevel: 'minimal' | 'low' | 'medium' | 'high' }`（FALLBACK_4~5 使用 `minimal`）
 - `searchOnSerper()` 調用 `https://google.serper.dev/search`，前 3 筆 organic，5s timeout
-- **匹配演算法**：hybrid（tag Jaccard ×0.3 + embedding cosine ×0.7），threshold 0.25；純 tag 路徑 threshold 0.15（MATCH_TAG_THRESHOLD）；tagJ=0 時降級純 embedding，threshold 0.7（同義詞仍可配對）
+- **匹配演算法**：per-candidate hybrid scoring（tag Jaccard ×0.3 + embedding cosine ×0.7），threshold 0.4；tagJ=0 降級純 embedding（同義詞情境），threshold 0.7
 - **客戶端配對**：`MatchingRepository` bigram Jaccard，threshold 0.08；需由 `matchCoordinator.matchAndAssignExpert()` 手動呼叫
 
 ### SkillStatus 列舉
 - `SolutionItem.status` 是 `SkillStatus` 型別（ACTIVE / PENDING / REJECTED）
 - 不能改成 `String`
 - 比對用 `== SkillStatus.XXX` 而非 `.name`
+
+### QuestionStatus.PendingAcceptance（enum 保留）
+- `PendingAcceptance` 列舉值仍在程式碼中，僅供**向後相容**舊資料庫中仍處於 `pending_acceptance` 狀態的問答
+- 新流程（Round 16 後）CF 匹配後直接寫入 `taken`，不再經由 `pending_acceptance`
+- **不可刪除**，否則舊資料會直接 crash（`ObserveQuestionStatusUseCase.kt:31`）
 
 ### UI 字串
 - 所有字串在 `strings.xml`
@@ -103,7 +109,8 @@ observeExpertStatus()      → callbackFlow
 
 ### pending_skills / pending_questions 孤立（DB triggered）
 - Cloud Function 由 DB write 觸發，crash 在 claim 之後、寫回之前，entry 會被標記 `processing`
-- 5 分鐘後自動 timeout 釋放（`PROCESSING_TIMEOUT_MS`）
+- 雙重保護：`releaseStuckProcessing()` 在每次 CF 調用開頭主動清理卡住 entry；`PROCESSING_TIMEOUT_MS`（5 分鐘）被動 timeout 作為保險
+- `healOrphanedPending()` 在 `processSkillsOnWrite` 開頭執行，掃描孤立 PENDING solution 並補寫 `pending_skills`
 - 必要時可以手動清除：`DELETE /pending_skills/{id}` 或 `DELETE /pending_questions/{id}`
 - 高頻連續觸發可能導致 entry 被多個並發 invocation 搶佔而卡住
 

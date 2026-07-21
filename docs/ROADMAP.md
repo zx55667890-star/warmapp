@@ -9,7 +9,7 @@
 - 錄音功能
 - 配對系統
 - Submission Lock（防濫用）
-- Cloud Function AI 分析（6 模型 fallback + Serper/Google Search）
+- Cloud Function AI 分析（6 模型 fallback + Serper）
 
 ## 🚧 v1.0 (進行中)
 - [ ] 聊天室完整功能（已讀/收回）
@@ -17,7 +17,7 @@
 - [ ] 通知系統（FCM）
 - [ ] 完整評分機制
 - [ ] 使用者個人檔案
-- [ ] 設定頁面
+- [x] 設定頁面（`FullSettingsScreen.kt` + `DrawerContent.kt`）
 - [ ] Google Sign In 完整整合
 - [ ] Crash 穩定性修復（MediaPlayer 等）
 

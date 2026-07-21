@@ -26,16 +26,16 @@
 │  Realtime Database  │  Auth  │  Storage  │  Functions    │
 │  Cloud Messaging    │  Hosting                           │
 ├─────────────────────────────────────────────────────────┤
-│              Cloud Function (Node.js 22)                  │
+│              Cloud Function (Node.js 24)                  │
 │  DB triggered (onValueWritten) — scheduler removed         │
 │    ├─ processSkillsOnWrite:                                │
-│    │   └─ pending_skills/{id} write → trigger              │
-│    │   └─ Blacklist → Whitelist → Gemini AI + 6 fallback   │
+│    │   └─ pending_skills/{id} write → trigger               │
+│    │   └─ Blacklist → Whitelist → Gemini AI (6 fallback)   │
 │    │   └─ Submission Lock management                        │
 │    │                                                       │
 │    └─ processQuestionsOnWrite:                             │
 │        └─ pending_questions/{id} write → trigger           │
-│        └─ Blacklist → Whitelist → Gemini AI + 6 fallback   │
+│        └─ Blacklist → Whitelist → Gemini AI (6 fallback)   │
 │        └─ Hybrid matching: tagJ ×0.3 + embed ×0.7          │
 └─────────────────────────────────────────────────────────┘
 ```
@@ -72,12 +72,12 @@ ExpertViewModel.publishSkill(userId, text)
                       ├─ 2. Whitelist 檢查 (tags_whitelist/{base64(text)}/tags)
                       │     └─ 命中 → ACTIVE + 快取標籤
                       │
-              ├─ 3. AI 分析 (6 模型接力)
-              │     PRIMARY: gemini-3.1-flash-lite (無搜尋)
+                ├─ 3. AI 分析 (6 模型接力)
+              │     PRIMARY: gemini-3.5-flash-lite (無搜尋)
               │       → REJECT 才丟給下一棒
-              │     FALLBACK_1: gemini-3.1-flash-lite + Serper (`useWebFetch`)
-              │     FALLBACK_2: gemini-2.5-flash-lite + googleSearch
-              │     FALLBACK_3: gemini-2.5-flash + googleSearch
+              │     FALLBACK_1: gemini-3.5-flash-lite + Serper
+              │     FALLBACK_2: gemini-3.1-flash-lite + Serper
+              │     FALLBACK_3: gemini-3.6-flash + Serper + minimal thinking
               │     FALLBACK_4: gemini-3.5-flash + Serper + minimal thinking
               │     FALLBACK_5: gemini-3-flash-preview + Serper + minimal thinking
               │       → 最終 REJECT 才寫入黑名單
@@ -118,8 +118,8 @@ SeekerViewModel.sendQuestion(text, userId, media)
                 │     └─ 命中 → 快取標籤 + Tag 配對
                 │
                 ├─ 3. AI 6 模型降級分析 → 題目標籤
-                │     PRIMARY: gemini-3.1-flash-lite (無搜尋)
-                │     FALLBACK_1~5: Serper / Google Search
+              │     PRIMARY: gemini-3.5-flash-lite (無搜尋)
+              │     FALLBACK_1~5: Serper (含 minimal thinking)
                 │
                 └─ 4. Hybrid 匹配 (matchQuestionByTags)
                       ├─ 讀取所有 active_experiences
@@ -148,10 +148,6 @@ ChatViewModel
     ├─ sendMedia()       ← MediaUploader (Storage) + MessageRepository
     └─ recallMessage()   ← MessageRepository
 ```
-
 ## UI 元件階層 (Compose)
 
-```
-```
-
-> UI 元件階層已移至 `docs/MODULE_MAP.md`（各功能區塊的依賴樹）
+> 各功能區塊的依賴樹請見 `docs/MODULE_MAP.md`

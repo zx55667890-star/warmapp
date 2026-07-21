@@ -71,7 +71,7 @@ AuthViewModel.kt
 | `data/repository/MessageRepository.kt` | 訊息資料存取 |
 | `data/repository/MessageRepositoryInterface.kt` | 訊息 repository interface |
 | `data/repository/MessageRepositoryFactory.kt` | 訊息 repository factory |
-| `data/repository/FcmService.kt` | Firebase Cloud Messaging |
+| `data/repository/FcmService.kt` | FCM 推播服務（位於 repository 目錄但實為 Service，透過 Service 與 ViewModel 通訊） |
 | `data/model/ChatMessage.kt` | 聊天訊息資料模型 |
 
 **依賴樹：**
@@ -258,7 +258,7 @@ SeekerViewModel.kt (ui/seeker/)
 | 檔案 | 角色 |
 |------|------|
 | `functions/index.js` | processSkillsOnWrite / processQuestionsOnWrite (DB triggered AI 分析，含語意快取、Serper 搜尋、6 模型 fallback) |
-| `functions/package.json` | Node.js 22, firebase-admin, @google/genai |
+| `functions/package.json` | Node.js 24, firebase-admin, @google/genai |
 | `database.rules.json` | RTDB Security Rules |
 
 **依賴樹：**
@@ -295,5 +295,8 @@ DB write → pending_questions/{id} (onValueWritten)
 | `DEPENDENCIES.md` | 版本依賴資訊 |
 | `ROADMAP.md` | 開發藍圖 |
 | `CHANGELOG.md` | 更新紀錄（含進度、檔案索引、已解決問題） |
-| `CHANGELOG_OLD.md` | 初期開發紀錄封存 (#1~#50) |
+| `CHANGELOG_OLD.md` | 更新紀錄封存 (Round 16~17) |
 | `PROJECT_STRUCTURE.md` | 專案目錄結構 |
+| `index.md` | 專案文件入口 |
+| `R8_SETUP.md` | R8 混淆設定指南 |
+| `gradle/libs.versions.toml` | 版本目錄（Version Catalog） |

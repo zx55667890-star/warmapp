@@ -1,8 +1,8 @@
 # PROJECT_STRUCTURE.md — 專案目錄結構
 
-**總計：118 個 Kotlin 檔，356 次 Git 提交**
+**總計：118 個 Kotlin 檔，378 次 Git 提交**
 
-> 本檔案由 generate_project_structure.sh 自動產生於 2026-07-20 21:12:13，請勿手動編輯。
+> 本檔案由 generate_project_structure.sh 自動產生於 2026-07-22 01:06:52，請勿手動編輯。
 
 ```
 warmapp/
@@ -135,6 +135,7 @@ docs/CODING_STYLE.md
 docs/DEPENDENCIES.md
 docs/MODULE_MAP.md
 docs/PROJECT_STRUCTURE.md
+docs/R8_SETUP.md
 docs/ROADMAP.md
 docs/index.md
 functions/index.js

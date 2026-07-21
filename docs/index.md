@@ -10,5 +10,5 @@
 | [DEPENDENCIES.md](DEPENDENCIES.md) | 版本依賴資訊 |
 | [ROADMAP.md](ROADMAP.md) | 開發藍圖 |
 | [CHANGELOG.md](CHANGELOG.md) | 更新紀錄（含進度、檔案索引、已解決問題） |
-| [CHANGELOG_OLD.md](CHANGELOG_OLD.md) | 初期開發紀錄封存 (#1~#50) |
+| [CHANGELOG_OLD.md](CHANGELOG_OLD.md) | 更新紀錄封存 (Round 16~17) |
 | [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) | 專案目錄結構 |

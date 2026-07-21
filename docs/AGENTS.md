@@ -21,6 +21,12 @@
 - **優先參考 `docs/`：** 先查閱 `docs/` 目錄下的對應文件，再自行推理。
 - **版本對齊：** 參考 `docs/DEPENDENCIES.md`，不提供舊版語法。
 
+## CHANGELOG 保留規則
+
+- **CHANGELOG.md**：保留最近 **14 天** 的紀錄；更舊的移入 `CHANGELOG_OLD.md`。
+- **CHANGELOG_OLD.md**：不限長度，只保留各輪標題 + 日期，可省略逐行細節。
+- 每次新增 Round 時檢查 CHANGELOG.md 是否有超期的輪次，若有則搬至 OLD。
+
 ## 詳細規則請見
 
 | 主題 | 文件 |

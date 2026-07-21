@@ -19,17 +19,17 @@ const BATCH_LIMIT_QUESTIONS = 50;
 const PROCESSING_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
 
 const MODELS = [
-  // PRIMARY：最高 RPD 主力，不搜尋，快速濾掉已知技能
-  { name: 'gemini-3.1-flash-lite', label: 'PRIMARY', useSearch: false },
+  // PRIMARY：最 cost-effective 主力，不搜尋
+  { name: 'gemini-3.5-flash-lite', label: 'PRIMARY', useSearch: false },
 
   // FALLBACK_1：同 PRIMARY 但啟用 Serper 外部搜尋
-  { name: 'gemini-3.1-flash-lite', label: 'FALLBACK_1', useWebFetch: true },
+  { name: 'gemini-3.5-flash-lite', label: 'FALLBACK_1', useWebFetch: true },
 
-  // FALLBACK_2~3：內建 googleSearch（Gen2 支援）
-  { name: 'gemini-2.5-flash-lite', label: 'FALLBACK_2', useSearch: true },
-  { name: 'gemini-2.5-flash',      label: 'FALLBACK_3', useSearch: true },
+  // FALLBACK_2：3.1 成本仍低 + Serper
+  { name: 'gemini-3.1-flash-lite', label: 'FALLBACK_2', useWebFetch: true },
 
-  // FALLBACK_4~5：Gen3 模型 + Serper + minimal thinking
+  // FALLBACK_3~5：Gen3 模型 + Serper + minimal thinking
+  { name: 'gemini-3.6-flash',      label: 'FALLBACK_3', useWebFetch: true, thinkingConfig: { thinkingLevel: 'minimal' } },
   { name: 'gemini-3.5-flash',      label: 'FALLBACK_4', useWebFetch: true, thinkingConfig: { thinkingLevel: 'minimal' } },
   { name: 'gemini-3-flash-preview',label: 'FALLBACK_5', useWebFetch: true, thinkingConfig: { thinkingLevel: 'minimal' } },
 ];
