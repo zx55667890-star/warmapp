@@ -96,7 +96,9 @@ class ExpertViewModel(
             val trimmed = text.trim()
 
             val isDuplicate = _uiState.value.solutionHistory.any {
-                it.expertise == trimmed && it.status != SkillStatus.REJECTED
+                if (it.status == SkillStatus.REJECTED) false else {
+                    it.expertise == trimmed || computeTextSimilarity(it.expertise, trimmed) >= 0.7
+                }
             }
             if (isDuplicate) {
                 sendEvent(ExpertUiEvent.ShowToast(R.string.expert_toast_already_exists))
@@ -345,6 +347,14 @@ class ExpertViewModel(
                 globalAssignedQText = ""
             ) 
         }
+    }
+
+    private fun computeTextSimilarity(a: String, b: String): Double {
+        val bigramsA = a.windowed(2).toSet()
+        val bigramsB = b.windowed(2).toSet()
+        val intersect = bigramsA.intersect(bigramsB).size.toDouble()
+        val union = bigramsA.union(bigramsB).size.toDouble()
+        return if (union > 0) intersect / union else 0.0
     }
 
     private fun ExpertInputValidator.ValidationError.toResourceId(): Int = when (this) {

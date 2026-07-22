@@ -3,6 +3,25 @@
 > Round 17 以前的紀錄已搬移至 [CHANGELOG_OLD.md](CHANGELOG_OLD.md)
 
 
+## 2026-07-22 — Round 21：輸入驗證修正（疊字誤判 + 相似重複檢查）
+
+### 修改檔案
+- `app/.../domain/expert/ExpertInputValidator.kt` — 移除過度嚴格的 singletons 檢查
+- `app/.../ui/expert/ExpertViewModel.kt` — 新增 `computeTextSimilarity()` bigram Jaccard 重複比對
+
+### 變更
+- **相似內容檢測**：發布技能前除精確比對外，新增 bigram Jaccard ≥ 0.7 的相似度檢查，防止高度重複的技能進入知識庫
+- **疊字誤判修正**：移除 `SINGLETONS_THRESHOLD` + `ADJACENT_CHECK_MIN_LENGTH` 判定路徑，正常中文疊字（慢慢、常常）不再被誤判為 GIBBERISH
+
+### 修正
+- 中文疊字（慢慢、常常、等等）觸發 singletons ≥ 3 判斷，被誤判為亂碼
+- 近似的技能文字（如「分享怎麼分配薪水才不會月底吃」vs「怎麼分配薪水才不會月底吃」）未檢測為重複
+
+### 部署
+- APK build 成功
+
+---
+
 ## 2026-07-22 — Round 20：同批次本地語意快取（localWhitelist）
 
 ### 修改檔案
