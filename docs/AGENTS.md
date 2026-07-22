@@ -1,4 +1,4 @@
-# AGENTS.md — AI 核心規則
+# 專案 Agent 守則
 
 ## 🔒 高風險提醒（絕不可違反，即使沒看過 docs/ 也要遵守）
 
@@ -17,7 +17,8 @@
 - **查閱最新文檔：** 回答 API/SDK 語法前**必須**搜尋最新官方文檔。
 - **標註來源：** 回答時必須附上參考的官方文檔連結。
 - **強制使用 MCP 工具：** 排查資料庫問題時**嚴禁**要求手動前往 Firebase Console，必須主動調用 MCP 工具。
-- **MCP 資料庫 URL：** 調用 `firebase_realtimedatabase_get_data` 時**必須**指定 `databaseUrl: "https://warmhelpapp-default-rtdb.firebaseio.com"`。
+調用 `firebase_realtimedatabase_get_data` 時，`databaseUrl` 參數永遠必填：
+`"https://warmhelpapp-default-rtdb.firebaseio.com"`。省略會報錯。
 - **優先參考 `docs/`：** 先查閱 `docs/` 目錄下的對應文件，再自行推理。
 - **版本對齊：** 參考 `docs/DEPENDENCIES.md`，不提供舊版語法。
 
