@@ -11,8 +11,6 @@ object ExpertInputValidator {
     private const val RATIO_CHECK_MIN_LENGTH = 6
     private const val MAX_CONSECUTIVE_DUPLICATES = 3
     private const val MAX_ADJACENT_PAIRS = 3
-    private const val SINGLETONS_THRESHOLD = 3
-    private const val ADJACENT_CHECK_MIN_LENGTH = 5
     private const val PURE_ENGLISH_MIN_LENGTH = 6
     private const val BIGRAM_REPEAT_THRESHOLD = 2
     private const val MAX_CHAR_FREQUENCY = 3
@@ -52,13 +50,6 @@ object ExpertInputValidator {
         }
         if (adjacentPairCount >= MAX_ADJACENT_PAIRS) {
             return ValidationError.GIBBERISH
-        }
-        if (adjacentPairCount >= 1 && trimmed.length >= ADJACENT_CHECK_MIN_LENGTH) {
-            val charCounts = trimmed.groupingBy { it }.eachCount()
-            val singletons = charCounts.count { it.value == 1 }
-            if (singletons >= SINGLETONS_THRESHOLD) {
-                return ValidationError.GIBBERISH
-            }
         }
 
         val bigrams = trimmed.windowed(2).groupingBy { it }.eachCount()

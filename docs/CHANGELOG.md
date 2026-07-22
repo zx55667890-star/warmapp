@@ -3,6 +3,23 @@
 > Round 17 以前的紀錄已搬移至 [CHANGELOG_OLD.md](CHANGELOG_OLD.md)
 
 
+## 2026-07-22 — Round 20：同批次本地語意快取（localWhitelist）
+
+### 修改檔案
+- `functions/index.js` — `findSemanticCachedTags()` 新增 `localWhitelist` 參數；`processSkills()` + `processQuestions()` 新增 `localWhitelist` 陣列與 Step 3.5
+
+### 變更
+- **同批次本地語意快取**：同一批次（一次 `processSkills()` / `processQuestions()` 調用）內，後筆 entry 可透過 `localWhitelist` 比對前筆 LLM accept 的 tags，避免重複呼叫 LLM
+- **Step 3.5**：LLM 全拒的 entry（通過所有 6 模型仍被 reject）再比對同批次已 accept 的條目，若 cosine similarity ≥ 0.75 則改為 accept，減少被黑名單誤殺
+
+### 修正
+- **跨 entry 快取失效**：同一批次處理的多筆 pending_skills/questions，因 whitelist 寫入在函數末尾才 `update()`，後筆無法看到前筆的 tags，導致語意快取 miss。新增 `localWhitelist` 陣列在記憶體中累積，`findSemanticCachedTags()` 同時檢查 DB + 本地快取
+
+### 部署
+- Cloud Function 部署成功（`processSkillsOnWrite` + `processQuestionsOnWrite`）
+
+---
+
 ## 2026-07-21 — Round 19：sendQuestion 原子化 + CF defense-in-depth
 
 ### 修改檔案

@@ -227,6 +227,7 @@ async function processSkills() {
   let aiEntries = [];
   const lockTrackers = {};
   const acceptedEntries = [];
+  const localWhitelist = []; // 同批次內已由 LLM accept 的 {tags, embedding}，供後筆語意快取
 
   for (const { entry, isBlacklisted } of blResults) {
     if (isBlacklisted) {
@@ -269,7 +270,7 @@ async function processSkills() {
     const semanticResults = await Promise.all(remaining.map(async (entry) => {
       try {
         const embedding = await getEmbedding(entry.text);
-        const semanticTags = await findSemanticCachedTags(entry.text, embedding, updates);
+        const semanticTags = await findSemanticCachedTags(entry.text, embedding, updates, localWhitelist);
         return { entry, semanticTags, embedding };
       } catch (err) {
         console.warn(`[Skills][SemanticCache] embedding failed for "${entry.text.substring(0, 20)}": ${err.message}`);
@@ -390,6 +391,10 @@ async function processSkills() {
           updates[`pending_skills/${entry.id}`] = null;
           updates[`active_experiences/${entry.id}`] = { authorId: entry.userId, text: entry.text, timestamp: now, status: 'active', isOnline: true };
           acceptedEntries.push({ id: entry.id, text: entry.text });
+          // 加入 local whitelist，讓同批次後筆 entry 可複用
+          if (entry._precomputedEmbedding && tags.length > 0) {
+            localWhitelist.push({ tags, embedding: entry._precomputedEmbedding });
+          }
           modelAccepted.push(entry);
           t.hasActive = true;
         }
@@ -403,6 +408,41 @@ async function processSkills() {
         try { await db.ref(`config/model_status/${encodePath(model.name)}`).set('EXHAUSTED'); } catch (_) {}
       }
     }
+  }
+
+  // Step 3.5: 同批次 local 語意快取 — LLM 全拒的 entry 再比對同一批次已 accept 的條目
+  if (remaining.length > 0 && localWhitelist.length > 0) {
+    const saved = [];
+    const stillRejected = [];
+    for (const entry of remaining) {
+      try {
+        const embedding = entry._precomputedEmbedding || await getEmbedding(entry.text);
+        let bestSim = 0;
+        let bestMatch = null;
+        for (const cached of localWhitelist) {
+          const sim = computeCosineSimilarity(embedding, cached.embedding);
+          if (sim > bestSim) { bestSim = sim; bestMatch = cached; }
+        }
+        if (bestSim >= SEMANTIC_CACHE_THRESHOLD && bestMatch) {
+          const sr = `solutions/${entry.userId}/${entry.id}`;
+          const t = lockTrackers[entry.userId] || (lockTrackers[entry.userId] = { rejectedCount: 0, hasActive: false });
+          updates[`${sr}/status`] = 'ACTIVE';
+          updates[`${sr}/tags`] = bestMatch.tags;
+          updates[`pending_skills/${entry.id}`] = null;
+          updates[`active_experiences/${entry.id}`] = { authorId: entry.userId, text: entry.text, timestamp: now, status: 'active', isOnline: true };
+          acceptedEntries.push({ id: entry.id, text: entry.text });
+          t.hasActive = true;
+          saved.push(entry);
+          console.log(`[Skills][LocalCache] saved by local semantic sim=${bestSim.toFixed(3)} for "${entry.text.substring(0, 30)}..."`);
+        } else {
+          stillRejected.push(entry);
+        }
+      } catch (err) {
+        stillRejected.push(entry);
+      }
+    }
+    remaining = stillRejected;
+    if (saved.length > 0) console.log(`[Skills][LocalCache] saved ${saved.length} entries from rejection`);
   }
 
   // Final reject
@@ -487,6 +527,7 @@ async function processQuestions() {
 
   const updates = {};
   let aiEntries = [];
+  const localWhitelist = [];
 
   for (const { entry, isBlacklisted } of blResults) {
     if (isBlacklisted) {
@@ -527,7 +568,7 @@ async function processQuestions() {
     const semanticResults = await Promise.all(remaining.map(async (entry) => {
       try {
         const embedding = await getEmbedding(entry.text);
-        const semanticTags = await findSemanticCachedTags(entry.text, embedding, updates);
+        const semanticTags = await findSemanticCachedTags(entry.text, embedding, updates, localWhitelist);
         return { entry, semanticTags, embedding };
       } catch (err) {
         console.warn(`[Questions][SemanticCache] embedding failed for "${entry.text.substring(0, 20)}": ${err.message}`);
@@ -648,6 +689,9 @@ async function processQuestions() {
             updates[`tags_whitelist/${encodePath(entry.text)}/embedding`] = entry._precomputedEmbedding;
           }
           updates[`pending_questions/${entry.id}`] = null;
+          if (entry._precomputedEmbedding && tags.length > 0) {
+            localWhitelist.push({ tags, embedding: entry._precomputedEmbedding });
+          }
         }
       }
       remaining = newRejected;
@@ -657,6 +701,41 @@ async function processQuestions() {
         try { await db.ref(`config/model_status/${encodePath(model.name)}`).set('EXHAUSTED'); } catch (_) {}
       }
     }
+  }
+
+  // Step 3.5: 同批次 local 語意快取
+  if (remaining.length > 0 && localWhitelist.length > 0) {
+    const saved = [];
+    const stillRejected = [];
+    for (const entry of remaining) {
+      try {
+        const embedding = entry._precomputedEmbedding || await getEmbedding(entry.text);
+        let bestSim = 0;
+        let bestMatch = null;
+        for (const cached of localWhitelist) {
+          const sim = computeCosineSimilarity(embedding, cached.embedding);
+          if (sim > bestSim) { bestSim = sim; bestMatch = cached; }
+        }
+        if (bestSim >= SEMANTIC_CACHE_THRESHOLD && bestMatch) {
+          updates[`questions/${entry.id}/tags`] = bestMatch.tags;
+          updates[`questions/${entry.id}/text`] = entry.text;
+          updates[`questions/${entry.id}/authorId`] = entry.userId;
+          updates[`questions/${entry.id}/timestamp`] = entry.timestamp;
+          updates[`questions/${entry.id}/status`] = 'matching';
+          updates[`questions/${entry.id}/expertId`] = '';
+          updates[`pending_questions/${entry.id}`] = null;
+          allAcceptedQuestions.push({ entry, tags: bestMatch.tags });
+          saved.push(entry);
+          console.log(`[Questions][LocalCache] saved by local semantic sim=${bestSim.toFixed(3)}`);
+        } else {
+          stillRejected.push(entry);
+        }
+      } catch (err) {
+        stillRejected.push(entry);
+      }
+    }
+    remaining = stillRejected;
+    if (saved.length > 0) console.log(`[Questions][LocalCache] saved ${saved.length} entries from cancellation`);
   }
 
   if (remaining.length > 0) {
@@ -756,37 +835,48 @@ const SEMANTIC_CACHE_THRESHOLD = 0.75;
 const SEMANTIC_CACHE_MAX_ENTRIES = 500; // 最多比對筆數，避免資料庫太大時效能惡化
 
 /**
- * 在 tags_whitelist 中尋找語意上最接近 text 的條目，若相似度 >= 閾值則回傳其 tags。
- * 同時會將 text 也寫入 whitelist（複用找到的 tags）以加速未來查詢。
+ * 在 tags_whitelist（DB）+ localWhitelist（記憶體，同批次已 accept 的條目）中
+ * 尋找語意上最接近 text 的條目，若相似度 >= 閾值則回傳其 tags。
  * @param {string} text 要比對的原始文字
- * @param {number[]} textEmbedding 已算好的 embedding（避免重複呼叫 API）
- * @param {object} updates 現有的 Firebase batch updates 物件（會直接追加寫入）
- * @returns {string[]|null} 命中時回傳 tags 陣列；未命中回傳 null
+ * @param {number[]} textEmbedding 該文字的 embedding
+ * @param {object} updates 外部 batch updates 物件
+ * @param {Array<{tags:string[],embedding:number[]}>} [localWhitelist=[]] 同批次內已 accept 的快取
+ * @returns {string[]|null} 找到的快取 tags；若無則回傳 null
  */
-async function findSemanticCachedTags(text, textEmbedding, updates) {
+async function findSemanticCachedTags(text, textEmbedding, updates, localWhitelist = []) {
   if (!textEmbedding) return null;
+  let bestSim = 0;
+  let bestTags = null;
+
+  // 1. 檢查 DB whitelist
   try {
     const wlSnap = await db.ref('tags_whitelist').orderByKey().limitToLast(SEMANTIC_CACHE_MAX_ENTRIES).once('value');
-    if (!wlSnap.exists()) return null;
-    let bestSim = 0;
-    let bestTags = null;
-    wlSnap.forEach(child => {
-      const val = child.val();
-      const embedding = val && val.embedding;
-      const tags = val && val.tags;
-      if (!Array.isArray(embedding) || !Array.isArray(tags) || tags.length === 0) return;
-      const sim = computeCosineSimilarity(textEmbedding, embedding);
-      if (sim > bestSim) { bestSim = sim; bestTags = tags; }
-    });
-    if (bestSim >= SEMANTIC_CACHE_THRESHOLD && bestTags) {
-      console.log(`[SemanticCache] hit sim=${bestSim.toFixed(3)} for "${text.substring(0, 30)}..."`);
-      return bestTags;
+    if (wlSnap.exists()) {
+      wlSnap.forEach(child => {
+        const val = child.val();
+        const embedding = val && val.embedding;
+        const tags = val && val.tags;
+        if (!Array.isArray(embedding) || !Array.isArray(tags) || tags.length === 0) return;
+        const sim = computeCosineSimilarity(textEmbedding, embedding);
+        if (sim > bestSim) { bestSim = sim; bestTags = tags; }
+      });
     }
-    return null;
   } catch (err) {
-    console.warn('[SemanticCache] lookup failed:', err.message);
-    return null;
+    console.warn('[SemanticCache] DB lookup failed:', err.message);
   }
+
+  // 2. 檢查同批次 local whitelist（尚未寫入 DB，但已在記憶體中）
+  for (const cached of localWhitelist) {
+    if (!Array.isArray(cached.embedding) || !Array.isArray(cached.tags) || cached.tags.length === 0) continue;
+    const sim = computeCosineSimilarity(textEmbedding, cached.embedding);
+    if (sim > bestSim) { bestSim = sim; bestTags = cached.tags; }
+  }
+
+  if (bestSim >= SEMANTIC_CACHE_THRESHOLD && bestTags) {
+    console.log(`[SemanticCache] hit sim=${bestSim.toFixed(3)} for "${text.substring(0, 30)}..."`);
+    return bestTags;
+  }
+  return null;
 }
 
 function computeCosineSimilarity(vecA, vecB) {
